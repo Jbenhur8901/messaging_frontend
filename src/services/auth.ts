@@ -18,7 +18,7 @@ export const authService = {
 
     const { data } = await api.post<AuthResponse>("/v1/auth/signup", formData)
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && data.session) {
       localStorage.setItem("access_token", data.session.access_token)
       localStorage.setItem("refresh_token", data.session.refresh_token)
 
@@ -162,6 +162,10 @@ export const authService = {
     formData.append("refresh_token", refreshToken)
 
     const { data } = await api.post<AuthResponse>("/v1/auth/refresh", formData)
+
+    if (!data.session) {
+      throw new Error(data.message ?? "Session manquante lors du rafraîchissement du token.")
+    }
 
     if (typeof window !== "undefined") {
       localStorage.setItem("access_token", data.session.access_token)

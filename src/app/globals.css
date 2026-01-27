@@ -81,6 +81,7 @@
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
