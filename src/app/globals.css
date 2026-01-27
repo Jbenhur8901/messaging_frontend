@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@theme {
+  /* Light mode - White background with #1800ad primary */
+  --color-background: #ffffff;
+  --color-foreground: #0a0a0a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0a0a0a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0a0a0a;
+  --color-primary: #1800ad;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f4f3ff;
+  --color-secondary-foreground: #1800ad;
+  --color-muted: #f5f5f7;
+  --color-muted-foreground: #6b7280;
+  --color-accent: #f4f3ff;
+  --color-accent-foreground: #1800ad;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e5e7eb;
+  --color-input: #e5e7eb;
+  --color-ring: #1800ad;
+  --radius: 0.5rem;
+
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+}
+
+.dark {
+  --color-background: #0a0a0f;
+  --color-foreground: #fafafa;
+  --color-card: #0f0f18;
+  --color-card-foreground: #fafafa;
+  --color-popover: #0f0f18;
+  --color-popover-foreground: #fafafa;
+  --color-primary: #6b5cff;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #1a1a2e;
+  --color-secondary-foreground: #a5b4fc;
+  --color-muted: #1a1a2e;
+  --color-muted-foreground: #9ca3af;
+  --color-accent: #1a1a2e;
+  --color-accent-foreground: #a5b4fc;
+  --color-destructive: #7f1d1d;
+  --color-destructive-foreground: #fafafa;
+  --color-border: #27273a;
+  --color-input: #27273a;
+  --color-ring: #6b5cff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --color-background: #0a0a0f;
+    --color-foreground: #fafafa;
+    --color-card: #0f0f18;
+    --color-card-foreground: #fafafa;
+    --color-popover: #0f0f18;
+    --color-popover-foreground: #fafafa;
+    --color-primary: #6b5cff;
+    --color-primary-foreground: #ffffff;
+    --color-secondary: #1a1a2e;
+    --color-secondary-foreground: #a5b4fc;
+    --color-muted: #1a1a2e;
+    --color-muted-foreground: #9ca3af;
+    --color-accent: #1a1a2e;
+    --color-accent-foreground: #a5b4fc;
+    --color-destructive: #7f1d1d;
+    --color-destructive-foreground: #fafafa;
+    --color-border: #27273a;
+    --color-input: #27273a;
+    --color-ring: #6b5cff;
+  }
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-muted-foreground);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-foreground);
+}
+
+/* Custom focus ring with brand color */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Selection color */
+::selection {
+  background-color: #1800ad20;
+  color: #1800ad;
+}
+
+.dark ::selection {
+  background-color: #6b5cff30;
+  color: #a5b4fc;
+}

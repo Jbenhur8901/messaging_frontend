@@ -1,0 +1,518 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { smsService, contactsService, tagsService, templatesService, messagingServicesService, handleApiError } from "@/services"
+import type { Contact, Tag, Template, SMSAnalysis, MessagingService } from "@/types"
+import { useCreditsStore } from "@/stores"
+import { formatNumber } from "@/lib/utils"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Separator } from "@/components/ui/separator"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { toast } from "sonner"
+import {
+  Loader2,
+  ArrowLeft,
+  Users,
+  Tags as TagsIcon,
+  FileText,
+  Send,
+  AlertCircle,
+} from "lucide-react"
+import Link from "next/link"
+
+const campaignSchema = z.object({
+  campaignName: z.string().min(1, "Nom de campagne requis"),
+  message: z.string().min(1, "Message requis"),
+})
+
+type CampaignForm = z.infer<typeof campaignSchema>
+
+export default function NewCampaignPage() {
+  const router = useRouter()
+  const { balance, fetchBalance } = useCreditsStore()
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+
+  // Selection state
+  const [selectionMode, setSelectionMode] = useState<"contacts" | "tags" | "manual">("contacts")
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [messagingServices, setMessagingServices] = useState<MessagingService[]>([])
+  const [selectedServiceSid, setSelectedServiceSid] = useState<string>("")
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [manualNumbers, setManualNumbers] = useState("")
+
+  // Message analysis
+  const [analysis, setAnalysis] = useState<SMSAnalysis | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<CampaignForm>({
+    resolver: zodResolver(campaignSchema),
+    defaultValues: {
+      campaignName: "",
+      message: "",
+    },
+  })
+
+  const message = watch("message")
+
+  // Load data
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const [contactsData, tagsData, templatesData, servicesData] = await Promise.all([
+          contactsService.getContacts(100, 0),
+          tagsService.getTags(),
+          templatesService.getTemplates(undefined, 50, 0),
+          messagingServicesService.list(),
+        ])
+        setContacts(contactsData.contacts)
+        setTags(tagsData.tags)
+        setTemplates(templatesData.templates)
+        setMessagingServices(servicesData.services || [])
+        const defaultService = (servicesData.services || []).find((s) => s.is_default)
+        if (defaultService?.service_sid) {
+          setSelectedServiceSid(defaultService.service_sid)
+        }
+      } catch (error) {
+        console.error("Error loading data:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
+  // Analyze message
+  useEffect(() => {
+    const analyzeMessage = async () => {
+      if (message.length > 0) {
+        try {
+          const result = await smsService.analyzeMessage(message)
+          setAnalysis(result)
+        } catch (error) {
+          console.error("Error analyzing message:", error)
+        }
+      } else {
+        setAnalysis(null)
+      }
+    }
+
+    const timeout = setTimeout(analyzeMessage, 300)
+    return () => clearTimeout(timeout)
+  }, [message])
+
+  // Calculate recipients
+  const getRecipients = (): string[] => {
+    if (selectionMode === "contacts") {
+      return contacts
+        .filter((c) => selectedContacts.includes(c.id))
+        .map((c) => c.phone_number)
+    } else if (selectionMode === "tags") {
+      const taggedContacts = contacts.filter((c) =>
+        c.tags.some((t) => selectedTags.includes(t.id))
+      )
+      return [...new Set(taggedContacts.map((c) => c.phone_number))]
+    } else {
+      return manualNumbers
+        .split(/[\n,;]/)
+        .map((n) => n.trim())
+        .filter((n) => n.length > 0)
+    }
+  }
+
+  const recipients = getRecipients()
+  const totalCredits = recipients.length * (analysis?.segments || 1)
+  const hasEnoughCredits = (balance?.credit_available || 0) >= totalCredits
+
+  const onSubmit = async (data: CampaignForm) => {
+    if (recipients.length === 0) {
+      toast.error("Veuillez sélectionner des destinataires")
+      return
+    }
+
+    if (!hasEnoughCredits) {
+      toast.error("Crédits insuffisants")
+      return
+    }
+
+    setIsSending(true)
+    try {
+      const result = await smsService.createBroadcast(
+        recipients,
+        data.message,
+        data.campaignName,
+        undefined,
+        selectedServiceSid || undefined
+      )
+      toast.success("Campagne créée avec succès")
+      fetchBalance()
+      router.push(`/campaigns/${result.broadcast_id}`)
+    } catch (error) {
+      const apiError = handleApiError(error)
+      toast.error(apiError.message)
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  const applyTemplate = (template: Template) => {
+    const selectedContact =
+      selectionMode === "contacts" && selectedContacts.length === 1
+        ? contacts.find((c) => c.id === selectedContacts[0]) || null
+        : null
+
+    if (!selectedContact) {
+      setValue("message", template.body)
+      toast.info("Variables conservées (sélectionnez 1 contact pour pré-remplir).")
+      return
+    }
+
+    const variableMap: Record<string, string> = {
+      first_name: selectedContact.first_name || "",
+      last_name: selectedContact.last_name || "",
+      email: selectedContact.email || "",
+      phone_number: selectedContact.phone_number || "",
+    }
+
+    const hydrated = template.body.replace(/\{\{(\w+)\}\}/g, (_, key: string) => {
+      return variableMap[key] ?? `{{${key}}}`
+    })
+
+    setValue("message", hydrated)
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link href="/campaigns">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Nouvelle campagne</h1>
+          <p className="text-muted-foreground">
+            Créez et envoyez une campagne SMS
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Campaign Name */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Informations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label htmlFor="campaignName">Nom de la campagne</Label>
+                  <Input
+                    id="campaignName"
+                    placeholder="Ex: Promo janvier 2026"
+                    {...register("campaignName")}
+                  />
+                  {errors.campaignName && (
+                    <p className="text-sm text-destructive">
+                      {errors.campaignName.message}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recipients */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Destinataires</CardTitle>
+                <CardDescription>
+                  Sélectionnez les contacts ou tags pour cette campagne
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={selectionMode === "contacts" ? "default" : "outline"}
+                    onClick={() => setSelectionMode("contacts")}
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Contacts
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectionMode === "tags" ? "default" : "outline"}
+                    onClick={() => setSelectionMode("tags")}
+                  >
+                    <TagsIcon className="mr-2 h-4 w-4" />
+                    Tags
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectionMode === "manual" ? "default" : "outline"}
+                    onClick={() => setSelectionMode("manual")}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Manuel
+                  </Button>
+                </div>
+
+                <Separator />
+
+                {selectionMode === "contacts" && (
+                  <ScrollArea className="h-64 rounded-md border p-4">
+                    <div className="space-y-2">
+                      {contacts.map((contact) => (
+                        <div
+                          key={contact.id}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={contact.id}
+                            checked={selectedContacts.includes(contact.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedContacts([...selectedContacts, contact.id])
+                              } else {
+                                setSelectedContacts(
+                                  selectedContacts.filter((id) => id !== contact.id)
+                                )
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={contact.id}
+                            className="flex-1 text-sm cursor-pointer"
+                          >
+                            {contact.first_name} {contact.last_name} ({contact.phone_number})
+                          </label>
+                        </div>
+                      ))}
+                      {contacts.length === 0 && (
+                        <p className="text-center text-muted-foreground py-4">
+                          Aucun contact
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                )}
+
+                {selectionMode === "tags" && (
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag) => (
+                      <Badge
+                        key={tag.id}
+                        variant={selectedTags.includes(tag.id) ? "default" : "outline"}
+                        className="cursor-pointer"
+                        style={{
+                          backgroundColor: selectedTags.includes(tag.id)
+                            ? tag.color
+                            : undefined,
+                        }}
+                        onClick={() => {
+                          if (selectedTags.includes(tag.id)) {
+                            setSelectedTags(selectedTags.filter((id) => id !== tag.id))
+                          } else {
+                            setSelectedTags([...selectedTags, tag.id])
+                          }
+                        }}
+                      >
+                        {tag.name} ({tag.contact_count})
+                      </Badge>
+                    ))}
+                    {tags.length === 0 && (
+                      <p className="text-muted-foreground">Aucun tag</p>
+                    )}
+                  </div>
+                )}
+
+                {selectionMode === "manual" && (
+                  <div className="space-y-2">
+                    <Label>Numéros de téléphone</Label>
+                    <Textarea
+                      placeholder="Entrez les numéros séparés par des virgules ou des retours à la ligne"
+                      className="h-40 font-mono text-sm"
+                      value={manualNumbers}
+                      onChange={(e) => setManualNumbers(e.target.value)}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Message */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Message</CardTitle>
+                  <CardDescription>
+                    Rédigez le contenu de votre SMS
+                  </CardDescription>
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Templates
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Sélectionner un template</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="h-96">
+                      <div className="space-y-2">
+                        {templates.map((template) => (
+                          <div
+                            key={template.id}
+                            className="rounded-lg border p-3 hover:bg-muted/50 cursor-pointer"
+                            onClick={() => applyTemplate(template)}
+                          >
+                            <p className="font-medium">{template.name}</p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {template.body}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Service d'envoi</Label>
+                  <Select value={selectedServiceSid} onValueChange={setSelectedServiceSid}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Service par défaut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {messagingServices.map((service) => (
+                        <SelectItem key={service.id} value={service.service_sid}>
+                          {service.service_name} {service.is_default ? "(Défaut)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Textarea
+                  placeholder="Votre message..."
+                  className="min-h-[120px]"
+                  {...register("message")}
+                />
+                {errors.message && (
+                  <p className="text-sm text-destructive">{errors.message.message}</p>
+                )}
+                {analysis && (
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>{analysis.characters} caractères</span>
+                    <span>{analysis.segments} segment(s)</span>
+                    <Badge variant={analysis.encoding === "GSM-7" ? "secondary" : "warning"}>
+                      {analysis.encoding}
+                    </Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Résumé</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Destinataires</span>
+                  <span className="font-medium">{formatNumber(recipients.length)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Segments/message</span>
+                  <span className="font-medium">{analysis?.segments || 1}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Crédits requis</span>
+                  <span className="font-bold">{formatNumber(totalCredits)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Crédits disponibles</span>
+                  <span className={hasEnoughCredits ? "text-green-600" : "text-destructive"}>
+                    {formatNumber(balance?.credit_available || 0)}
+                  </span>
+                </div>
+
+                {!hasEnoughCredits && totalCredits > 0 && (
+                  <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Crédits insuffisants</p>
+                      <p>Il vous manque {formatNumber(totalCredits - (balance?.credit_available || 0))} crédits.</p>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSending || recipients.length === 0 || !hasEnoughCredits}
+                >
+                  {isSending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Envoyer la campagne
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </form>
+    </div>
+  )
+}
