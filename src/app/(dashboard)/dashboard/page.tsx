@@ -53,7 +53,7 @@ export default function DashboardPage() {
         setOverview(overviewData)
         const statsArray = Array.isArray(statsData)
           ? statsData
-          : statsData?.stats || statsData?.daily_stats || []
+          : statsData?.stats || (statsData as { daily_stats?: DailyStat[] }).daily_stats || []
         setDailyStats([...statsArray].reverse())
         setRecentBroadcasts(broadcastsData.broadcasts || [])
       } catch (error) {

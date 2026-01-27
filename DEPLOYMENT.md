@@ -41,7 +41,7 @@ su - messaging
 ```bash
 mkdir -p ~/apps
 cd ~/apps
-git clone https://github.com/VOTRE_ORG/messaging_frontend.git messaging_frontend
+git clone https://YOUR_GITHUB_TOKEN@github.com/Jbenhur8901/messaging_frontend.git 
 cd messaging_frontend
 ```
 
