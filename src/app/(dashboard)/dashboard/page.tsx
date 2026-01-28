@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { dashboardService, creditsService } from "@/services"
+import { dashboardService } from "@/services"
 import type { DashboardOverview, DailyStat, Broadcast } from "@/types"
 import { formatNumber, formatDate } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,8 +28,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
+import { useOrganizationStore } from "@/stores"
 
 export default function DashboardPage() {
+  const { currentOrganization } = useOrganizationStore()
   const [overview, setOverview] = useState<DashboardOverview | null>(null)
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
   const [recentBroadcasts, setRecentBroadcasts] = useState<Broadcast[]>([])
@@ -64,7 +66,7 @@ export default function DashboardPage() {
     }
 
     loadData()
-  }, [])
+  }, [currentOrganization?.id])
 
   if (isLoading) {
     return (

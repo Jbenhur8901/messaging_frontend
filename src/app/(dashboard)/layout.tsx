@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useAuthStore, useCreditsStore } from "@/stores"
+import { useAuthStore, useCreditsStore, useOrganizationStore } from "@/stores"
 import { authService } from "@/services"
 import { Sidebar, Header, MobileNav } from "@/components/layout"
 import { MFARecommendationDialog } from "@/components/mfa-recommendation-dialog"
@@ -16,6 +16,7 @@ export default function DashboardLayout({
   const router = useRouter()
   const { user, isAuthenticated, fetchProfile, isLoading, requiresMFAVerification } = useAuthStore()
   const { fetchBalance } = useCreditsStore()
+  const { fetchOrganizations, setCurrentOrganization } = useOrganizationStore()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
   const [isReady, setIsReady] = useState(false)
@@ -58,10 +59,26 @@ export default function DashboardLayout({
       }
     }
 
-    // Check if user has an organization, if not redirect to onboarding
-    if (currentUser && !currentUser.organization_id) {
+    // Load organizations and decide if onboarding is required
+    await fetchOrganizations()
+    const orgState = useOrganizationStore.getState()
+    const orgs = orgState.organizations
+    const currentOrg = orgState.currentOrganization
+
+    if (orgs.length === 0 && currentUser && !currentUser.organization_id) {
       router.replace("/onboarding")
       return
+    }
+
+    if (orgs.length > 0) {
+      const preferredOrg = currentUser?.organization_id
+        ? orgs.find((org) => org.id === currentUser?.organization_id)
+        : null
+      if (preferredOrg) {
+        setCurrentOrganization(preferredOrg)
+      } else if (!currentOrg) {
+        setCurrentOrganization(orgs[0])
+      }
     }
 
     // User has organization, load balance
@@ -88,7 +105,7 @@ export default function DashboardLayout({
     }
 
     setAuthChecked(true)
-  }, [user, fetchProfile, fetchBalance, router, requiresMFAVerification, isAuthenticated])
+  }, [user, fetchProfile, fetchBalance, router, requiresMFAVerification, isAuthenticated, fetchOrganizations, setCurrentOrganization])
 
   useEffect(() => {
     checkAuth()

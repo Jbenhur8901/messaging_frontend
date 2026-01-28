@@ -87,13 +87,17 @@ export const smsService = {
   async createBroadcastWithTemplate(
     contactIds: string[],
     templateId: string,
-    campaignName?: string
+    campaignName?: string,
+    messagingServiceSid?: string
   ): Promise<TemplatedBroadcastResult> {
     const formData = new URLSearchParams()
     formData.append("contact_ids", contactIds.join(","))
     formData.append("template_id", templateId)
     if (campaignName) {
       formData.append("campaign_name", campaignName)
+    }
+    if (messagingServiceSid) {
+      formData.append("messaging_service_sid", messagingServiceSid)
     }
 
     const { data } = await api.post<TemplatedBroadcastResult>("/v1/broadcasts/templated", formData)

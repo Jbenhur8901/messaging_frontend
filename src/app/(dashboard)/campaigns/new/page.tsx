@@ -223,7 +223,8 @@ export default function NewCampaignPage() {
         const result = await smsService.createBroadcastWithTemplate(
           contactIds,
           selectedTemplateId,
-          data.campaignName
+          data.campaignName,
+          selectedServiceSid || undefined
         )
         broadcastId = result.broadcast_id
         toast.success("Campagne personnalisée créée avec succès")
@@ -521,23 +522,24 @@ export default function NewCampaignPage() {
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
-                {sendMode === "standard" && (
+                <div className="space-y-2">
+                  <Label>Service d&apos;envoi</Label>
+                  <Select value={selectedServiceSid} onValueChange={setSelectedServiceSid}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Service par défaut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {messagingServices.map((service) => (
+                        <SelectItem key={service.id} value={service.service_sid}>
+                          {service.service_name} {service.is_default ? "(Défaut)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {sendMode === "standard" ? (
                   <>
-                    <div className="space-y-2">
-                      <Label>Service d&apos;envoi</Label>
-                      <Select value={selectedServiceSid} onValueChange={setSelectedServiceSid}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Service par défaut" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {messagingServices.map((service) => (
-                            <SelectItem key={service.id} value={service.service_sid}>
-                              {service.service_name} {service.is_default ? "(Défaut)" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <Textarea
                       placeholder="Votre message..."
                       className="min-h-[120px]"
@@ -556,9 +558,7 @@ export default function NewCampaignPage() {
                       </div>
                     )}
                   </>
-                )}
-
-                {sendMode === "templated" && (
+                ) : (
                   <>
                     <div className="space-y-2">
                       <Label>Template</Label>

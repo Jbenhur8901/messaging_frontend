@@ -60,7 +60,9 @@ export const tagsService = {
     tagId: string,
     contactIds: string[]
   ): Promise<{ success: boolean; message: string }> {
-    const { data } = await apiJson.post(`/v1/tags/${tagId}/contacts`, contactIds)
+    const { data } = await apiJson.post(`/v1/tags/${tagId}/contacts`, {
+      contact_ids: contactIds,
+    })
     return data
   },
 
@@ -69,7 +71,7 @@ export const tagsService = {
     contactIds: string[]
   ): Promise<{ success: boolean; message: string }> {
     const { data } = await apiJson.delete(`/v1/tags/${tagId}/contacts`, {
-      data: contactIds,
+      data: { contact_ids: contactIds },
     })
     return data
   },

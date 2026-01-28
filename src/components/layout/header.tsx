@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuthStore, useCreditsStore, useOrganizationStore } from "@/stores"
@@ -25,6 +25,8 @@ import {
   Moon,
   Sun,
   Building2,
+  ChevronDown,
+  Check,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { formatNumber } from "@/lib/utils"
@@ -35,8 +37,14 @@ interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter()
-  const { user, logout } = useAuthStore()
-  const { balance } = useCreditsStore()
+  const { user, logout, setUser } = useAuthStore()
+  const { balance, fetchBalance } = useCreditsStore()
+  const {
+    organizations,
+    currentOrganization,
+    fetchOrganizations,
+    setCurrentOrganization,
+  } = useOrganizationStore()
   const { theme, setTheme } = useTheme()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
@@ -54,6 +62,30 @@ export function Header({ onMenuClick }: HeaderProps) {
     ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase()
     : "U"
 
+  useEffect(() => {
+    if (organizations.length === 0) {
+      fetchOrganizations()
+    }
+  }, [organizations.length, fetchOrganizations])
+
+  const handleOrganizationChange = (orgId: string) => {
+    const selected = organizations.find((org) => org.id === orgId)
+    if (!selected) return
+    setCurrentOrganization(selected)
+    if (user) {
+      const updatedUser = {
+        ...user,
+        organization_id: selected.id,
+        organization_name: selected.name,
+      }
+      setUser(updatedUser)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(updatedUser))
+      }
+    }
+    fetchBalance()
+  }
+
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b bg-background px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
       <Button
@@ -68,6 +100,44 @@ export function Header({ onMenuClick }: HeaderProps) {
 
       <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
         <div className="flex flex-1 items-center justify-end gap-x-4 lg:gap-x-6">
+          {/* Organization switcher */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                <span className="max-w-[180px] truncate">
+                  {currentOrganization?.name || user?.organization_name || "Organisation"}
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-64" align="end">
+              <DropdownMenuLabel>Organisations</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {organizations.length === 0 ? (
+                <DropdownMenuItem disabled>Aucune organisation</DropdownMenuItem>
+              ) : (
+                organizations.map((org) => (
+                  <DropdownMenuItem key={org.id} onClick={() => handleOrganizationChange(org.id)}>
+                    <div className="flex w-full items-center justify-between">
+                      <span className="truncate">{org.name}</span>
+                      {currentOrganization?.id === org.id && (
+                        <Check className="h-4 w-4 text-primary" />
+                      )}
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/organization" className="cursor-pointer">
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Gérer les organisations
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Credits display */}
           {balance && (
             <Link href="/credits">
