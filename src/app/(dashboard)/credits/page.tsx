@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { creditsService } from "@/services"
 import type { CreditBalance, CreditTransaction, CreditUsage, Pagination } from "@/types"
 import { formatNumber, formatDate } from "@/lib/utils"
@@ -132,10 +133,19 @@ export default function CreditsPage() {
             Gérez vos crédits SMS et consultez votre consommation
           </p>
         </div>
-        <Button>
-          <CreditCard className="mr-2 h-4 w-4" />
-          Recharger
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/credits/requests">
+              Mes demandes
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/credits/request">
+              <CreditCard className="mr-2 h-4 w-4" />
+              Demander des crédits
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}

@@ -27,7 +27,6 @@ const registerSchema = z
     firstName: z.string().min(1, "Prénom requis"),
     lastName: z.string().min(1, "Nom requis"),
     email: z.string().email("Email invalide"),
-    organizationName: z.string().min(1, "Nom de l'organisation requis"),
     password: z
       .string()
       .min(8, "Le mot de passe doit contenir au moins 8 caractères"),
@@ -60,11 +59,10 @@ export default function RegisterPage() {
         data.email,
         data.password,
         data.firstName,
-        data.lastName,
-        data.organizationName
+        data.lastName
       )
       toast.success("Compte créé avec succès")
-      router.push("/dashboard")
+      router.push("/onboarding")
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
@@ -124,20 +122,6 @@ export default function RegisterPage() {
             />
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="organizationName">Nom de l&apos;organisation</Label>
-            <Input
-              id="organizationName"
-              placeholder="Ma Société"
-              {...register("organizationName")}
-              disabled={isLoading}
-            />
-            {errors.organizationName && (
-              <p className="text-sm text-destructive">
-                {errors.organizationName.message}
-              </p>
             )}
           </div>
           <div className="space-y-2">

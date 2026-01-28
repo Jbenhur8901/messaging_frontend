@@ -109,6 +109,30 @@ export interface BroadcastResult {
   encoding: "GSM-7" | "UCS-2"
 }
 
+// Templated message result
+export interface TemplatedMessageResult {
+  success: boolean
+  message_id: string
+  twilio_sid: string
+  status: string
+  template_id: string
+  template_name: string
+  rendered_body: string
+  segments: number
+  credits_consumed: number
+}
+
+// Templated broadcast result
+export interface TemplatedBroadcastResult {
+  success: boolean
+  broadcast_id: string
+  status: string
+  total_recipients: number
+  template_id: string
+  template_name: string
+  message: string
+}
+
 export interface Broadcast {
   broadcast_id: string
   status: "pending" | "processing" | "completed" | "failed" | "cancelled"
@@ -154,6 +178,11 @@ export interface Contact {
   created_at?: string
 }
 
+export interface ContactImportError {
+  row?: number
+  error: string
+}
+
 export interface ContactImportResult {
   success: boolean
   import_id: string
@@ -162,7 +191,7 @@ export interface ContactImportResult {
   updated: number
   skipped: number
   failed: number
-  errors: string[]
+  errors: (string | ContactImportError)[]
 }
 
 // Tag types
@@ -364,4 +393,79 @@ export interface Pagination {
 export interface PaginatedResponse<T> {
   data: T[]
   pagination: Pagination
+}
+
+// Organization types (extended)
+export type OrganizationRole = "owner" | "admin" | "member" | "viewer"
+
+export interface OrganizationMember {
+  id: string
+  user_id: string | null
+  email: string
+  role: OrganizationRole
+  status: "pending" | "accepted"
+  first_name?: string
+  last_name?: string
+  joined_at?: string
+  invited_at?: string
+}
+
+export interface OrganizationInvitation {
+  id: string
+  organization_id: string
+  organization_name: string
+  email: string
+  role: OrganizationRole
+  expires_at: string
+}
+
+// Credit Request types
+export type PaymentMethod = "cash" | "airtel_money" | "mobile_money"
+export type CreditRequestStatus = "pending" | "approved" | "rejected" | "cancelled"
+
+export interface CreditRequest {
+  id: string
+  organization_id: string
+  organization_name?: string
+  requested_by: string
+  requester_email?: string
+  requester_name?: string
+  amount: number
+  payment_method: PaymentMethod
+  payment_reference?: string
+  status: CreditRequestStatus
+  reviewed_by?: string
+  reviewed_at?: string
+  review_note?: string
+  created_at: string
+}
+
+// Admin types
+export type AdminRole = "admin" | "super_admin"
+
+export interface AdminUser {
+  id: string
+  email: string
+  name: string
+  role: AdminRole
+}
+
+export interface AdminSession {
+  token: string
+  expires_at: string
+}
+
+export interface AdminAuthResponse {
+  success: boolean
+  token: string
+  expires_at: string
+  admin: AdminUser
+}
+
+export interface AdminDashboard {
+  pending_credit_requests: number
+  total_organizations: number
+  total_users: number
+  approved_today: number
+  credits_distributed_today: number
 }

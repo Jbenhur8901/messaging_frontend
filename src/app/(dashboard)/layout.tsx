@@ -42,11 +42,12 @@ export default function DashboardLayout({
     }
 
     // If we have a token but no user, fetch the profile
+    let currentUser = user
     if (!user) {
       try {
         await fetchProfile()
-        await fetchBalance()
-        setIsReady(true)
+        const storedUser = localStorage.getItem("user")
+        currentUser = storedUser ? JSON.parse(storedUser) : null
       } catch {
         // Token is invalid, redirect to login
         localStorage.removeItem("access_token")
@@ -55,11 +56,17 @@ export default function DashboardLayout({
         router.replace("/auth/login")
         return
       }
-    } else {
-      // User already loaded
-      fetchBalance()
-      setIsReady(true)
     }
+
+    // Check if user has an organization, if not redirect to onboarding
+    if (currentUser && !currentUser.organization_id) {
+      router.replace("/onboarding")
+      return
+    }
+
+    // User has organization, load balance
+    fetchBalance()
+    setIsReady(true)
 
     if (typeof window !== "undefined" && !apiKeyEnsured) {
       const storedUser = localStorage.getItem("user")

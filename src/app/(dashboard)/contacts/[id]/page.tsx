@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react"
 
 const contactSchema = z.object({
   phone_number: z.string().min(1, "Numéro de téléphone requis"),
@@ -35,6 +35,7 @@ export default function EditContactPage() {
   const [tags, setTags] = useState<Tag[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [contact, setContact] = useState<Contact | null>(null)
+  const [showCustomFields, setShowCustomFields] = useState(false)
 
   const {
     register,
@@ -210,6 +211,95 @@ export default function EditContactPage() {
                 )}
               </div>
             </CardContent>
+          </Card>
+
+          {/* Custom Fields */}
+          <Card>
+            <CardHeader
+              className="cursor-pointer"
+              onClick={() => setShowCustomFields(!showCustomFields)}
+            >
+              <div className="flex items-center justify-between">
+                <CardTitle>Champs personnalisés</CardTitle>
+                {showCustomFields ? (
+                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+            </CardHeader>
+            {showCustomFields && (
+              <CardContent>
+                <div className="space-y-3">
+                  {/* System variables */}
+                  <div className="grid grid-cols-2 gap-4 border-b pb-2">
+                    <span className="text-sm text-muted-foreground">first_name</span>
+                    <span className="text-sm font-medium text-right break-words">
+                      {contact.first_name || "-"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 border-b pb-2">
+                    <span className="text-sm text-muted-foreground">last_name</span>
+                    <span className="text-sm font-medium text-right break-words">
+                      {contact.last_name || "-"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 border-b pb-2">
+                    <span className="text-sm text-muted-foreground">email</span>
+                    <span className="text-sm font-medium text-right break-words">
+                      {contact.email || "-"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 border-b pb-2">
+                    <span className="text-sm text-muted-foreground">phone_number</span>
+                    <span className="text-sm font-medium text-right break-words">
+                      {contact.phone_number || "-"}
+                    </span>
+                  </div>
+
+                  {/* Custom fields */}
+                  {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
+                    <>
+                      {Object.entries(contact.custom_fields).map(([key, value]) => {
+                        // Render nested object as multiple rows
+                        if (value && typeof value === "object" && !Array.isArray(value)) {
+                          return Object.entries(value as Record<string, unknown>).map(([subKey, subValue]) => (
+                            <div key={`${key}-${subKey}`} className="grid grid-cols-2 gap-4 border-b pb-2 last:border-0">
+                              <span className="text-sm text-muted-foreground">{subKey}</span>
+                              <span className="text-sm font-medium text-right break-words">
+                                {subValue === null || subValue === undefined
+                                  ? "-"
+                                  : typeof subValue === "boolean"
+                                  ? subValue ? "Oui" : "Non"
+                                  : Array.isArray(subValue)
+                                  ? subValue.join(", ")
+                                  : String(subValue)}
+                              </span>
+                            </div>
+                          ))
+                        }
+
+                        const displayValue = (() => {
+                          if (value === null || value === undefined) return "-"
+                          if (typeof value === "boolean") return value ? "Oui" : "Non"
+                          if (Array.isArray(value)) return value.join(", ")
+                          return String(value)
+                        })()
+
+                        return (
+                          <div key={key} className="grid grid-cols-2 gap-4 border-b pb-2 last:border-0">
+                            <span className="text-sm text-muted-foreground">{key}</span>
+                            <span className="text-sm font-medium text-right break-words">
+                              {displayValue}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            )}
           </Card>
 
           <div className="flex gap-4">

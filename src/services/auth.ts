@@ -7,14 +7,16 @@ export const authService = {
     password: string,
     firstName: string,
     lastName: string,
-    organizationName: string
+    organizationName?: string
   ): Promise<AuthResponse> {
     const formData = new URLSearchParams()
     formData.append("email", email)
     formData.append("password", password)
     formData.append("first_name", firstName)
     formData.append("last_name", lastName)
-    formData.append("organization_name", organizationName)
+    if (organizationName) {
+      formData.append("organization_name", organizationName)
+    }
 
     const { data } = await api.post<AuthResponse>("/v1/auth/signup", formData)
 

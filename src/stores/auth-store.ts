@@ -25,7 +25,7 @@ interface AuthState {
     password: string,
     firstName: string,
     lastName: string,
-    organizationName: string
+    organizationName?: string
   ) => Promise<void>
   logout: () => Promise<void>
   fetchProfile: () => Promise<void>
@@ -158,7 +158,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      signup: async (email, password, firstName, lastName, organizationName) => {
+      signup: async (email, password, firstName, lastName, organizationName?) => {
         set({ isLoading: true, error: null })
         try {
           const response = await authService.signup(
@@ -166,7 +166,7 @@ export const useAuthStore = create<AuthState>()(
             password,
             firstName,
             lastName,
-            organizationName
+            organizationName || ""
           )
           // Store API key if returned
           const apiKey = response.user.api_key || null

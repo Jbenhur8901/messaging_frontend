@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useAuthStore, useCreditsStore } from "@/stores"
+import { useAuthStore, useCreditsStore, useOrganizationStore } from "@/stores"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -24,6 +24,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  Building2,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { formatNumber } from "@/lib/utils"
@@ -121,6 +122,12 @@ export function Header({ onMenuClick }: HeaderProps) {
                 <Link href="/settings/profile" className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   Profil
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/organization" className="cursor-pointer">
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Organisation
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

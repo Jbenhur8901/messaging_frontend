@@ -46,16 +46,22 @@ import Link from "next/link"
 
 const campaignSchema = z.object({
   campaignName: z.string().min(1, "Nom de campagne requis"),
-  message: z.string().min(1, "Message requis"),
+  message: z.string().optional(),
 })
 
 type CampaignForm = z.infer<typeof campaignSchema>
+
+type SendMode = "standard" | "templated"
 
 export default function NewCampaignPage() {
   const router = useRouter()
   const { balance, fetchBalance } = useCreditsStore()
   const [isLoading, setIsLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
+
+  // Send mode (standard = same message to all, templated = personalized per contact)
+  const [sendMode, setSendMode] = useState<SendMode>("standard")
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("")
 
   // Selection state
   const [selectionMode, setSelectionMode] = useState<"contacts" | "tags" | "manual">("contacts")
@@ -116,10 +122,10 @@ export default function NewCampaignPage() {
     loadData()
   }, [])
 
-  // Analyze message
+  // Analyze message (only in standard mode)
   useEffect(() => {
     const analyzeMessage = async () => {
-      if (message.length > 0) {
+      if (message && message.length > 0) {
         try {
           const result = await smsService.analyzeMessage(message)
           setAnalysis(result)
@@ -135,7 +141,7 @@ export default function NewCampaignPage() {
     return () => clearTimeout(timeout)
   }, [message])
 
-  // Calculate recipients
+  // Calculate recipients (phone numbers for standard mode)
   const getRecipients = (): string[] => {
     if (selectionMode === "contacts") {
       return contacts
@@ -154,14 +160,53 @@ export default function NewCampaignPage() {
     }
   }
 
+  // Get contact IDs for templated mode
+  const getContactIds = (): string[] => {
+    if (selectionMode === "contacts") {
+      return selectedContacts
+    } else if (selectionMode === "tags") {
+      const taggedContacts = contacts.filter((c) =>
+        c.tags.some((t) => selectedTags.includes(t.id))
+      )
+      return [...new Set(taggedContacts.map((c) => c.id))]
+    }
+    return []
+  }
+
   const recipients = getRecipients()
-  const totalCredits = recipients.length * (analysis?.segments || 1)
+  const contactIds = getContactIds()
+
+  // Calculate estimated credits based on mode
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId)
+  const totalCredits = sendMode === "templated"
+    ? contactIds.length * (selectedTemplate?.segments_count || 1)
+    : recipients.length * (analysis?.segments || 1)
   const hasEnoughCredits = (balance?.credit_available || 0) >= totalCredits
 
   const onSubmit = async (data: CampaignForm) => {
-    if (recipients.length === 0) {
-      toast.error("Veuillez sélectionner des destinataires")
-      return
+    // Validate based on send mode
+    if (sendMode === "templated") {
+      if (contactIds.length === 0) {
+        toast.error("Veuillez sélectionner des contacts (le mode personnalisé nécessite des contacts)")
+        return
+      }
+      if (!selectedTemplateId) {
+        toast.error("Veuillez sélectionner un template")
+        return
+      }
+      if (selectionMode === "manual") {
+        toast.error("Le mode manuel n'est pas disponible avec les templates personnalisés")
+        return
+      }
+    } else {
+      if (recipients.length === 0) {
+        toast.error("Veuillez sélectionner des destinataires")
+        return
+      }
+      if (!data.message) {
+        toast.error("Veuillez saisir un message")
+        return
+      }
     }
 
     if (!hasEnoughCredits) {
@@ -171,16 +216,32 @@ export default function NewCampaignPage() {
 
     setIsSending(true)
     try {
-      const result = await smsService.createBroadcast(
-        recipients,
-        data.message,
-        data.campaignName,
-        undefined,
-        selectedServiceSid || undefined
-      )
-      toast.success("Campagne créée avec succès")
+      let broadcastId: string
+
+      if (sendMode === "templated") {
+        // Use templated broadcast endpoint (personalized per contact)
+        const result = await smsService.createBroadcastWithTemplate(
+          contactIds,
+          selectedTemplateId,
+          data.campaignName
+        )
+        broadcastId = result.broadcast_id
+        toast.success("Campagne personnalisée créée avec succès")
+      } else {
+        // Use standard broadcast endpoint (same message to all)
+        const result = await smsService.createBroadcast(
+          recipients,
+          data.message || "",
+          data.campaignName,
+          undefined,
+          selectedServiceSid || undefined
+        )
+        broadcastId = result.broadcast_id
+        toast.success("Campagne créée avec succès")
+      }
+
       fetchBalance()
-      router.push(`/campaigns/${result.broadcast_id}`)
+      router.push(`/campaigns/${broadcastId}`)
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
@@ -236,12 +297,12 @@ export default function NewCampaignPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Campaign Name */}
+            {/* Campaign Name & Mode */}
             <Card>
               <CardHeader>
                 <CardTitle>Informations</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="campaignName">Nom de la campagne</Label>
                   <Input
@@ -254,6 +315,38 @@ export default function NewCampaignPage() {
                       {errors.campaignName.message}
                     </p>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Mode d&apos;envoi</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={sendMode === "standard" ? "default" : "outline"}
+                      onClick={() => setSendMode("standard")}
+                      className="flex-1"
+                    >
+                      Standard
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={sendMode === "templated" ? "default" : "outline"}
+                      onClick={() => {
+                        setSendMode("templated")
+                        if (selectionMode === "manual") {
+                          setSelectionMode("contacts")
+                        }
+                      }}
+                      className="flex-1"
+                    >
+                      Personnalisé
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {sendMode === "standard"
+                      ? "Même message envoyé à tous les destinataires"
+                      : "Message personnalisé pour chaque contact (utilise les données du contact)"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -288,11 +381,18 @@ export default function NewCampaignPage() {
                     type="button"
                     variant={selectionMode === "manual" ? "default" : "outline"}
                     onClick={() => setSelectionMode("manual")}
+                    disabled={sendMode === "templated"}
+                    title={sendMode === "templated" ? "Non disponible en mode personnalisé" : undefined}
                   >
                     <FileText className="mr-2 h-4 w-4" />
                     Manuel
                   </Button>
                 </div>
+                {sendMode === "templated" && selectionMode === "manual" && (
+                  <p className="text-sm text-destructive">
+                    Le mode manuel n&apos;est pas disponible avec les templates personnalisés
+                  </p>
+                )}
 
                 <Separator />
 
@@ -383,71 +483,118 @@ export default function NewCampaignPage() {
                 <div>
                   <CardTitle>Message</CardTitle>
                   <CardDescription>
-                    Rédigez le contenu de votre SMS
+                    {sendMode === "templated"
+                      ? "Sélectionnez un template (les variables seront remplacées par les données de chaque contact)"
+                      : "Rédigez le contenu de votre SMS"}
                   </CardDescription>
                 </div>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Templates
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Sélectionner un template</DialogTitle>
-                    </DialogHeader>
-                    <ScrollArea className="h-96">
-                      <div className="space-y-2">
-                        {templates.map((template) => (
-                          <div
-                            key={template.id}
-                            className="rounded-lg border p-3 hover:bg-muted/50 cursor-pointer"
-                            onClick={() => applyTemplate(template)}
-                          >
-                            <p className="font-medium">{template.name}</p>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {template.body}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
+                {sendMode === "standard" && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <FileText className="mr-2 h-4 w-4" />
+                        Templates
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Sélectionner un template</DialogTitle>
+                      </DialogHeader>
+                      <ScrollArea className="h-96">
+                        <div className="space-y-2">
+                          {templates.map((template) => (
+                            <div
+                              key={template.id}
+                              className="rounded-lg border p-3 hover:bg-muted/50 cursor-pointer"
+                              onClick={() => applyTemplate(template)}
+                            >
+                              <p className="font-medium">{template.name}</p>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {template.body}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Service d'envoi</Label>
-                  <Select value={selectedServiceSid} onValueChange={setSelectedServiceSid}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Service par défaut" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {messagingServices.map((service) => (
-                        <SelectItem key={service.id} value={service.service_sid}>
-                          {service.service_name} {service.is_default ? "(Défaut)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Textarea
-                  placeholder="Votre message..."
-                  className="min-h-[120px]"
-                  {...register("message")}
-                />
-                {errors.message && (
-                  <p className="text-sm text-destructive">{errors.message.message}</p>
+                {sendMode === "standard" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Service d&apos;envoi</Label>
+                      <Select value={selectedServiceSid} onValueChange={setSelectedServiceSid}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Service par défaut" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {messagingServices.map((service) => (
+                            <SelectItem key={service.id} value={service.service_sid}>
+                              {service.service_name} {service.is_default ? "(Défaut)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Textarea
+                      placeholder="Votre message..."
+                      className="min-h-[120px]"
+                      {...register("message")}
+                    />
+                    {errors.message && (
+                      <p className="text-sm text-destructive">{errors.message.message}</p>
+                    )}
+                    {analysis && (
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>{analysis.characters} caractères</span>
+                        <span>{analysis.segments} segment(s)</span>
+                        <Badge variant={analysis.encoding === "GSM-7" ? "secondary" : "warning"}>
+                          {analysis.encoding}
+                        </Badge>
+                      </div>
+                    )}
+                  </>
                 )}
-                {analysis && (
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>{analysis.characters} caractères</span>
-                    <span>{analysis.segments} segment(s)</span>
-                    <Badge variant={analysis.encoding === "GSM-7" ? "secondary" : "warning"}>
-                      {analysis.encoding}
-                    </Badge>
-                  </div>
+
+                {sendMode === "templated" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Template</Label>
+                      <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionnez un template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {templates.map((template) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedTemplateId && (
+                      <div className="rounded-lg border p-4 bg-muted/30">
+                        <p className="text-sm font-medium mb-2">Aperçu du template :</p>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {templates.find((t) => t.id === selectedTemplateId)?.body}
+                        </p>
+                        <div className="mt-3 pt-3 border-t">
+                          <p className="text-xs text-muted-foreground">
+                            Variables disponibles : {"{"}{"{"}<span className="font-mono">first_name</span>{"}"}{"}"},
+                            {"{"}{"{"}<span className="font-mono">last_name</span>{"}"}{"}"},
+                            {"{"}{"{"}<span className="font-mono">email</span>{"}"}{"}"},
+                            {"{"}{"{"}<span className="font-mono">phone_number</span>{"}"}{"}"},
+                            {"{"}{"{"}<span className="font-mono">full_name</span>{"}"}{"}"}
+                            + custom fields
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -462,16 +609,34 @@ export default function NewCampaignPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Destinataires</span>
-                  <span className="font-medium">{formatNumber(recipients.length)}</span>
+                  <span className="text-muted-foreground">Mode</span>
+                  <Badge variant={sendMode === "templated" ? "default" : "secondary"}>
+                    {sendMode === "templated" ? "Personnalisé" : "Standard"}
+                  </Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Segments/message</span>
-                  <span className="font-medium">{analysis?.segments || 1}</span>
+                  <span className="text-muted-foreground">Destinataires</span>
+                  <span className="font-medium">
+                    {formatNumber(sendMode === "templated" ? contactIds.length : recipients.length)}
+                  </span>
                 </div>
+                {sendMode === "standard" && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Segments/message</span>
+                    <span className="font-medium">{analysis?.segments || 1}</span>
+                  </div>
+                )}
+                {sendMode === "templated" && selectedTemplateId && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Template</span>
+                    <span className="font-medium truncate max-w-[120px]">
+                      {templates.find((t) => t.id === selectedTemplateId)?.name || "—"}
+                    </span>
+                  </div>
+                )}
                 <Separator />
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Crédits requis</span>
+                  <span className="text-muted-foreground">Crédits estimés</span>
                   <span className="font-bold">{formatNumber(totalCredits)}</span>
                 </div>
                 <div className="flex justify-between">
@@ -494,7 +659,12 @@ export default function NewCampaignPage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isSending || recipients.length === 0 || !hasEnoughCredits}
+                  disabled={
+                    isSending ||
+                    (sendMode === "standard" && recipients.length === 0) ||
+                    (sendMode === "templated" && (contactIds.length === 0 || !selectedTemplateId)) ||
+                    !hasEnoughCredits
+                  }
                 >
                   {isSending ? (
                     <>

@@ -1,7 +1,9 @@
 import { api, apiJson } from "./api"
 import type {
   MessageResult,
+  TemplatedMessageResult,
   BroadcastResult,
+  TemplatedBroadcastResult,
   Broadcast,
   BroadcastMessage,
   Pagination,
@@ -21,6 +23,23 @@ export const smsService = {
     }
 
     const { data } = await api.post<MessageResult>("/v1/messages", formData)
+    return data
+  },
+
+  // SMS with Template (personalized)
+  async sendSMSWithTemplate(
+    contactId: string,
+    templateId: string,
+    extraVariables?: Record<string, string>
+  ): Promise<TemplatedMessageResult> {
+    const formData = new URLSearchParams()
+    formData.append("contact_id", contactId)
+    formData.append("template_id", templateId)
+    if (extraVariables) {
+      formData.append("extra_variables", JSON.stringify(extraVariables))
+    }
+
+    const { data } = await api.post<TemplatedMessageResult>("/v1/messages/templated", formData)
     return data
   },
 
@@ -61,6 +80,23 @@ export const smsService = {
       campaign_name: campaignName,
       media_url: mediaUrl,
     })
+    return data
+  },
+
+  // Broadcast with Template (personalized per contact)
+  async createBroadcastWithTemplate(
+    contactIds: string[],
+    templateId: string,
+    campaignName?: string
+  ): Promise<TemplatedBroadcastResult> {
+    const formData = new URLSearchParams()
+    formData.append("contact_ids", contactIds.join(","))
+    formData.append("template_id", templateId)
+    if (campaignName) {
+      formData.append("campaign_name", campaignName)
+    }
+
+    const { data } = await api.post<TemplatedBroadcastResult>("/v1/broadcasts/templated", formData)
     return data
   },
 
