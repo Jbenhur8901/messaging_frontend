@@ -30,18 +30,110 @@ import {
 } from "recharts"
 import { useOrganizationStore } from "@/stores"
 
+const getStoredApiKey = () => {
+  if (typeof window === "undefined") return null
+  try {
+    const storedAuth = localStorage.getItem("auth-storage")
+    if (storedAuth) {
+      const parsed = JSON.parse(storedAuth)
+      const storedKey = parsed.state?.apiKey
+      if (typeof storedKey === "string" && storedKey.length > 0) {
+        return storedKey
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  try {
+    const user = localStorage.getItem("user")
+    if (user) {
+      const parsedUser = JSON.parse(user)
+      const apiKey = parsedUser.api_key
+      if (typeof apiKey === "string") return apiKey
+      if (apiKey && typeof apiKey === "object" && typeof apiKey.key === "string") {
+        return apiKey.key
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null
+}
+
+const buildOverviewFromDailyStats = (stats: DailyStat[]): DashboardOverview => {
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStat = stats.find((stat) => stat.date === todayStr)
+  const recent = stats.slice(-7)
+  const weekSent = recent.reduce((sum, stat) => sum + (stat.messages_sent || 0), 0)
+  const weekDelivered = recent.reduce((sum, stat) => sum + (stat.messages_delivered || 0), 0)
+  const weekRate = weekSent > 0 ? (weekDelivered / weekSent) * 100 : 0
+
+  return {
+    credits: {
+      balance: 0,
+      reserved: 0,
+      available: 0,
+      expiring_soon: 0,
+      expiring_in_days: 0,
+    },
+    today: {
+      messages_sent: todayStat?.messages_sent || 0,
+      messages_delivered: todayStat?.messages_delivered || 0,
+      delivery_rate: todayStat?.delivery_rate || (todayStat?.messages_sent ? (todayStat.messages_delivered / todayStat.messages_sent) * 100 : 0),
+    },
+    week: {
+      messages_sent: weekSent,
+      messages_delivered: weekDelivered,
+      delivery_rate: weekRate,
+    },
+    broadcasts: {
+      active: 0,
+    },
+    generated_at: new Date().toISOString(),
+  }
+}
+
+const calculateBroadcastTotals = (broadcasts: Broadcast[]) =>
+  broadcasts.reduce(
+    (acc, broadcast) => {
+      const total = broadcast.total_recipients || 0
+      const failed = broadcast.failed_count || 0
+      const pending = broadcast.pending_count || 0
+      let delivered = broadcast.sent_count || 0
+
+      if (delivered === 0 && total > 0) {
+        delivered = Math.max(total - failed - pending, 0)
+      }
+
+      acc.total += total
+      acc.delivered += delivered
+      return acc
+    },
+    { total: 0, delivered: 0 }
+  )
+
+const calculateDeliveryRateFromBroadcasts = (broadcasts: Broadcast[]) => {
+  const totals = calculateBroadcastTotals(broadcasts)
+  if (totals.total === 0) return 0
+  return (totals.delivered / totals.total) * 100
+}
+
 export default function DashboardPage() {
   const { currentOrganization } = useOrganizationStore()
   const [overview, setOverview] = useState<DashboardOverview | null>(null)
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
   const [recentBroadcasts, setRecentBroadcasts] = useState<Broadcast[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const broadcastTotals = calculateBroadcastTotals(recentBroadcasts)
+  const derivedDeliveryRate = calculateDeliveryRateFromBroadcasts(recentBroadcasts)
+  const deliveryRateToDisplay = derivedDeliveryRate
 
   useEffect(() => {
     const loadData = async () => {
-      // Check for token before making API calls
+      // Check for token or API key before making API calls
       const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
-      if (!token) {
+      const apiKey = getStoredApiKey()
+      if (!token && !apiKey) {
         setIsLoading(false)
         return
       }
@@ -52,12 +144,31 @@ export default function DashboardPage() {
           dashboardService.getDailyStats(14),
           dashboardService.getRecentBroadcasts(5),
         ])
-        setOverview(overviewData)
         const statsArray = Array.isArray(statsData)
           ? statsData
-          : statsData?.stats || (statsData as { daily_stats?: DailyStat[] }).daily_stats || []
+          : statsData?.stats ||
+            (statsData as { daily_stats?: DailyStat[] }).daily_stats ||
+            (statsData as { daily?: DailyStat[] }).daily ||
+            []
         setDailyStats([...statsArray].reverse())
         setRecentBroadcasts(broadcastsData.broadcasts || [])
+
+        const hasOverviewActivity =
+          (overviewData?.today.messages_sent || 0) > 0 ||
+          (overviewData?.today.messages_delivered || 0) > 0 ||
+          (overviewData?.week.messages_sent || 0) > 0
+        if (hasOverviewActivity) {
+          setOverview(overviewData)
+        } else if (statsArray.length > 0) {
+          const derived = buildOverviewFromDailyStats(statsArray)
+          setOverview({
+            ...derived,
+            credits: overviewData?.credits || derived.credits,
+            broadcasts: overviewData?.broadcasts || derived.broadcasts,
+          })
+        } else {
+          setOverview(overviewData)
+        }
       } catch (error) {
         console.error("Error loading dashboard data:", error)
       } finally {
@@ -165,10 +276,10 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {(overview?.today.delivery_rate || 0).toFixed(1)}%
+              {deliveryRateToDisplay.toFixed(1)}%
             </div>
             <Progress
-              value={overview?.today.delivery_rate || 0}
+              value={deliveryRateToDisplay}
               className="mt-2"
             />
           </CardContent>
@@ -183,10 +294,10 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatNumber(overview?.week.messages_sent || 0)}
+              {formatNumber(broadcastTotals.total || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {(overview?.week.delivery_rate || 0).toFixed(1)}% de livraison
+              {deliveryRateToDisplay.toFixed(1)}% de livraison
             </p>
           </CardContent>
         </Card>
