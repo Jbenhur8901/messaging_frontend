@@ -18,6 +18,7 @@ export default function AdminLayout({
   const { isAuthenticated, fetchProfile } = useAdminStore()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
+  const [hasToken, setHasToken] = useState(false)
 
   const isLoginPage = pathname === "/admin/login"
 
@@ -34,13 +35,14 @@ export default function AdminLayout({
         router.push("/admin/login")
         return
       }
+      setHasToken(true)
 
       try {
         await fetchProfile()
-        setIsChecking(false)
       } catch {
-        router.push("/admin/login")
+        // If profile endpoint is missing or fails, allow access with existing token
       }
+      setIsChecking(false)
     }
 
     checkAuth()
@@ -61,7 +63,7 @@ export default function AdminLayout({
     )
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !hasToken) {
     return null
   }
 

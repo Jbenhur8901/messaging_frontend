@@ -78,9 +78,7 @@ export default function ContactsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([])
   const [tagMatch, setTagMatch] = useState<"all" | "any">("all")
-  const [statusFilter, setStatusFilter] = useState<"active" | "blocked" | "deleted" | "all">(
-    "all"
-  )
+  const [statusFilter, setStatusFilter] = useState<"active" | "blocked" | "all">("all")
   const [sourceFilter, setSourceFilter] = useState<"" | "api" | "csv" | "manual">("")
   const [createdAfter, setCreatedAfter] = useState("")
   const [createdBefore, setCreatedBefore] = useState("")
@@ -158,7 +156,6 @@ export default function ContactsPage() {
     if (
       statusParam === "active" ||
       statusParam === "blocked" ||
-      statusParam === "deleted" ||
       statusParam === "all"
     ) {
       setStatusFilter(statusParam)
@@ -384,7 +381,6 @@ export default function ContactsPage() {
       list = list.filter((contact) => {
         if (statusFilter === "blocked") return contact.is_blocked
         if (statusFilter === "active") return contact.is_active && !contact.is_blocked
-        if (statusFilter === "deleted") return false
         return true
       })
     }
@@ -517,7 +513,6 @@ export default function ContactsPage() {
                 <SelectItem value="all">Tous</SelectItem>
                 <SelectItem value="active">Actif</SelectItem>
                 <SelectItem value="blocked">Bloqué</SelectItem>
-                <SelectItem value="deleted">Supprimé</SelectItem>
               </SelectContent>
             </Select>
           </div>

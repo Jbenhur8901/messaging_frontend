@@ -98,13 +98,40 @@ export default function NewCampaignPage() {
     const loadData = async () => {
       setIsLoading(true)
       try {
-        const [contactsData, tagsData, templatesData, servicesData] = await Promise.all([
-          contactsService.getContacts(100, 0),
+        const [tagsData, templatesData, servicesData] = await Promise.all([
           tagsService.getTags(),
           templatesService.getTemplates(undefined, 50, 0),
           messagingServicesService.list(),
         ])
-        setContacts(contactsData.contacts)
+        const contactsData = await (async () => {
+          const fetchLimit = 200
+          let offset = 0
+          let hasMore = true
+          let all: Contact[] = []
+
+          while (hasMore) {
+            const result = await contactsService.getContacts(fetchLimit, offset)
+            const pageContacts = result.contacts.filter((contact) => {
+              const deletedAt = (contact as Contact & { deleted_at?: string | null; deletedAt?: string | null })
+              return !deletedAt.deleted_at && !deletedAt.deletedAt
+            })
+            all = [...all, ...pageContacts]
+
+            if (typeof result.pagination?.has_more === "boolean") {
+              hasMore = result.pagination.has_more
+            } else if (typeof result.pagination?.total === "number") {
+              hasMore = all.length < result.pagination.total
+            } else {
+              hasMore = result.contacts.length === fetchLimit
+            }
+
+            offset += fetchLimit
+            if (result.contacts.length === 0) break
+          }
+
+          return all
+        })()
+        setContacts(contactsData)
         setTags(tagsData.tags)
         setTemplates(templatesData.templates)
         setMessagingServices(servicesData.services || [])
@@ -400,6 +427,36 @@ export default function NewCampaignPage() {
                 {selectionMode === "contacts" && (
                   <ScrollArea className="h-64 rounded-md border p-4">
                     <div className="space-y-2">
+                      {isLoading && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Chargement des contacts...
+                        </div>
+                      )}
+                      {!isLoading && contacts.length > 0 && (
+                        <div className="flex items-center space-x-2 pb-2">
+                          <Checkbox
+                            id="select-all-contacts"
+                            checked={
+                              contacts.length > 0 &&
+                              selectedContacts.length === contacts.length
+                            }
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedContacts(contacts.map((c) => c.id))
+                              } else {
+                                setSelectedContacts([])
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="select-all-contacts"
+                            className="text-sm cursor-pointer"
+                          >
+                            Tout sélectionner ({contacts.length})
+                          </label>
+                        </div>
+                      )}
                       {contacts.map((contact) => (
                         <div
                           key={contact.id}

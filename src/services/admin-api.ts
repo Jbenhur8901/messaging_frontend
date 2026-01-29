@@ -36,6 +36,7 @@ adminApi.interceptors.request.use(
       const token = getAdminToken()
       if (token) {
         config.headers["X-Admin-Token"] = token
+        config.headers.Authorization = `Bearer ${token}`
       }
     }
     // Set Content-Type for POST/PUT/PATCH requests
