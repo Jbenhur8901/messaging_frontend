@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { contactsService, tagsService, handleApiError } from "@/services"
@@ -98,6 +98,47 @@ export default function ContactsPage() {
   const [bulkTagIds, setBulkTagIds] = useState<string[]>([])
   const limit = 50
 
+  const loadAllContacts = async () => {
+    setIsLoading(true)
+    try {
+      const fetchLimit = 200
+      let offset = 0
+      let hasMore = true
+      let all: Contact[] = []
+
+      while (hasMore) {
+        const result = await contactsService.getContacts(fetchLimit, offset)
+        all = [...all, ...result.contacts]
+        const pageLimit =
+          result.pagination?.limit || (result.contacts.length > 0 ? result.contacts.length : fetchLimit)
+
+        if (typeof result.pagination?.has_more === "boolean") {
+          hasMore = result.pagination.has_more
+        } else if (typeof result.pagination?.total === "number") {
+          hasMore = all.length < result.pagination.total
+        } else {
+          hasMore = result.contacts.length === pageLimit
+        }
+
+        offset += pageLimit
+        if (result.contacts.length === 0 || pageLimit === 0) break
+      }
+
+      setContacts(all)
+      setPagination({
+        total: all.length,
+        limit,
+        offset: 0,
+        has_more: false,
+      })
+      setSelectedContacts([])
+    } catch (error) {
+      console.error("Error loading contacts:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (isInitialized.current) return
     const q = searchParams.get("q") || ""
@@ -147,43 +188,12 @@ export default function ContactsPage() {
     isInitialized.current = true
   }, [searchParams])
 
-  const loadContacts = async () => {
-    setIsLoading(true)
-    try {
-      const offset = (page - 1) * limit
-      const result = await contactsService.searchContacts({
-        q: searchQuery || undefined,
-        tagIds: selectedTagFilters.length > 0 ? selectedTagFilters : undefined,
-        tagMatch: selectedTagFilters.length > 0 ? tagMatch : undefined,
-        status: statusFilter,
-        source: sourceFilter || undefined,
-        createdAfter: createdAfter || undefined,
-        createdBefore: createdBefore || undefined,
-        sortBy,
-        sortOrder,
-        limit,
-        offset,
-      })
-      setContacts(result.contacts)
-      setPagination(result.pagination)
-      setSelectedContacts([])
-    } catch (error) {
-      console.error("Error loading contacts:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  useEffect(() => {
+    loadAllContacts()
+  }, [])
 
   useEffect(() => {
-    loadContacts()
-  }, [page])
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setPage(1)
-      loadContacts()
-    }, 300)
-    return () => clearTimeout(timeout)
+    setPage(1)
   }, [
     searchQuery,
     selectedTagFilters,
@@ -213,7 +223,7 @@ export default function ContactsPage() {
 
     try {
       await contactsService.bulkDelete([deleteContactId], "soft")
-      await loadContacts()
+      await loadAllContacts()
       toast.success("Contact supprimé")
     } catch (error) {
       const apiError = handleApiError(error)
@@ -244,10 +254,10 @@ export default function ContactsPage() {
   }
 
   const toggleSelectAll = () => {
-    if (selectedContacts.length === contacts.length) {
+    if (selectedContacts.length === pagedContacts.length) {
       setSelectedContacts([])
     } else {
-      setSelectedContacts(contacts.map((c) => c.id))
+      setSelectedContacts(pagedContacts.map((c) => c.id))
     }
   }
 
@@ -257,7 +267,7 @@ export default function ContactsPage() {
       await contactsService.bulkDelete(selectedContacts, "soft", bulkDeleteReason || undefined)
       toast.success(`${selectedContacts.length} contact(s) supprimé(s)`)
       setSelectedContacts([])
-      await loadContacts()
+      await loadAllContacts()
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
@@ -279,7 +289,7 @@ export default function ContactsPage() {
       }
       setBulkTagIds([])
       setSelectedContacts([])
-      await loadContacts()
+      await loadAllContacts()
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
@@ -331,7 +341,109 @@ export default function ContactsPage() {
     router,
   ])
 
-  const totalPages = pagination ? Math.ceil(pagination.total / limit) : 1
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    selectedTagFilters.length > 0 ||
+    statusFilter !== "all" ||
+    sourceFilter !== "" ||
+    createdAfter !== "" ||
+    createdBefore !== "" ||
+    sortBy !== "created_at" ||
+    sortOrder !== "desc"
+
+  const filteredContacts = useMemo(() => {
+    const normalize = (value: string) => value.toLowerCase().trim()
+    const q = normalize(searchQuery)
+    const after = createdAfter ? new Date(createdAfter) : null
+    const before = createdBefore ? new Date(createdBefore) : null
+
+    let list = [...contacts]
+
+    if (q) {
+      list = list.filter((contact) => {
+        const name = `${contact.first_name || ""} ${contact.last_name || ""}`.trim()
+        return (
+          normalize(name).includes(q) ||
+          normalize(contact.email || "").includes(q) ||
+          normalize(contact.phone_number || "").includes(q)
+        )
+      })
+    }
+
+    if (selectedTagFilters.length > 0) {
+      list = list.filter((contact) => {
+        const contactTagIds = contact.tags.map((tag) => tag.id)
+        if (tagMatch === "all") {
+          return selectedTagFilters.every((id) => contactTagIds.includes(id))
+        }
+        return selectedTagFilters.some((id) => contactTagIds.includes(id))
+      })
+    }
+
+    if (statusFilter !== "all") {
+      list = list.filter((contact) => {
+        if (statusFilter === "blocked") return contact.is_blocked
+        if (statusFilter === "active") return contact.is_active && !contact.is_blocked
+        if (statusFilter === "deleted") return false
+        return true
+      })
+    }
+
+    if (sourceFilter) {
+      list = list.filter((contact) => {
+        const source = (contact as Contact & { source?: string }).source
+        return source === sourceFilter
+      })
+    }
+
+    if (after || before) {
+      list = list.filter((contact) => {
+        if (!contact.created_at) return false
+        const createdAt = new Date(contact.created_at)
+        if (Number.isNaN(createdAt.getTime())) return false
+        if (after && createdAt < after) return false
+        if (before && createdAt > before) return false
+        return true
+      })
+    }
+
+    const compareString = (a: string, b: string) => a.localeCompare(b, "fr", { sensitivity: "base" })
+    list.sort((a, b) => {
+      let result = 0
+      if (sortBy === "created_at") {
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
+        result = aTime - bTime
+      } else if (sortBy === "first_name") {
+        result = compareString(a.first_name || "", b.first_name || "")
+      } else if (sortBy === "last_name") {
+        result = compareString(a.last_name || "", b.last_name || "")
+      } else if (sortBy === "phone_number") {
+        result = compareString(a.phone_number || "", b.phone_number || "")
+      }
+      return sortOrder === "asc" ? result : -result
+    })
+
+    return list
+  }, [
+    contacts,
+    searchQuery,
+    selectedTagFilters,
+    tagMatch,
+    statusFilter,
+    sourceFilter,
+    createdAfter,
+    createdBefore,
+    sortBy,
+    sortOrder,
+  ])
+
+  const totalPages = Math.max(1, Math.ceil(filteredContacts.length / limit))
+
+  const pagedContacts = useMemo(() => {
+    const start = (page - 1) * limit
+    return filteredContacts.slice(start, start + limit)
+  }, [filteredContacts, page])
 
   return (
     <div className="space-y-6">
@@ -532,16 +644,16 @@ export default function ContactsPage() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : contacts.length === 0 ? (
+          ) : filteredContacts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <p className="text-lg font-medium">Aucun contact</p>
               <p className="text-muted-foreground mb-4">
-                {searchQuery
+                {hasActiveFilters
                   ? "Aucun contact ne correspond à votre recherche"
                   : "Commencez par ajouter des contacts"}
               </p>
-              {!searchQuery && (
+              {!hasActiveFilters && (
                 <Link href="/contacts/new">
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
@@ -557,7 +669,10 @@ export default function ContactsPage() {
                   <TableRow>
                     <TableHead className="w-12">
                       <Checkbox
-                        checked={selectedContacts.length === contacts.length}
+                        checked={
+                          pagedContacts.length > 0 &&
+                          selectedContacts.length === pagedContacts.length
+                        }
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
@@ -570,7 +685,7 @@ export default function ContactsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {contacts.map((contact) => (
+                  {pagedContacts.map((contact) => (
                     <TableRow key={contact.id}>
                       <TableCell>
                         <Checkbox
@@ -679,7 +794,7 @@ export default function ContactsPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t px-4 py-3">
                   <p className="text-sm text-muted-foreground">
-                    Page {page} sur {totalPages} ({pagination?.total} contacts)
+                    Page {page} sur {totalPages} ({filteredContacts.length} contacts)
                   </p>
                   <div className="flex gap-2">
                     <Button

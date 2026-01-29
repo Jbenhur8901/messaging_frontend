@@ -47,15 +47,20 @@ export const contactsService = {
       return data
     } catch (error) {
       if (error && typeof error === "object" && "response" in error) {
-        const response = (error as { response?: { status?: number } }).response
+        const response = (error as { response?: { status?: number; data?: { detail?: string } } }).response
         if (response?.status === 404) {
-          const fallbackParams: Record<string, string | number> = { ...params }
-          if ("q" in fallbackParams) {
-            fallbackParams.search = fallbackParams.q
-            delete fallbackParams.q
+          const detail = response.data?.detail || ""
+          if (detail.includes("Contact non trouvé") || detail.includes("Contact not found")) {
+            return {
+              contacts: [],
+              pagination: {
+                total: 0,
+                limit,
+                offset,
+                has_more: false,
+              },
+            }
           }
-          const { data } = await api.get("/v1/contacts", { params: fallbackParams })
-          return data
         }
       }
       throw error
