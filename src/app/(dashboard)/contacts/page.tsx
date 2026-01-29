@@ -764,7 +764,6 @@ export default function ContactsPage() {
               onClick={() => {
                 setBulkDeleteOpen(false)
                 setBulkDeleteReason("")
-                setBulkDeleteMode("soft")
               }}
             >
               Annuler

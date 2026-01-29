@@ -207,7 +207,7 @@ https://flow.nodes-hub.com
 ## Mise à jour rapide
 
 ```bash
-su - messaging
+sudo su - messaging
 cd ~/apps/messaging_frontend
 git pull
 npm install
