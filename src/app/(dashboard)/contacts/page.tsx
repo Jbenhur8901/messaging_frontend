@@ -745,7 +745,7 @@ export default function ContactsPage() {
           <DialogHeader>
             <DialogTitle>Supprimer des contacts</DialogTitle>
             <DialogDescription>
-              Cette action effectuera un soft delete sur {selectedContacts.length} contact(s).
+              Cette action supprimera {selectedContacts.length} contact(s).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">

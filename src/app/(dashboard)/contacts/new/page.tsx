@@ -16,6 +16,17 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { Loader2, ArrowLeft } from "lucide-react"
 
+const normalizePhoneNumber = (value: string) => {
+  const trimmed = value.trim()
+  if (!trimmed) return trimmed
+  if (trimmed.startsWith("+")) return trimmed
+  if (trimmed.startsWith("00") && trimmed.length > 2) {
+    const rest = trimmed.slice(2)
+    return /^\d+$/.test(rest) ? `+${rest}` : trimmed
+  }
+  return /^\d+$/.test(trimmed) ? `+${trimmed}` : trimmed
+}
+
 const contactSchema = z.object({
   phone_number: z.string().min(1, "Numéro de téléphone requis"),
   first_name: z.string().optional(),
@@ -55,7 +66,7 @@ export default function NewContactPage() {
     setIsLoading(true)
     try {
       const result = await contactsService.createContact({
-        phone_number: data.phone_number,
+        phone_number: normalizePhoneNumber(data.phone_number),
         first_name: data.first_name || undefined,
         last_name: data.last_name || undefined,
         email: data.email || undefined,
@@ -111,6 +122,10 @@ export default function NewContactPage() {
                   placeholder="+33612345678"
                   {...register("phone_number")}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Format attendu: international (ex. +33612345678). Si vous saisissez uniquement
+                  des chiffres, le + sera ajouté automatiquement.
+                </p>
                 {errors.phone_number && (
                   <p className="text-sm text-destructive">
                     {errors.phone_number.message}

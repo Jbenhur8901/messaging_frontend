@@ -62,6 +62,17 @@ interface CustomFieldMapping {
   [csvColumn: string]: string // nom du champ custom
 }
 
+const normalizePhoneNumber = (value: string) => {
+  const trimmed = value.trim()
+  if (!trimmed) return trimmed
+  if (trimmed.startsWith("+")) return trimmed
+  if (trimmed.startsWith("00") && trimmed.length > 2) {
+    const rest = trimmed.slice(2)
+    return /^\d+$/.test(rest) ? `+${rest}` : trimmed
+  }
+  return /^\d+$/.test(trimmed) ? `+${trimmed}` : trimmed
+}
+
 export default function ImportContactsPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
@@ -228,7 +239,7 @@ export default function ImportContactsPage() {
         if (!value) return
 
         if (targetField === "phone_number") {
-          contact.phone_number = value
+          contact.phone_number = normalizePhoneNumber(value)
         } else if (targetField === "first_name") {
           contact.first_name = value
         } else if (targetField === "last_name") {
@@ -299,8 +310,17 @@ export default function ImportContactsPage() {
 
     setIsLoading(true)
     try {
+      const normalizedContacts = contacts.map((contact) => {
+        if (contact && typeof contact === "object" && typeof contact.phone_number === "string") {
+          return {
+            ...contact,
+            phone_number: normalizePhoneNumber(contact.phone_number),
+          }
+        }
+        return contact
+      })
       const importResult = await contactsService.importContactsJson(
-        contacts,
+        normalizedContacts,
         selectedTags.length > 0 ? selectedTags : undefined
       )
       setResult(importResult)
@@ -449,6 +469,10 @@ export default function ImportContactsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <p className="text-sm text-muted-foreground">
+              Format attendu pour le numéro: international (ex. +33612345678). Les numéros sans
+              &quot;+&quot; seront automatiquement préfixés.
+            </p>
             {/* Mapping des colonnes */}
             <div className="space-y-4">
               <h3 className="font-medium">Correspondance des colonnes</h3>
@@ -633,18 +657,22 @@ export default function ImportContactsPage() {
 
           <TabsContent value="csv">
             <Card>
-              <CardHeader>
-                <CardTitle>Import CSV</CardTitle>
-                <CardDescription>
-                  Glissez votre fichier CSV - les colonnes seront détectées automatiquement
-                  (supporte les séparateurs &quot;,&quot; et &quot;;&quot;)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div
-                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                    dragActive
-                      ? "border-primary bg-primary/5"
+            <CardHeader>
+              <CardTitle>Import CSV</CardTitle>
+              <CardDescription>
+                Glissez votre fichier CSV - les colonnes seront détectées automatiquement
+                (supporte les séparateurs &quot;,&quot; et &quot;;&quot;)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Format attendu pour le numéro: international (ex. +33612345678). Les numéros sans
+                &quot;+&quot; seront automatiquement préfixés.
+              </p>
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  dragActive
+                    ? "border-primary bg-primary/5"
                       : "border-muted-foreground/25"
                   }`}
                   onDragEnter={handleDrag}
@@ -683,17 +711,21 @@ export default function ImportContactsPage() {
 
           <TabsContent value="json">
             <Card>
-              <CardHeader>
-                <CardTitle>Import JSON</CardTitle>
-                <CardDescription>
-                  Format: [{`{`}&quot;phone_number&quot;: &quot;+33...&quot;, &quot;first_name&quot;: &quot;...&quot;{`}`}]
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Textarea
-                  placeholder={`[\n  {"phone_number": "+33612345678", "first_name": "Jean", "last_name": "Dupont"},\n  {"phone_number": "+33698765432", "first_name": "Marie"}\n]`}
-                  className="h-48 font-mono text-sm"
-                  value={jsonData}
+            <CardHeader>
+              <CardTitle>Import JSON</CardTitle>
+              <CardDescription>
+                Format: [{`{`}&quot;phone_number&quot;: &quot;+33...&quot;, &quot;first_name&quot;: &quot;...&quot;{`}`}]
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Format attendu pour le numéro: international (ex. +33612345678). Les numéros sans
+                &quot;+&quot; seront automatiquement préfixés.
+              </p>
+              <Textarea
+                placeholder={`[\n  {"phone_number": "+33612345678", "first_name": "Jean", "last_name": "Dupont"},\n  {"phone_number": "+33698765432", "first_name": "Marie"}\n]`}
+                className="h-48 font-mono text-sm"
+                value={jsonData}
                   onChange={(e) => setJsonData(e.target.value)}
                 />
 
