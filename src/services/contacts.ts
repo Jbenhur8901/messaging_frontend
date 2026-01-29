@@ -2,6 +2,65 @@ import { api, apiJson } from "./api"
 import type { Contact, ContactImportResult, Pagination } from "@/types"
 
 export const contactsService = {
+  async searchContacts(filters: {
+    q?: string
+    tagIds?: string[]
+    tagMatch?: "all" | "any"
+    status?: "active" | "blocked" | "deleted" | "all"
+    source?: "api" | "csv" | "manual"
+    createdAfter?: string
+    createdBefore?: string
+    sortBy?: "created_at" | "first_name" | "last_name" | "phone_number"
+    sortOrder?: "asc" | "desc"
+    limit?: number
+    offset?: number
+  }): Promise<{ contacts: Contact[]; pagination: Pagination }> {
+    const params: Record<string, string | number> = {}
+    const {
+      q,
+      tagIds,
+      tagMatch,
+      status,
+      source,
+      createdAfter,
+      createdBefore,
+      sortBy,
+      sortOrder,
+      limit = 50,
+      offset = 0,
+    } = filters
+
+    params.limit = limit
+    params.offset = offset
+    if (q) params.q = q
+    if (tagIds && tagIds.length > 0) params.tag_ids = tagIds.join(",")
+    if (tagMatch) params.tag_match = tagMatch
+    if (status) params.status = status
+    if (source) params.source = source
+    if (createdAfter) params.created_after = createdAfter
+    if (createdBefore) params.created_before = createdBefore
+    if (sortBy) params.sort_by = sortBy
+    if (sortOrder) params.sort_order = sortOrder
+
+    try {
+      const { data } = await api.get("/v1/contacts/search", { params })
+      return data
+    } catch (error) {
+      if (error && typeof error === "object" && "response" in error) {
+        const response = (error as { response?: { status?: number } }).response
+        if (response?.status === 404) {
+          const fallbackParams: Record<string, string | number> = { ...params }
+          if ("q" in fallbackParams) {
+            fallbackParams.search = fallbackParams.q
+            delete fallbackParams.q
+          }
+          const { data } = await api.get("/v1/contacts", { params: fallbackParams })
+          return data
+        }
+      }
+      throw error
+    }
+  },
   async getContacts(
     limit = 50,
     offset = 0,
@@ -89,6 +148,41 @@ export const contactsService = {
 
   async deleteContact(contactId: string): Promise<{ success: boolean; message: string }> {
     const { data } = await api.delete(`/v1/contacts/${contactId}`)
+    return data
+  },
+
+  async bulkDelete(
+    contactIds: string[],
+    mode: "soft" | "hard" = "soft",
+    reason?: string
+  ): Promise<{ success: boolean; deleted_count: number; mode: string; message?: string }> {
+    const { data } = await apiJson.post("/v1/contacts/bulk/delete", {
+      contact_ids: contactIds,
+      mode,
+      reason,
+    })
+    return data
+  },
+
+  async bulkAddTags(
+    contactIds: string[],
+    tagIds: string[]
+  ): Promise<{ success: boolean; contacts_affected: number; tags_applied: number }> {
+    const { data } = await apiJson.post("/v1/contacts/bulk/tags/add", {
+      contact_ids: contactIds,
+      tag_ids: tagIds,
+    })
+    return data
+  },
+
+  async bulkRemoveTags(
+    contactIds: string[],
+    tagIds: string[]
+  ): Promise<{ success: boolean; contacts_affected: number; tags_removed: number }> {
+    const { data } = await apiJson.post("/v1/contacts/bulk/tags/remove", {
+      contact_ids: contactIds,
+      tag_ids: tagIds,
+    })
     return data
   },
 
