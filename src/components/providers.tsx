@@ -10,13 +10,14 @@ import { authStorage } from "@/lib/auth-storage"
 
 interface ProvidersProps {
   children: React.ReactNode
+  nonce?: string
 }
 
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 60 * 1000
 const LAST_ACTIVITY_KEY = "last_activity_at"
 const SESSION_STARTED_KEY = "session_started_at"
 
-export function Providers({ children }: ProvidersProps) {
+export function Providers({ children, nonce }: ProvidersProps) {
   const router = useRouter()
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const logout = useAuthStore((state) => state.logout)
@@ -119,6 +120,7 @@ export function Providers({ children }: ProvidersProps) {
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange
+      nonce={nonce}
     >
       <TooltipProvider>
         {children}

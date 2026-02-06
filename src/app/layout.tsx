@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Instrument_Sans, Sora } from "next/font/google"
+import { headers } from "next/headers"
 import "./globals.css"
 import { Providers } from "@/components/providers"
 
@@ -25,10 +26,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const nonce = headers().get("x-nonce") ?? undefined
+
   return (
     <html lang="fr" suppressHydrationWarning>
+      <head nonce={nonce} />
       <body className={`${instrumentSans.variable} ${sora.variable}`}>
-        <Providers>{children}</Providers>
+        <Providers nonce={nonce}>{children}</Providers>
       </body>
     </html>
   )
