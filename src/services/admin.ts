@@ -1,5 +1,6 @@
 import axios from "axios"
 import { adminApi, setAdminToken, clearAdminToken } from "./admin-api"
+import { authStorage } from "@/lib/auth-storage"
 import type {
   AdminUser,
   AdminAuthResponse,
@@ -25,7 +26,7 @@ export const adminService = {
     if (data.success && data.token) {
       setAdminToken(data.token)
       if (typeof window !== "undefined") {
-        localStorage.setItem("admin_user", JSON.stringify(data.admin))
+        authStorage.setItem("admin_user", JSON.stringify(data.admin))
       }
     }
     return data

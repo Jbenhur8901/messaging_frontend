@@ -40,7 +40,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
     .toUpperCase() || "A"
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b bg-background px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border/60 bg-background/85 px-4 shadow-[var(--shadow-xs)] backdrop-blur sm:gap-x-6 sm:px-6 lg:px-8">
       <Button
         variant="ghost"
         size="icon"
@@ -59,8 +59,8 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-primary text-primary-foreground">
+              <Avatar className="h-9 w-9 ring-1 ring-border/70 ring-offset-2 ring-offset-background">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                   {initials}
                 </AvatarFallback>
               </Avatar>

@@ -46,7 +46,7 @@ export default function ToolsPage() {
         return (
           <span
             key={index}
-            className="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5"
+            className="rounded bg-amber-200/80 px-0.5 text-foreground dark:bg-amber-800/60"
           >
             {char}
           </span>
@@ -57,13 +57,14 @@ export default function ToolsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">SMS Tools</h1>
-        <p className="text-muted-foreground">
-          Analysez et optimisez vos messages SMS
-        </p>
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">SMS Tools</h1>
+          <p className="text-muted-foreground mt-1">
+            Analysez et optimisez vos messages SMS.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -107,11 +108,11 @@ export default function ToolsPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-lg border p-4">
+                  <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
                     <p className="text-3xl font-bold">{analysis.segments}</p>
                     <p className="text-sm text-muted-foreground">segment(s)</p>
                   </div>
-                  <div className="rounded-lg border p-4">
+                  <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
                     <p className="text-3xl font-bold">{analysis.characters}</p>
                     <p className="text-sm text-muted-foreground">caractères</p>
                   </div>
@@ -141,7 +142,7 @@ export default function ToolsPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
                   <CardTitle>Caractères spéciaux</CardTitle>
                 </div>
                 <CardDescription>
@@ -149,7 +150,7 @@ export default function ToolsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md bg-muted p-4 font-mono text-sm mb-4">
+                <div className="mb-4 rounded-md border border-border/60 bg-muted/60 p-4 font-mono text-sm">
                   {highlightSpecialChars(message, specialChars)}
                 </div>
                 <div className="space-y-2">
@@ -159,7 +160,7 @@ export default function ToolsPage() {
                       className="flex items-center justify-between text-sm"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-mono bg-muted px-2 py-1 rounded">
+                        <span className="rounded bg-muted/60 px-2 py-1 font-mono">
                           {char.character}
                         </span>
                         <span className="text-muted-foreground">
@@ -168,7 +169,7 @@ export default function ToolsPage() {
                       </div>
                       {char.suggestion && char.suggestion !== "(supprimer ou remplacer)" && (
                         <span className="text-muted-foreground">
-                          Suggestion: <code className="bg-muted px-1 rounded">{char.suggestion}</code>
+                          Suggestion: <code className="rounded bg-muted/60 px-1">{char.suggestion}</code>
                         </span>
                       )}
                     </div>
@@ -192,7 +193,7 @@ export default function ToolsPage() {
               <TabsTrigger value="ucs2">UCS-2 (Unicode)</TabsTrigger>
             </TabsList>
             <TabsContent value="gsm7" className="space-y-4">
-              <div className="rounded-lg border p-4">
+              <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
                 <h4 className="font-medium mb-2">Caractéristiques</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• 160 caractères par segment (153 si multi-segments)</li>
@@ -200,7 +201,7 @@ export default function ToolsPage() {
                   <li>• Encodage le plus économique</li>
                 </ul>
               </div>
-              <div className="rounded-lg border p-4">
+              <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
                 <h4 className="font-medium mb-2">Caractères supportés</h4>
                 <p className="text-sm text-muted-foreground font-mono">
                   A-Z a-z 0-9 @ £ $ ¥ è é ù ì ò Ç Ø ø Å å Δ _ Φ Γ Λ Ω Π Ψ Σ Θ Ξ
@@ -210,7 +211,7 @@ export default function ToolsPage() {
               </div>
             </TabsContent>
             <TabsContent value="ucs2" className="space-y-4">
-              <div className="rounded-lg border p-4">
+              <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
                 <h4 className="font-medium mb-2">Caractéristiques</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• 70 caractères par segment (67 si multi-segments)</li>
@@ -218,14 +219,14 @@ export default function ToolsPage() {
                   <li>• Nécessaire pour les emojis, caractères asiatiques, etc.</li>
                 </ul>
               </div>
-              <div className="rounded-lg border p-4 bg-yellow-50 dark:bg-yellow-950">
+              <div className="rounded-lg border border-amber-200/70 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/30">
                 <div className="flex items-start gap-2">
-                  <Lightbulb className="h-5 w-5 text-yellow-600 mt-0.5" />
+                  <Lightbulb className="h-5 w-5 text-amber-600 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-yellow-800 dark:text-yellow-200">
+                    <h4 className="font-medium text-amber-800 dark:text-amber-200">
                       Conseil d&apos;optimisation
                     </h4>
-                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                       Évitez les emojis et caractères spéciaux pour réduire le coût
                       de vos campagnes. Un message UCS-2 coûte plus de 2x plus cher
                       qu&apos;un message GSM-7.

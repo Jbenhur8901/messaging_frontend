@@ -132,9 +132,8 @@ export default function CampaignDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Link href="/campaigns">
             <Button variant="ghost" size="icon">
@@ -142,18 +141,18 @@ export default function CampaignDetailPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-2xl font-semibold">
               {broadcast.campaign_name || "Sans nom"}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mt-1">
               Créée le {formatDate(broadcast.created_at)}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Badge variant={STATUS_VARIANTS[broadcast.status] || "secondary"}>
             {broadcast.status === "completed"
-              ? "Terminé"
+              ? "Termine"
               : broadcast.status === "processing"
               ? "En cours"
               : broadcast.status === "pending"
@@ -173,10 +172,12 @@ export default function CampaignDetailPage() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="hover-lift">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total</CardTitle>
-            <Send className="h-4 w-4 text-muted-foreground" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Send className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -186,10 +187,12 @@ export default function CampaignDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover-lift">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Envoyés</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+              <CheckCircle className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -202,10 +205,12 @@ export default function CampaignDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover-lift">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Échoués</CardTitle>
-            <XCircle className="h-4 w-4 text-destructive" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <XCircle className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -217,10 +222,12 @@ export default function CampaignDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover-lift">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">En attente</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/10 text-amber-700">
+              <Clock className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -240,7 +247,7 @@ export default function CampaignDetailPage() {
             <CardTitle>Message</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="whitespace-pre-wrap rounded-md bg-muted p-4">
+            <p className="whitespace-pre-wrap rounded-md border border-border/60 bg-muted/60 p-4 text-sm leading-relaxed">
               {broadcast.body}
             </p>
             <div className="mt-2 flex gap-4 text-sm text-muted-foreground">

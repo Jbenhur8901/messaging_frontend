@@ -38,9 +38,9 @@ const statusLabels: Record<CreditRequestStatus, string> = {
   cancelled: "Annulé",
 }
 
-const statusVariants: Record<CreditRequestStatus, "default" | "secondary" | "destructive" | "outline"> = {
+const statusVariants: Record<CreditRequestStatus, "default" | "secondary" | "destructive" | "outline" | "success"> = {
   pending: "secondary",
-  approved: "default",
+  approved: "success",
   rejected: "destructive",
   cancelled: "outline",
 }
@@ -99,28 +99,29 @@ export default function CreditRequestsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button asChild variant="ghost" size="icon">
-            <Link href="/credits">
+          <Link href="/credits">
+            <Button variant="ghost" size="icon">
               <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
+            </Button>
+          </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Mes demandes</h1>
-            <p className="text-muted-foreground">
-              Historique de vos demandes de crédits
+            <h1 className="text-2xl font-semibold">Mes demandes</h1>
+            <p className="text-muted-foreground mt-1">
+              Historique de vos demandes de crédits.
             </p>
           </div>
         </div>
-        <Button asChild>
-          <Link href="/credits/request">
-            <Plus className="mr-2 h-4 w-4" />
-            Nouvelle demande
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href="/credits/request">
+              <Plus className="mr-2 h-4 w-4" />
+              Nouvelle demande
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Requests List */}

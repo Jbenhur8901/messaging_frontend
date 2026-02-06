@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { creditsService } from "@/services"
+import { authStorage } from "@/lib/auth-storage"
 import type { CreditBalance, CreditTransaction, CreditUsage, Pagination } from "@/types"
 import { formatNumber, formatDate } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -50,7 +51,7 @@ export default function CreditsPage() {
   useEffect(() => {
     const loadData = async () => {
       // Check for token before making API calls
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+      const token = authStorage.getItem("access_token")
       if (!token) {
         setIsLoading(false)
         return
@@ -76,7 +77,7 @@ export default function CreditsPage() {
   useEffect(() => {
     const loadTransactions = async () => {
       // Check for token before making API calls
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+      const token = authStorage.getItem("access_token")
       if (!token) {
         return
       }
@@ -124,16 +125,15 @@ export default function CreditsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Crédits</h1>
-          <p className="text-muted-foreground">
-            Gérez vos crédits SMS et consultez votre consommation
+          <h1 className="text-2xl font-semibold">Crédits</h1>
+          <p className="text-muted-foreground mt-1">
+            Gérez vos crédits SMS et consultez votre consommation.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild>
             <Link href="/credits/requests">
               Mes demandes
@@ -149,18 +149,20 @@ export default function CreditsPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Crédits disponibles</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Crédits disponibles
+            </CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl font-semibold">
               {formatNumber(balance?.credit_available || 0)}
             </div>
             {balance?.credit_reserved && balance.credit_reserved > 0 && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-2">
                 {formatNumber(balance.credit_reserved)} réservés
               </p>
             )}
@@ -168,32 +170,36 @@ export default function CreditsPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Consommation (30j)</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Consommation (30j)
+            </CardTitle>
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl font-semibold">
               {formatNumber(usage?.total_consumed || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-2">
               ~{formatNumber(Math.round(usage?.average_daily_consumption || 0))}/jour
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Autonomie estimée</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Autonomie estimée
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl font-semibold">
               {usage?.estimated_days_remaining
                 ? `${formatNumber(usage.estimated_days_remaining)} jours`
                 : "—"}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-2">
               Au rythme actuel
             </p>
           </CardContent>
@@ -213,8 +219,8 @@ export default function CreditsPage() {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorCredits" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#1800ad" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#1800ad" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#0b5fff" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#0b5fff" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -241,7 +247,8 @@ export default function CreditsPage() {
                   <Area
                     type="monotone"
                     dataKey="credits"
-                    stroke="#1800ad"
+                    stroke="#0b5fff"
+                    strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#colorCredits)"
                   />
@@ -303,7 +310,7 @@ export default function CreditsPage() {
                   <TableCell className="text-right">
                     <span
                       className={`flex items-center justify-end gap-1 font-medium ${
-                        tx.amount > 0 ? "text-green-600" : "text-foreground"
+                        tx.amount > 0 ? "text-emerald-600" : "text-foreground"
                       }`}
                     >
                       {tx.amount > 0 ? (

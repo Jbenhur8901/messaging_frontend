@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { messagingServicesService, handleApiError } from "@/services"
 import type { MessagingService } from "@/types"
 import { formatDate } from "@/lib/utils"
+import { authStorage } from "@/lib/auth-storage"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -57,17 +58,17 @@ const USECASE_LABELS: Record<string, { label: string; icon: React.ReactNode; col
   notifications: {
     label: "Notifications",
     icon: <Send className="h-4 w-4" />,
-    color: "bg-blue-100 text-blue-700",
+    color: "bg-blue-50 text-blue-700",
   },
   marketing: {
     label: "Marketing",
     icon: <Megaphone className="h-4 w-4" />,
-    color: "bg-purple-100 text-purple-700",
+    color: "bg-amber-100 text-amber-700",
   },
   verification: {
     label: "Vérification",
     icon: <ShieldCheck className="h-4 w-4" />,
-    color: "bg-green-100 text-green-700",
+    color: "bg-emerald-100 text-emerald-700",
   },
   otp: {
     label: "OTP",
@@ -77,7 +78,7 @@ const USECASE_LABELS: Record<string, { label: string; icon: React.ReactNode; col
   transactional: {
     label: "Transactionnel",
     icon: <MessageSquare className="h-4 w-4" />,
-    color: "bg-slate-100 text-slate-700",
+    color: "bg-muted text-muted-foreground",
   },
 }
 
@@ -98,7 +99,7 @@ export default function ServicesPage() {
   }, [])
 
   const loadServices = async () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+    const token = authStorage.getItem("access_token")
     if (!token) {
       setIsLoading(false)
       return
@@ -120,14 +121,16 @@ export default function ServicesPage() {
       return
     }
 
-    if (alphaSenderId.length < 3 || alphaSenderId.length > 11) {
+    const normalizedAlphaSenderId = alphaSenderId.trim()
+
+    if (normalizedAlphaSenderId.length < 3 || normalizedAlphaSenderId.length > 11) {
       toast.error("L'identifiant doit contenir entre 3 et 11 caractères")
       return
     }
 
-    // Check alphanumeric only
-    if (!/^[a-zA-Z0-9]+$/.test(alphaSenderId)) {
-      toast.error("L'identifiant ne peut contenir que des lettres et des chiffres")
+    // Check allowed characters (uppercase letters, digits, spaces)
+    if (!/^[A-Z0-9 ]+$/.test(normalizedAlphaSenderId)) {
+      toast.error("L'identifiant ne peut contenir que des lettres majuscules, des chiffres et des espaces")
       return
     }
 
@@ -135,7 +138,7 @@ export default function ServicesPage() {
     try {
       const result = await messagingServicesService.create({
         service_name: serviceName,
-        alpha_sender_id: alphaSenderId,
+        alpha_sender_id: normalizedAlphaSenderId,
         usecase,
       })
 
@@ -217,29 +220,30 @@ export default function ServicesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Services de messagerie</h1>
-          <p className="text-muted-foreground">
-            Gérez vos identifiants d&apos;expéditeur pour vos campagnes SMS
+          <h1 className="text-2xl font-semibold">Services de messagerie</h1>
+          <p className="text-muted-foreground mt-1">
+            Gérez vos identifiants d&apos;expéditeur pour vos campagnes SMS.
           </p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nouveau service
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nouveau service
+          </Button>
+        </div>
       </div>
 
       {/* Services Grid */}
       {services.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-muted mb-4">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="font-medium text-lg mb-2">Aucun service de messagerie</h3>
+            <h3 className="text-lg font-semibold mb-2">Aucun service de messagerie</h3>
             <p className="text-muted-foreground text-center mb-4 max-w-md">
               Créez un service de messagerie pour définir l&apos;identifiant d&apos;expéditeur
               qui apparaîtra sur les téléphones de vos destinataires.
@@ -352,12 +356,19 @@ export default function ServicesPage() {
                 id="alphaSenderId"
                 placeholder="Ex: FLOW"
                 value={alphaSenderId}
-                onChange={(e) => setAlphaSenderId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                onChange={(e) =>
+                  setAlphaSenderId(
+                    e.target.value
+                      .toUpperCase()
+                      .replace(/[^A-Z0-9 ]/g, "")
+                      .replace(/\s+/g, " ")
+                  )
+                }
                 maxLength={11}
                 className="font-mono uppercase"
               />
               <p className="text-xs text-muted-foreground">
-                3-11 caractères alphanumériques. C&apos;est le nom qui apparaîtra comme expéditeur.
+                3-11 caractères (lettres majuscules, chiffres et espaces). C&apos;est le nom qui apparaîtra comme expéditeur.
               </p>
             </div>
 

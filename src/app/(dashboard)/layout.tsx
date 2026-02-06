@@ -7,6 +7,7 @@ import { authService } from "@/services"
 import { Sidebar, Header, MobileNav } from "@/components/layout"
 import { MFARecommendationDialog } from "@/components/mfa-recommendation-dialog"
 import { Loader2 } from "lucide-react"
+import { authStorage } from "@/lib/auth-storage"
 
 export default function DashboardLayout({
   children,
@@ -26,7 +27,7 @@ export default function DashboardLayout({
     console.log("Dashboard checkAuth:", { requiresMFAVerification, isAuthenticated, user: !!user })
 
     // Check if we have a token
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+    const token = authStorage.getItem("access_token")
     const mfaRequired =
       typeof window !== "undefined" && sessionStorage.getItem("mfa_required") === "1"
 
@@ -47,13 +48,13 @@ export default function DashboardLayout({
     if (!user) {
       try {
         await fetchProfile()
-        const storedUser = localStorage.getItem("user")
+        const storedUser = authStorage.getItem("user")
         currentUser = storedUser ? JSON.parse(storedUser) : null
       } catch {
         // Token is invalid, redirect to login
-        localStorage.removeItem("access_token")
-        localStorage.removeItem("refresh_token")
-        localStorage.removeItem("user")
+        authStorage.removeItem("access_token")
+        authStorage.removeItem("refresh_token")
+        authStorage.removeItem("user")
         router.replace("/auth/login")
         return
       }
@@ -86,7 +87,7 @@ export default function DashboardLayout({
     setIsReady(true)
 
     if (typeof window !== "undefined" && !apiKeyEnsured) {
-      const storedUser = localStorage.getItem("user")
+      const storedUser = authStorage.getItem("user")
       const hasKey = storedUser && JSON.parse(storedUser).api_key
       if (!hasKey) {
         try {
@@ -94,7 +95,7 @@ export default function DashboardLayout({
           if (createdKey.success) {
             const updatedUser = user ? { ...user, api_key: createdKey.api_key, api_key_id: createdKey.key_id } : null
             if (updatedUser) {
-              localStorage.setItem("user", JSON.stringify(updatedUser))
+              authStorage.setItem("user", JSON.stringify(updatedUser))
             }
           }
         } catch {
@@ -129,13 +130,13 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-dashboard">
       <Sidebar />
       <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div className="lg:pl-64">
         <Header onMenuClick={() => setMobileNavOpen(true)} />
-        <main className="py-6">
-          <div className="px-4 sm:px-6 lg:px-8">{children}</div>
+        <main className="py-8">
+          <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">{children}</div>
         </main>
       </div>
       <MFARecommendationDialog />

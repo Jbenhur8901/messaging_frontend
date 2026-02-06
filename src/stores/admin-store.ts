@@ -1,7 +1,8 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { createJSONStorage, persist } from "zustand/middleware"
 import type { AdminUser, AdminDashboard, CreditRequest, CreditRequestStatus, Organization, Pagination } from "@/types"
 import { adminService } from "@/services/admin"
+import { authStorage } from "@/lib/auth-storage"
 
 interface AdminState {
   admin: AdminUser | null
@@ -171,6 +172,7 @@ export const useAdminStore = create<AdminState>()(
     }),
     {
       name: "admin-storage",
+      storage: createJSONStorage(() => authStorage),
       partialize: (state) => ({
         admin: state.admin,
         isAuthenticated: state.isAuthenticated,

@@ -55,18 +55,18 @@ export default function ForgotPasswordPage() {
 
   if (isSubmitted) {
     return (
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
-            <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+      <Card className="w-full border-0 bg-transparent p-0 shadow-none">
+        <CardHeader className="space-y-2 p-0 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900">
+            <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <CardTitle className="text-2xl font-bold">Email envoyé</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl font-semibold text-foreground">Email envoyé</CardTitle>
+          <CardDescription className="text-muted-foreground">
             Si un compte existe avec cette adresse email, vous recevrez un lien
             pour réinitialiser votre mot de passe.
           </CardDescription>
         </CardHeader>
-        <CardFooter>
+        <CardFooter className="px-0 pb-0 pt-6">
           <Link href="/auth/login" className="w-full">
             <Button variant="outline" className="w-full">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -79,15 +79,15 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Mot de passe oublié</CardTitle>
-        <CardDescription>
+    <Card className="w-full border-0 bg-transparent p-0 shadow-none">
+      <CardHeader className="space-y-2 p-0">
+        <CardTitle className="text-2xl font-semibold text-foreground">Mot de passe oublié</CardTitle>
+        <CardDescription className="text-muted-foreground">
           Entrez votre adresse email pour recevoir un lien de réinitialisation
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-0 pb-0 pt-6">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
             )}
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
+        <CardFooter className="flex flex-col space-y-4 px-0 pb-0 pt-6">
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Envoyer le lien

@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios"
+import { authStorage } from "@/lib/auth-storage"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -10,7 +11,7 @@ export const api = axios.create({
 const getStoredApiKey = (): string | null => {
   if (typeof window === "undefined") return null
   try {
-    const storedAuth = localStorage.getItem("auth-storage")
+    const storedAuth = authStorage.getItem("auth-storage")
     if (storedAuth) {
       const parsed = JSON.parse(storedAuth)
       const storedKey = parsed.state?.apiKey
@@ -22,7 +23,7 @@ const getStoredApiKey = (): string | null => {
     // Ignore parse errors
   }
   try {
-    const user = localStorage.getItem("user")
+    const user = authStorage.getItem("user")
     if (user) {
       const parsedUser = JSON.parse(user)
       const apiKey = parsedUser.api_key
@@ -47,7 +48,7 @@ const isAuthEndpoint = (url?: string) => {
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("access_token")
+      const token = authStorage.getItem("access_token")
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }
@@ -90,7 +91,7 @@ api.interceptors.response.use(
       originalRequest._retry = true
 
       if (typeof window !== "undefined") {
-        const refreshToken = localStorage.getItem("refresh_token")
+        const refreshToken = authStorage.getItem("refresh_token")
 
         if (refreshToken) {
           try {
@@ -107,22 +108,22 @@ api.interceptors.response.use(
               }
             )
 
-            localStorage.setItem("access_token", data.session.access_token)
-            localStorage.setItem("refresh_token", data.session.refresh_token)
+            authStorage.setItem("access_token", data.session.access_token)
+            authStorage.setItem("refresh_token", data.session.refresh_token)
 
             originalRequest.headers.Authorization = `Bearer ${data.session.access_token}`
             return api(originalRequest)
           } catch {
-            localStorage.removeItem("access_token")
-            localStorage.removeItem("refresh_token")
-            localStorage.removeItem("user")
-            localStorage.removeItem("auth-storage")
+            authStorage.removeItem("access_token")
+            authStorage.removeItem("refresh_token")
+            authStorage.removeItem("user")
+            authStorage.removeItem("auth-storage")
             window.location.href = "/auth/login"
           }
         } else {
-          localStorage.removeItem("access_token")
-          localStorage.removeItem("user")
-          localStorage.removeItem("auth-storage")
+          authStorage.removeItem("access_token")
+          authStorage.removeItem("user")
+          authStorage.removeItem("auth-storage")
           window.location.href = "/auth/login"
         }
       }
@@ -143,7 +144,7 @@ export const apiJson = axios.create({
 apiJson.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("access_token")
+      const token = authStorage.getItem("access_token")
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }
@@ -164,10 +165,10 @@ apiJson.interceptors.response.use(
   async (error: AxiosError) => {
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("access_token")
-        localStorage.removeItem("refresh_token")
-        localStorage.removeItem("user")
-        localStorage.removeItem("auth-storage")
+        authStorage.removeItem("access_token")
+        authStorage.removeItem("refresh_token")
+        authStorage.removeItem("user")
+        authStorage.removeItem("auth-storage")
         window.location.href = "/auth/login"
       }
     }

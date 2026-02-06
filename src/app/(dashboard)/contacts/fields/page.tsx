@@ -240,9 +240,8 @@ export default function CustomFieldsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Link href="/contacts">
             <Button variant="ghost" size="icon">
@@ -250,16 +249,18 @@ export default function CustomFieldsPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Champs personnalisés</h1>
-            <p className="text-muted-foreground">
-              Définissez les champs supplémentaires pour vos contacts
+            <h1 className="text-2xl font-semibold">Champs personnalisés</h1>
+            <p className="text-muted-foreground mt-1">
+              Définissez les champs supplémentaires pour vos contacts.
             </p>
           </div>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nouveau champ
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nouveau champ
+          </Button>
+        </div>
       </div>
 
       {/* Fields Table */}
@@ -274,7 +275,7 @@ export default function CustomFieldsPage() {
           {!fields || fields.length === 0 ? (
             <div className="text-center py-12">
               <div className="flex justify-center mb-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/60 border border-border/60">
                   <Type className="h-8 w-8 text-muted-foreground" />
                 </div>
               </div>

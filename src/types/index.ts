@@ -469,3 +469,138 @@ export interface AdminDashboard {
   approved_today: number
   credits_distributed_today: number
 }
+
+// WhatsApp types
+export interface WhatsAppConfig {
+  access_token?: string | null
+  phone_number_id?: string | null
+  business_account_id?: string | null
+  enabled?: boolean | null
+  is_configured: boolean
+  last_verified_at?: string
+}
+
+export type WhatsAppTemplateStatus = "APPROVED" | "PENDING" | "REJECTED"
+export type WhatsAppTemplateCategory = "UTILITY" | "MARKETING" | "AUTHENTICATION"
+export type WhatsAppComponentType = "HEADER" | "BODY" | "FOOTER" | "BUTTONS"
+export type WhatsAppHeaderFormat = "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT"
+export type WhatsAppButtonType = "QUICK_REPLY" | "URL" | "PHONE_NUMBER"
+
+export interface WhatsAppTemplateParameter {
+  type: "text" | "image" | "video" | "document"
+  text?: string
+  image?: { link: string }
+  video?: { link: string }
+  document?: { link: string; filename?: string }
+}
+
+export interface WhatsAppTemplateButton {
+  type: WhatsAppButtonType
+  text: string
+  url?: string
+  phone_number?: string
+}
+
+export interface WhatsAppTemplateComponent {
+  type: WhatsAppComponentType
+  format?: WhatsAppHeaderFormat
+  text?: string
+  buttons?: WhatsAppTemplateButton[]
+  example?: {
+    header_text?: string[]
+    body_text?: string[][]
+    header_handle?: string[]
+    filename?: string
+  }
+}
+
+export interface WhatsAppTemplate {
+  id: string
+  name: string
+  language: string
+  status: WhatsAppTemplateStatus
+  category: WhatsAppTemplateCategory
+  components: WhatsAppTemplateComponent[]
+  created_at?: string
+  updated_at?: string
+}
+
+export type WhatsAppMessageStatus = "queued" | "sent" | "delivered" | "read" | "failed"
+
+export interface WhatsAppMessageEvent {
+  status: WhatsAppMessageStatus
+  timestamp: string
+  error_code?: string
+  error_message?: string
+}
+
+export interface WhatsAppMessage {
+  id: string
+  message_id: string
+  phone_number: string
+  template_name?: string
+  template_language?: string
+  status: WhatsAppMessageStatus
+  error_message?: string
+  sent_at?: string
+  delivered_at?: string
+  read_at?: string
+  created_at: string
+}
+
+export type WhatsAppBroadcastStatus = "pending" | "processing" | "completed" | "failed" | "cancelled"
+
+export interface WhatsAppBroadcast {
+  id: string
+  campaign_name: string | null
+  template_id: string
+  template_name: string
+  template_language: string
+  status: WhatsAppBroadcastStatus
+  total_recipients: number
+  sent_count: number
+  delivered_count: number
+  read_count: number
+  failed_count: number
+  pending_count: number
+  progress_percent: number
+  created_at: string
+  completed_at: string | null
+}
+
+export interface WhatsAppBroadcastMessage {
+  phone: string
+  status: WhatsAppMessageStatus
+  message_id: string | null
+  error: string | null
+  sent_at: string | null
+  delivered_at: string | null
+  read_at: string | null
+}
+
+export interface WhatsAppStats {
+  total_messages: number
+  delivered: number
+  read: number
+  failed: number
+  delivery_rate: number
+  read_rate: number
+  period_days: number
+}
+
+export interface WhatsAppBroadcastResult {
+  success: boolean
+  broadcast_id: string
+  status: string
+  total_recipients: number
+  template_name: string
+  template_language: string
+  message: string
+}
+
+export interface WhatsAppMessageResult {
+  success: boolean
+  message_id: string
+  status: WhatsAppMessageStatus
+  phone_number: string
+}

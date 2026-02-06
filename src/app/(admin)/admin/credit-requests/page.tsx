@@ -49,9 +49,9 @@ const statusLabels: Record<CreditRequestStatus, string> = {
   cancelled: "Annulé",
 }
 
-const statusVariants: Record<CreditRequestStatus, "default" | "secondary" | "destructive" | "outline"> = {
+const statusVariants: Record<CreditRequestStatus, "default" | "secondary" | "destructive" | "outline" | "success"> = {
   pending: "secondary",
-  approved: "default",
+  approved: "success",
   rejected: "destructive",
   cancelled: "outline",
 }
@@ -141,13 +141,12 @@ export default function AdminCreditRequestsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Demandes de crédits</h1>
-          <p className="text-muted-foreground">
-            Gérez les demandes de recharge des organisations
+          <h1 className="text-2xl font-semibold">Demandes de crédits</h1>
+          <p className="text-muted-foreground mt-1">
+            Gérez les demandes de recharge des organisations.
           </p>
         </div>
         <div className="flex items-center gap-2">

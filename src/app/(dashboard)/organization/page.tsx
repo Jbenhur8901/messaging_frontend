@@ -80,21 +80,22 @@ export default function OrganizationPage() {
   const userRole = organizations.find((o) => o.id === currentOrganization?.id)?.role
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Organisation</h1>
-          <p className="text-muted-foreground">
-            Gérez les paramètres de votre organisation
+          <h1 className="text-2xl font-semibold">Organisation</h1>
+          <p className="text-muted-foreground mt-1">
+            Gérez les paramètres de votre organisation.
           </p>
         </div>
-        <Button asChild variant="outline">
-          <Link href="/organization/members">
-            <Users className="mr-2 h-4 w-4" />
-            Gérer les membres
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/organization/members">
+              <Users className="mr-2 h-4 w-4" />
+              Gérer les membres
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Organization Info */}

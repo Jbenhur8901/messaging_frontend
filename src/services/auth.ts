@@ -1,4 +1,5 @@
 import { api, apiJson } from "./api"
+import { authStorage } from "@/lib/auth-storage"
 import type { AuthResponse, User, APIKey, MFAStatus, MFASetupResponse } from "@/types"
 
 export const authService = {
@@ -21,8 +22,8 @@ export const authService = {
     const { data } = await api.post<AuthResponse>("/v1/auth/signup", formData)
 
     if (typeof window !== "undefined" && data.session) {
-      localStorage.setItem("access_token", data.session.access_token)
-      localStorage.setItem("refresh_token", data.session.refresh_token)
+      authStorage.setItem("access_token", data.session.access_token)
+      authStorage.setItem("refresh_token", data.session.refresh_token)
 
       // Create a default API key for the new user
       try {
@@ -45,7 +46,7 @@ export const authService = {
         console.error("Error creating API key:", error)
       }
 
-      localStorage.setItem("user", JSON.stringify(data.user))
+      authStorage.setItem("user", JSON.stringify(data.user))
     }
 
     return data
@@ -63,17 +64,17 @@ export const authService = {
         if (data.pre_auth_token) {
           sessionStorage.setItem("mfa_pre_auth_token", data.pre_auth_token)
         }
-        localStorage.setItem("user", JSON.stringify(data.user))
+        authStorage.setItem("user", JSON.stringify(data.user))
         return data
       }
 
       if (data.session) {
-        localStorage.setItem("access_token", data.session.access_token)
-        localStorage.setItem("refresh_token", data.session.refresh_token)
+        authStorage.setItem("access_token", data.session.access_token)
+        authStorage.setItem("refresh_token", data.session.refresh_token)
       }
 
       // Check if we already have an API key stored locally
-      const storedAuth = localStorage.getItem("auth-storage")
+      const storedAuth = authStorage.getItem("auth-storage")
       let existingApiKey: string | null = null
 
       if (storedAuth) {
@@ -117,7 +118,7 @@ export const authService = {
         }
       }
 
-      localStorage.setItem("user", JSON.stringify(data.user))
+      authStorage.setItem("user", JSON.stringify(data.user))
     }
 
     return data
@@ -128,10 +129,10 @@ export const authService = {
       await api.post("/v1/auth/signout")
     } finally {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("access_token")
-        localStorage.removeItem("refresh_token")
-        localStorage.removeItem("user")
-        localStorage.removeItem("auth-storage")
+        authStorage.removeItem("access_token")
+        authStorage.removeItem("refresh_token")
+        authStorage.removeItem("user")
+        authStorage.removeItem("auth-storage")
         sessionStorage.removeItem("mfa_required")
         sessionStorage.removeItem("mfa_pre_auth_token")
       }
@@ -170,8 +171,8 @@ export const authService = {
     }
 
     if (typeof window !== "undefined") {
-      localStorage.setItem("access_token", data.session.access_token)
-      localStorage.setItem("refresh_token", data.session.refresh_token)
+      authStorage.setItem("access_token", data.session.access_token)
+      authStorage.setItem("refresh_token", data.session.refresh_token)
     }
 
     return data
@@ -211,14 +212,14 @@ export const authService = {
 
   isAuthenticated(): boolean {
     if (typeof window !== "undefined") {
-      return !!localStorage.getItem("access_token")
+      return !!authStorage.getItem("access_token")
     }
     return false
   },
 
   getStoredUser(): User | null {
     if (typeof window !== "undefined") {
-      const user = localStorage.getItem("user")
+      const user = authStorage.getItem("user")
       return user ? JSON.parse(user) : null
     }
     return null
@@ -257,8 +258,8 @@ export const authService = {
 
     if (typeof window !== "undefined") {
       if (data.session) {
-        localStorage.setItem("access_token", data.session.access_token)
-        localStorage.setItem("refresh_token", data.session.refresh_token)
+        authStorage.setItem("access_token", data.session.access_token)
+        authStorage.setItem("refresh_token", data.session.refresh_token)
       }
       sessionStorage.removeItem("mfa_pre_auth_token")
     }

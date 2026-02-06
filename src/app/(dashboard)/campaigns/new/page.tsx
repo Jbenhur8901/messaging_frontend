@@ -305,8 +305,7 @@ export default function NewCampaignPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex items-center gap-4">
         <Link href="/campaigns">
           <Button variant="ghost" size="icon">
@@ -314,9 +313,9 @@ export default function NewCampaignPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Nouvelle campagne</h1>
-          <p className="text-muted-foreground">
-            Créez et envoyez une campagne SMS
+          <h1 className="text-2xl font-semibold">Nouvelle campagne</h1>
+          <p className="text-muted-foreground mt-1">
+            Créez et envoyez une campagne SMS.
           </p>
         </div>
       </div>
@@ -425,7 +424,7 @@ export default function NewCampaignPage() {
                 <Separator />
 
                 {selectionMode === "contacts" && (
-                  <ScrollArea className="h-64 rounded-md border p-4">
+                  <ScrollArea className="h-64 rounded-md border border-border/60 bg-background p-4">
                     <div className="space-y-2">
                       {isLoading && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -460,7 +459,7 @@ export default function NewCampaignPage() {
                       {contacts.map((contact) => (
                         <div
                           key={contact.id}
-                          className="flex items-center space-x-2"
+                          className="flex items-center space-x-2 rounded-md px-2 py-1 hover:bg-muted/60"
                         >
                           <Checkbox
                             id={contact.id}
@@ -498,7 +497,7 @@ export default function NewCampaignPage() {
                       <Badge
                         key={tag.id}
                         variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                        className="cursor-pointer"
+                        className="cursor-pointer transition-colors"
                         style={{
                           backgroundColor: selectedTags.includes(tag.id)
                             ? tag.color
@@ -554,21 +553,21 @@ export default function NewCampaignPage() {
                         Templates
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Sélectionner un template</DialogTitle>
-                      </DialogHeader>
-                      <ScrollArea className="h-96">
-                        <div className="space-y-2">
-                          {templates.map((template) => (
-                            <div
-                              key={template.id}
-                              className="rounded-lg border p-3 hover:bg-muted/50 cursor-pointer"
-                              onClick={() => applyTemplate(template)}
-                            >
-                              <p className="font-medium">{template.name}</p>
-                              <p className="text-sm text-muted-foreground truncate">
-                                {template.body}
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Sélectionner un template</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="h-96">
+                      <div className="space-y-2">
+                        {templates.map((template) => (
+                          <div
+                            key={template.id}
+                            className="cursor-pointer rounded-md border border-border/60 p-3 transition-colors hover:bg-muted/60"
+                            onClick={() => applyTemplate(template)}
+                          >
+                            <p className="font-medium">{template.name}</p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {template.body}
                               </p>
                             </div>
                           ))}
@@ -634,12 +633,12 @@ export default function NewCampaignPage() {
                     </div>
 
                     {selectedTemplateId && (
-                      <div className="rounded-lg border p-4 bg-muted/30">
+                      <div className="rounded-lg border border-border/60 bg-muted/60 p-4">
                         <p className="text-sm font-medium mb-2">Aperçu du template :</p>
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                           {templates.find((t) => t.id === selectedTemplateId)?.body}
                         </p>
-                        <div className="mt-3 pt-3 border-t">
+                        <div className="mt-3 border-t pt-3">
                           <p className="text-xs text-muted-foreground">
                             Variables disponibles : {"{"}{"{"}<span className="font-mono">first_name</span>{"}"}{"}"},
                             {"{"}{"{"}<span className="font-mono">last_name</span>{"}"}{"}"},
@@ -698,13 +697,13 @@ export default function NewCampaignPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Crédits disponibles</span>
-                  <span className={hasEnoughCredits ? "text-green-600" : "text-destructive"}>
+                  <span className={hasEnoughCredits ? "text-emerald-600" : "text-destructive"}>
                     {formatNumber(balance?.credit_available || 0)}
                   </span>
                 </div>
 
                 {!hasEnoughCredits && totalCredits > 0 && (
-                  <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                  <div className="flex items-start gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4 mt-0.5" />
                     <div>
                       <p className="font-medium">Crédits insuffisants</p>

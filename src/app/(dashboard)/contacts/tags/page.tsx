@@ -132,95 +132,96 @@ export default function TagsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tags</h1>
-          <p className="text-muted-foreground">
-            Organisez vos contacts avec des tags
+          <h1 className="text-2xl font-semibold">Tags</h1>
+          <p className="text-muted-foreground mt-1">
+            Organisez vos contacts avec des tags.
           </p>
         </div>
-        <Dialog
-          open={isDialogOpen}
-          onOpenChange={(open) => {
-            setIsDialogOpen(open)
-            if (!open) resetForm()
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouveau tag
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingTag ? "Modifier le tag" : "Nouveau tag"}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nom</Label>
-                <Input
-                  id="name"
-                  placeholder="Ex: VIP"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Couleur</Label>
-                <div className="flex flex-wrap gap-2">
-                  {COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className={`h-8 w-8 rounded-full transition-transform ${
-                        color === c ? "ring-2 ring-offset-2 ring-primary scale-110" : ""
-                      }`}
-                      style={{ backgroundColor: c }}
-                      onClick={() => setColor(c)}
-                    />
-                  ))}
+        <div className="flex flex-wrap gap-2">
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open)
+              if (!open) resetForm()
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Nouveau tag
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingTag ? "Modifier le tag" : "Nouveau tag"}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nom</Label>
+                  <Input
+                    id="name"
+                    placeholder="Ex: VIP"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Couleur</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        className={`h-8 w-8 rounded-full transition-transform ${
+                          color === c ? "ring-2 ring-offset-2 ring-primary scale-110" : ""
+                        }`}
+                        style={{ backgroundColor: c }}
+                        onClick={() => setColor(c)}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (optionnel)</Label>
+                  <Input
+                    id="description"
+                    placeholder="Description du tag"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <div className="pt-2">
+                  <Label>Aperçu</Label>
+                  <div className="mt-2">
+                    <Badge style={{ backgroundColor: color }}>
+                      {name || "Tag"}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description (optionnel)</Label>
-                <Input
-                  id="description"
-                  placeholder="Description du tag"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-              <div className="pt-2">
-                <Label>Aperçu</Label>
-                <div className="mt-2">
-                  <Badge style={{ backgroundColor: color }}>
-                    {name || "Tag"}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsDialogOpen(false)
-                  resetForm()
-                }}
-              >
-                Annuler
-              </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingTag ? "Enregistrer" : "Créer"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsDialogOpen(false)
+                    resetForm()
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {editingTag ? "Enregistrer" : "Créer"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Tags Grid */}
@@ -275,7 +276,7 @@ export default function TagsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-semibold">
                   {formatNumber(typeof tag.contact_count === "number" ? tag.contact_count : 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">contacts</p>

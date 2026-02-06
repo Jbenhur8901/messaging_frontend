@@ -63,15 +63,17 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Connexion</CardTitle>
-        <CardDescription>
-          Entrez vos identifiants pour accéder à votre compte
+    <Card className="w-full border-0 bg-transparent p-0 shadow-none">
+      <CardHeader className="space-y-2 p-0">
+        <CardTitle className="text-2xl font-semibold text-foreground">
+          Connexion
+        </CardTitle>
+        <CardDescription className="text-muted-foreground">
+          Entrez vos identifiants pour accéder à votre compte.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-0 pb-0 pt-6">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -109,7 +111,7 @@ export default function LoginPage() {
             )}
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
+        <CardFooter className="flex flex-col space-y-4 px-0 pb-0 pt-6">
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Se connecter

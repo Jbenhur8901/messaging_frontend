@@ -5,6 +5,7 @@ import Link from "next/link"
 import { dashboardService } from "@/services"
 import type { DashboardOverview, DailyStat, Broadcast } from "@/types"
 import { formatNumber, formatDate } from "@/lib/utils"
+import { authStorage } from "@/lib/auth-storage"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -33,7 +34,7 @@ import { useOrganizationStore } from "@/stores"
 const getStoredApiKey = () => {
   if (typeof window === "undefined") return null
   try {
-    const storedAuth = localStorage.getItem("auth-storage")
+    const storedAuth = authStorage.getItem("auth-storage")
     if (storedAuth) {
       const parsed = JSON.parse(storedAuth)
       const storedKey = parsed.state?.apiKey
@@ -45,7 +46,7 @@ const getStoredApiKey = () => {
     // Ignore parse errors
   }
   try {
-    const user = localStorage.getItem("user")
+    const user = authStorage.getItem("user")
     if (user) {
       const parsedUser = JSON.parse(user)
       const apiKey = parsedUser.api_key
@@ -131,7 +132,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadData = async () => {
       // Check for token or API key before making API calls
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+      const token = authStorage.getItem("access_token")
       const apiKey = getStoredApiKey()
       if (!token && !apiKey) {
         setIsLoading(false)
@@ -211,12 +212,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
+      {/* Simple Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
             Vue d&apos;ensemble de votre activité SMS
           </p>
         </div>
@@ -229,20 +230,20 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Crédits disponibles
             </CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-semibold">
               {formatNumber(overview?.credits.available || 0)}
             </div>
             {overview?.credits.expiring_soon && overview.credits.expiring_soon > 0 && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-2">
                 {formatNumber(overview.credits.expiring_soon)} expirent dans{" "}
                 {overview.credits.expiring_in_days} jours
               </p>
@@ -251,52 +252,52 @@ export default function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Messages aujourd&apos;hui
             </CardTitle>
             <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-semibold">
               {formatNumber(overview?.today.messages_sent || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-2">
               {formatNumber(overview?.today.messages_delivered || 0)} livrés
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Taux de livraison
             </CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-semibold">
               {deliveryRateToDisplay.toFixed(1)}%
             </div>
             <Progress
               value={deliveryRateToDisplay}
-              className="mt-2"
+              className="mt-3 h-1.5"
             />
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Cette semaine
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-semibold">
               {formatNumber(broadcastTotals.total || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-2">
               {deliveryRateToDisplay.toFixed(1)}% de livraison
             </p>
           </CardContent>
@@ -338,16 +339,16 @@ export default function DashboardPage() {
                     <Line
                       type="monotone"
                       dataKey="messages_sent"
-                      stroke="#1800ad"
-                      strokeWidth={2}
+                      stroke="#0b5fff"
+                      strokeWidth={2.5}
                       dot={false}
                       name="Envoyés"
                     />
                     <Line
                       type="monotone"
                       dataKey="messages_delivered"
-                      stroke="#22c55e"
-                      strokeWidth={2}
+                      stroke="#1f9d55"
+                      strokeWidth={2.5}
                       dot={false}
                       name="Livrés"
                     />
@@ -386,7 +387,7 @@ export default function DashboardPage() {
                     href={`/campaigns/${broadcast.broadcast_id}`}
                     className="block"
                   >
-                    <div className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background p-4 transition-all duration-200 hover:bg-primary/[0.02] hover:border-primary/20 hover:shadow-[var(--shadow-sm)]">
                       <div className="space-y-1">
                         <p className="font-medium">
                           {broadcast.campaign_name || "Sans nom"}

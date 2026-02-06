@@ -114,7 +114,7 @@ export default function InvitePage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <div className="flex items-center gap-2 text-green-600">
+            <div className="flex items-center gap-2 text-emerald-600">
               <CheckCircle className="h-5 w-5" />
               <CardTitle>Invitation acceptée</CardTitle>
             </div>
@@ -133,19 +133,25 @@ export default function InvitePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            <CardTitle>Invitation</CardTitle>
+    <div className="min-h-screen bg-background px-4 py-10">
+      <div className="relative z-10 mx-auto w-full max-w-md space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <UserPlus className="h-5 w-5 text-primary" />
           </div>
-          <CardDescription>
-            Vous avez été invité à rejoindre une organisation
-          </CardDescription>
+          <div>
+            <h1 className="text-2xl font-semibold">Invitation</h1>
+            <p className="text-muted-foreground mt-1">
+              Vous avez été invité à rejoindre une organisation
+            </p>
+          </div>
+        </div>
+        <Card className="border border-border/60 shadow-[var(--shadow-sm)]">
+        <CardHeader className="sr-only">
+          <CardTitle>Détails de l&apos;invitation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
+          <div className="flex items-center gap-3 rounded-lg bg-muted/60 p-4">
             <Building2 className="h-10 w-10 text-muted-foreground" />
             <div>
               <p className="font-medium text-lg">{invitation?.organization_name}</p>
@@ -161,8 +167,8 @@ export default function InvitePage() {
           </div>
 
           {isAuthenticated && user?.email !== invitation?.email && (
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-sm">
-              <p className="text-yellow-800 dark:text-yellow-200">
+            <div className="rounded-lg border border-amber-200/70 bg-amber-50 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/30">
+              <p className="text-amber-800 dark:text-amber-200">
                 Cette invitation a été envoyée à <strong>{invitation?.email}</strong>.
                 Vous êtes connecté en tant que <strong>{user?.email}</strong>.
               </p>
@@ -186,6 +192,7 @@ export default function InvitePage() {
           </Button>
         </CardFooter>
       </Card>
+      </div>
     </div>
   )
 }

@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { formatNumber } from "@/lib/utils"
+import { authStorage } from "@/lib/auth-storage"
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -79,15 +80,13 @@ export function Header({ onMenuClick }: HeaderProps) {
         organization_name: selected.name,
       }
       setUser(updatedUser)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("user", JSON.stringify(updatedUser))
-      }
+      authStorage.setItem("user", JSON.stringify(updatedUser))
     }
     fetchBalance()
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b bg-background px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border/60 bg-background/85 px-4 backdrop-blur-sm shadow-[var(--shadow-xs)] sm:gap-x-6 sm:px-6 lg:px-8">
       <Button
         variant="ghost"
         size="icon"
@@ -99,11 +98,11 @@ export function Header({ onMenuClick }: HeaderProps) {
       </Button>
 
       <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-        <div className="flex flex-1 items-center justify-end gap-x-4 lg:gap-x-6">
+        <div className="flex flex-1 items-center justify-end gap-x-3 lg:gap-x-4">
           {/* Organization switcher */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
+              <Button variant="outline" className="flex items-center gap-2 border-border/70 bg-background/80 shadow-[var(--shadow-xs)]">
                 <Building2 className="h-4 w-4" />
                 <span className="max-w-[180px] truncate">
                   {currentOrganization?.name || user?.organization_name || "Organisation"}
@@ -141,9 +140,9 @@ export function Header({ onMenuClick }: HeaderProps) {
           {/* Credits display */}
           {balance && (
             <Link href="/credits">
-              <Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1.5">
+              <Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1.5 border border-border/60 bg-secondary/70 text-secondary-foreground hover:bg-secondary/80 transition-all duration-200">
                 <CreditCard className="h-3.5 w-3.5" />
-                <span className="font-medium">
+                <span className="font-semibold">
                   {formatNumber(balance.credit_available)} crédits
                 </span>
               </Badge>
@@ -170,9 +169,9 @@ export function Header({ onMenuClick }: HeaderProps) {
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback>{initials}</AvatarFallback>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                <Avatar className="h-9 w-9 ring-1 ring-border/70 ring-offset-2 ring-offset-background transition-all hover:ring-primary/40">
+                  <AvatarFallback className="bg-primary text-white text-sm font-semibold">{initials}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>

@@ -96,33 +96,36 @@ export default function AdminOrganizationDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex items-center gap-4">
-        <Button asChild variant="ghost" size="icon">
-          <Link href="/admin/organizations">
+        <Link href="/admin/organizations">
+          <Button variant="ghost" size="icon">
             <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+          </Button>
+        </Link>
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">{organization.name}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold">{organization.name}</h1>
             <Badge variant={organization.is_active ? "default" : "secondary"}>
               {organization.is_active ? "Actif" : "Inactif"}
             </Badge>
           </div>
-          <p className="text-muted-foreground">
-            Détails de l&apos;organisation
+          <p className="text-muted-foreground mt-1">
+            Details de l&apos;organisation.
           </p>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+        <Card className="hover-lift">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Crédits</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">
+              Crédits
+            </CardTitle>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-500/10">
+              <CreditCard className="h-4 w-4 text-green-500" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
@@ -131,10 +134,14 @@ export default function AdminOrganizationDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover-lift">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Membres</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">
+              Membres
+            </CardTitle>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+              <Users className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
@@ -143,10 +150,14 @@ export default function AdminOrganizationDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover-lift">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Demandes en attente</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">
+              Demandes en attente
+            </CardTitle>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/10">
+              <Clock className="h-4 w-4 text-orange-500" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">

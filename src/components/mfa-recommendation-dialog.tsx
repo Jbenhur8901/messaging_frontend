@@ -39,8 +39,8 @@ export function MFARecommendationDialog() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <ShieldCheck className="h-6 w-6 text-primary" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <ShieldCheck className="h-6 w-6" />
             </div>
             <DialogTitle className="text-xl">
               Sécurisez votre compte
@@ -53,7 +53,7 @@ export function MFARecommendationDialog() {
         </DialogHeader>
 
         <div className="py-4">
-          <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
+          <div className="rounded-lg border border-border/60 bg-muted/60 p-4 space-y-3">
             <h4 className="font-medium flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Pourquoi activer le 2FA ?

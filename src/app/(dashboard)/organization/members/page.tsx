@@ -176,23 +176,23 @@ export default function MembersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button asChild variant="ghost" size="icon">
-            <Link href="/organization">
+          <Link href="/organization">
+            <Button variant="ghost" size="icon">
               <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
+            </Button>
+          </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Membres</h1>
-            <p className="text-muted-foreground">
-              Gérez les membres de {currentOrganization?.name}
+            <h1 className="text-2xl font-semibold">Membres</h1>
+            <p className="text-muted-foreground mt-1">
+              Gérez les membres de {currentOrganization?.name}.
             </p>
           </div>
         </div>
-        {canManageMembers && (
+        <div className="flex flex-wrap gap-2">
+          {canManageMembers && (
           <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -245,7 +245,8 @@ export default function MembersPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Members List */}
@@ -321,7 +322,7 @@ export default function MembersPage() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={member.status === "accepted" ? "default" : "secondary"}
+                        variant={member.status === "accepted" ? "success" : "secondary"}
                       >
                         {member.status === "accepted" ? "Actif" : "En attente"}
                       </Badge>

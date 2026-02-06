@@ -7,6 +7,7 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { Providers } from "@/components/providers"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { authStorage } from "@/lib/auth-storage"
 
 export default function AdminLayout({
   children,
@@ -30,7 +31,7 @@ export default function AdminLayout({
       }
 
       // Check if admin token exists
-      const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null
+      const token = authStorage.getItem("admin_token")
       if (!token) {
         router.push("/admin/login")
         return
@@ -69,7 +70,7 @@ export default function AdminLayout({
 
   return (
     <Providers>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-dashboard">
         <AdminSidebar />
 
         {/* Mobile Menu */}

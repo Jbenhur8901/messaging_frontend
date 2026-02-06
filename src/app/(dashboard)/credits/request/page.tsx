@@ -52,18 +52,17 @@ export default function CreditRequestPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex items-center gap-4">
-        <Button asChild variant="ghost" size="icon">
-          <Link href="/credits">
+        <Link href="/credits">
+          <Button variant="ghost" size="icon">
             <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+          </Button>
+        </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Demander des crédits</h1>
-          <p className="text-muted-foreground">
-            Soumettez une demande de recharge de crédits
+          <h1 className="text-2xl font-semibold">Demander des crédits</h1>
+          <p className="text-muted-foreground mt-1">
+            Soumettez une demande de recharge de crédits.
           </p>
         </div>
       </div>

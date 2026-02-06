@@ -1,7 +1,18 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { createJSONStorage, persist } from "zustand/middleware"
 import type { User } from "@/types"
 import { authService } from "@/services/auth"
+import { authStorage } from "@/lib/auth-storage"
+
+const SESSION_STARTED_KEY = "session_started_at"
+
+const setSessionStarted = (timestamp = Date.now()) => {
+  authStorage.setItem(SESSION_STARTED_KEY, String(timestamp))
+}
+
+const clearSessionStarted = () => {
+  authStorage.removeItem(SESSION_STARTED_KEY)
+}
 
 interface AuthState {
   user: User | null
@@ -78,6 +89,7 @@ export const useAuthStore = create<AuthState>()(
           sessionStorage.removeItem("mfa_required")
           sessionStorage.removeItem("mfa_pre_auth_token")
         }
+        setSessionStarted()
         return {
           requiresMFAVerification: false,
           mfaPreAuthToken: null,
@@ -126,9 +138,7 @@ export const useAuthStore = create<AuthState>()(
                 if (response.user) {
                   const updatedUser = { ...response.user, api_key: createdKey.api_key, api_key_id: createdKey.key_id }
                   set({ user: updatedUser })
-                  if (typeof window !== "undefined") {
-                    localStorage.setItem("user", JSON.stringify(updatedUser))
-                  }
+                  authStorage.setItem("user", JSON.stringify(updatedUser))
                 }
               }
             } catch {
@@ -140,6 +150,7 @@ export const useAuthStore = create<AuthState>()(
           // Check if this is first login (user just registered)
           const showMFARecommendation = response.user.is_first_login && !response.user.mfa_enabled
 
+          setSessionStarted()
           set({
             user: response.user,
             apiKey,
@@ -171,6 +182,7 @@ export const useAuthStore = create<AuthState>()(
           // Store API key if returned
           const apiKey = response.user.api_key || null
           // Show MFA recommendation for new users
+          setSessionStarted()
           set({
             user: { ...response.user, is_first_login: true },
             apiKey,
@@ -196,6 +208,7 @@ export const useAuthStore = create<AuthState>()(
             sessionStorage.removeItem("mfa_required")
             sessionStorage.removeItem("mfa_pre_auth_token")
           }
+          clearSessionStarted()
           set({
             user: null,
             apiKey: null,
@@ -224,6 +237,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "auth-storage",
+      storage: createJSONStorage(() => authStorage),
       partialize: (state) => ({
         user: state.user,
         apiKey: state.apiKey,

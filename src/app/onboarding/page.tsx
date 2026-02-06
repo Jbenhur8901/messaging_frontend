@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useAuthStore, useOrganizationStore } from "@/stores"
 import { organizationsService, handleApiError } from "@/services"
+import { authStorage } from "@/lib/auth-storage"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -60,9 +61,7 @@ export default function OnboardingPage() {
           organization_name: result.organization.name,
         }
         setUser(updatedUser)
-        if (typeof window !== "undefined") {
-          localStorage.setItem("user", JSON.stringify(updatedUser))
-        }
+        authStorage.setItem("user", JSON.stringify(updatedUser))
       }
       if (result.organization) {
         setCurrentOrganization(result.organization)
@@ -101,26 +100,35 @@ export default function OnboardingPage() {
         organization_name: org.name,
       }
       setUser(updatedUser)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("user", JSON.stringify(updatedUser))
-      }
+      authStorage.setItem("user", JSON.stringify(updatedUser))
     }
     router.push("/dashboard")
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <div className="w-full max-w-2xl space-y-6">
+    <div className="min-h-screen bg-background px-4 py-10">
+      <div className="mx-auto w-full max-w-2xl space-y-8">
+        <div className="flex flex-col gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">
+              Bienvenue {user?.first_name}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Selectionnez une organisation pour continuer ou creez-en une nouvelle.
+            </p>
+          </div>
+        </div>
+
         <Card>
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                <Building2 className="h-8 w-8 text-primary" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-[var(--shadow-md)]">
+                <Building2 className="h-8 w-8 text-white" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold">Bienvenue {user?.first_name}</CardTitle>
+            <CardTitle className="text-2xl font-semibold">Choisir une organisation</CardTitle>
             <CardDescription>
-              Sélectionnez une organisation pour continuer ou créez-en une nouvelle.
+              Reprenez là où vous vous êtes arrêté ou créez un nouvel espace.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -137,7 +145,7 @@ export default function OnboardingPage() {
                     key={org.id}
                     type="button"
                     onClick={() => handleSelectOrganization(org.id)}
-                    className="w-full rounded-lg border px-4 py-3 text-left transition hover:bg-muted/50"
+                    className="w-full rounded-lg border px-4 py-3 text-left transition hover:bg-muted/60"
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -169,7 +177,7 @@ export default function OnboardingPage() {
         {showCreateForm && (
           <Card>
             <CardHeader className="space-y-1 text-center">
-              <CardTitle className="text-2xl font-bold">Créer votre workspace</CardTitle>
+              <CardTitle className="text-2xl font-semibold">Créer votre workspace</CardTitle>
               <CardDescription>
                 Donnez un nom à votre espace de travail pour commencer.
               </CardDescription>

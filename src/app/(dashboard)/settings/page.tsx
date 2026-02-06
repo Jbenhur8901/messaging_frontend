@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAuthStore } from "@/stores"
 import { authService, handleApiError } from "@/services"
+import { authStorage } from "@/lib/auth-storage"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -73,7 +74,7 @@ export default function SettingsPage() {
   // Load MFA factors on mount
   useEffect(() => {
     const loadMFAStatus = async () => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+      const token = authStorage.getItem("access_token")
       if (!token || !isMFAAvailable) {
         setIsLoadingMFA(false)
         return
@@ -208,13 +209,14 @@ export default function SettingsPage() {
   const hasActiveMFA = mfaEnabled
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Paramètres</h1>
-        <p className="text-muted-foreground">
-          Gérez votre compte et vos préférences
-        </p>
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Paramètres</h1>
+          <p className="text-muted-foreground mt-1">
+            Gérez votre compte, la sécurité et vos préférences.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6 max-w-3xl">
@@ -275,11 +277,11 @@ export default function SettingsPage() {
               </div>
             ) : hasActiveMFA ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                      <Smartphone className="h-5 w-5 text-primary" />
-                    </div>
+              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Smartphone className="h-5 w-5 text-primary" />
+                  </div>
                     <div>
                       <p className="font-medium">
                         Application d'authentification
@@ -304,7 +306,7 @@ export default function SettingsPage() {
             ) : (
               <div className="text-center py-6">
                 <div className="flex justify-center mb-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border/60 bg-muted/60">
                     <ShieldOff className="h-8 w-8 text-muted-foreground" />
                   </div>
                 </div>
@@ -408,7 +410,7 @@ export default function SettingsPage() {
             <div className="space-y-6 py-4">
               {/* QR Code */}
               <div className="flex justify-center">
-                <div className="rounded-lg border bg-white p-4">
+                <div className="rounded-lg border border-border/60 bg-white p-4 shadow-[var(--shadow-xs)]">
                   <img
                     src={enrollmentData.qr_code}
                     alt="QR Code"
@@ -423,7 +425,7 @@ export default function SettingsPage() {
                   Ou entrez ce code manuellement :
                 </Label>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 rounded bg-muted px-3 py-2 text-sm font-mono">
+                  <code className="flex-1 rounded border border-border/60 bg-muted/60 px-3 py-2 text-sm font-mono">
                     {enrollmentData.secret}
                   </code>
                   <Button
@@ -455,7 +457,7 @@ export default function SettingsPage() {
               </div>
 
               {backupCodes.length > 0 && (
-                <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
+                <div className="space-y-3 rounded-lg border border-border/60 bg-muted/60 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">Codes de récupération</p>
@@ -474,7 +476,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm font-mono">
                     {backupCodes.map((code) => (
-                      <div key={code} className="rounded bg-background px-2 py-1 text-center">
+                      <div key={code} className="rounded border border-border/60 bg-background px-2 py-1 text-center">
                         {code}
                       </div>
                     ))}

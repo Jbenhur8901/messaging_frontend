@@ -72,16 +72,18 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Créer un compte</CardTitle>
-        <CardDescription>
-          Remplissez les informations ci-dessous pour créer votre compte
+    <Card className="w-full border-0 bg-transparent p-0 shadow-none">
+      <CardHeader className="space-y-2 p-0">
+        <CardTitle className="text-2xl font-semibold text-foreground">
+          Créer un compte
+        </CardTitle>
+        <CardDescription className="text-muted-foreground">
+          Renseignez vos informations pour démarrer rapidement.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <CardContent className="space-y-4 px-0 pb-0 pt-6">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="firstName">Prénom</Label>
               <Input
@@ -155,7 +157,7 @@ export default function RegisterPage() {
             )}
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
+        <CardFooter className="flex flex-col space-y-4 px-0 pb-0 pt-6">
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Créer mon compte

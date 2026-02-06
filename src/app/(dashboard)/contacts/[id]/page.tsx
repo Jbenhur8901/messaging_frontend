@@ -118,7 +118,7 @@ export default function EditContactPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center gap-4">
         <Link href="/contacts">
           <Button variant="ghost" size="icon">
@@ -126,9 +126,9 @@ export default function EditContactPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Modifier le contact</h1>
-          <p className="text-muted-foreground">
-            Mettez à jour les informations du contact
+          <h1 className="text-2xl font-semibold">Modifier le contact</h1>
+          <p className="text-muted-foreground mt-1">
+            Mettez à jour les informations du contact.
           </p>
         </div>
       </div>
@@ -232,25 +232,25 @@ export default function EditContactPage() {
               <CardContent>
                 <div className="space-y-3">
                   {/* System variables */}
-                  <div className="grid grid-cols-2 gap-4 border-b pb-2">
+                  <div className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2">
                     <span className="text-sm text-muted-foreground">first_name</span>
                     <span className="text-sm font-medium text-right break-words">
                       {contact.first_name || "-"}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 border-b pb-2">
+                  <div className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2">
                     <span className="text-sm text-muted-foreground">last_name</span>
                     <span className="text-sm font-medium text-right break-words">
                       {contact.last_name || "-"}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 border-b pb-2">
+                  <div className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2">
                     <span className="text-sm text-muted-foreground">email</span>
                     <span className="text-sm font-medium text-right break-words">
                       {contact.email || "-"}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 border-b pb-2">
+                  <div className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2">
                     <span className="text-sm text-muted-foreground">phone_number</span>
                     <span className="text-sm font-medium text-right break-words">
                       {contact.phone_number || "-"}
@@ -264,7 +264,7 @@ export default function EditContactPage() {
                         // Render nested object as multiple rows
                         if (value && typeof value === "object" && !Array.isArray(value)) {
                           return Object.entries(value as Record<string, unknown>).map(([subKey, subValue]) => (
-                            <div key={`${key}-${subKey}`} className="grid grid-cols-2 gap-4 border-b pb-2 last:border-0">
+                            <div key={`${key}-${subKey}`} className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2 last:border-0">
                               <span className="text-sm text-muted-foreground">{subKey}</span>
                               <span className="text-sm font-medium text-right break-words">
                                 {subValue === null || subValue === undefined
@@ -287,7 +287,7 @@ export default function EditContactPage() {
                         })()
 
                         return (
-                          <div key={key} className="grid grid-cols-2 gap-4 border-b pb-2 last:border-0">
+                          <div key={key} className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2 last:border-0">
                             <span className="text-sm text-muted-foreground">{key}</span>
                             <span className="text-sm font-medium text-right break-words">
                               {displayValue}

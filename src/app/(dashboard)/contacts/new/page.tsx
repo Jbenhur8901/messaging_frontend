@@ -92,8 +92,7 @@ export default function NewContactPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex items-center gap-4">
         <Link href="/contacts">
           <Button variant="ghost" size="icon">
@@ -101,9 +100,9 @@ export default function NewContactPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Nouveau contact</h1>
-          <p className="text-muted-foreground">
-            Ajoutez un nouveau contact à votre liste
+          <h1 className="text-2xl font-semibold">Nouveau contact</h1>
+          <p className="text-muted-foreground mt-1">
+            Ajoutez un nouveau contact à votre liste.
           </p>
         </div>
       </div>
@@ -177,7 +176,7 @@ export default function NewContactPage() {
                   <Badge
                     key={tag.id}
                     variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                    className="cursor-pointer"
+                    className="cursor-pointer transition-colors"
                     style={{
                       backgroundColor: selectedTags.includes(tag.id)
                         ? tag.color

@@ -6,13 +6,15 @@ import { useRouter } from "next/navigation"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useAuthStore } from "@/stores/auth-store"
+import { authStorage } from "@/lib/auth-storage"
 
 interface ProvidersProps {
   children: React.ReactNode
 }
 
-const INACTIVITY_TIMEOUT_MS = 2 * 60 * 60 * 1000
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 60 * 1000
 const LAST_ACTIVITY_KEY = "last_activity_at"
+const SESSION_STARTED_KEY = "session_started_at"
 
 export function Providers({ children }: ProvidersProps) {
   const router = useRouter()
@@ -25,6 +27,7 @@ export function Providers({ children }: ProvidersProps) {
     if (typeof window === "undefined") return
     if (!isAuthenticated) {
       localStorage.removeItem(LAST_ACTIVITY_KEY)
+      authStorage.removeItem(SESSION_STARTED_KEY)
       if (timerRef.current) {
         clearTimeout(timerRef.current)
         timerRef.current = null
@@ -43,12 +46,25 @@ export function Providers({ children }: ProvidersProps) {
       lastActivityRef.current = timestamp
     }
 
+    const readSessionStarted = () => {
+      const stored = authStorage.getItem(SESSION_STARTED_KEY)
+      const parsed = stored ? Number(stored) : NaN
+      return Number.isFinite(parsed) ? parsed : Date.now()
+    }
+
+    const writeSessionStarted = (timestamp: number) => {
+      authStorage.setItem(SESSION_STARTED_KEY, String(timestamp))
+    }
+
     const scheduleLogout = () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
       }
       const last = readLastActivity()
-      const remaining = Math.max(0, INACTIVITY_TIMEOUT_MS - (Date.now() - last))
+      const started = readSessionStarted()
+      const sessionRemaining = Math.max(0, INACTIVITY_TIMEOUT_MS - (Date.now() - started))
+      const inactivityRemaining = Math.max(0, INACTIVITY_TIMEOUT_MS - (Date.now() - last))
+      const remaining = Math.min(sessionRemaining, inactivityRemaining)
       timerRef.current = setTimeout(async () => {
         try {
           await logout()
@@ -65,6 +81,10 @@ export function Providers({ children }: ProvidersProps) {
       scheduleLogout()
     }
 
+    const sessionStarted = readSessionStarted()
+    if (!authStorage.getItem(SESSION_STARTED_KEY)) {
+      writeSessionStarted(sessionStarted)
+    }
     writeLastActivity(readLastActivity())
     scheduleLogout()
 

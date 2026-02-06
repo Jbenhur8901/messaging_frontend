@@ -442,16 +442,15 @@ export default function ContactsPage() {
   }, [filteredContacts, page])
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Contacts</h1>
-          <p className="text-muted-foreground">
-            Gérez vos contacts et leurs informations
+          <h1 className="text-2xl font-semibold">Contacts</h1>
+          <p className="text-muted-foreground mt-1">
+            Gérez vos contacts et leurs informations.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link href="/contacts/import">
             <Button variant="outline">
               <Upload className="mr-2 h-4 w-4" />
@@ -593,7 +592,7 @@ export default function ContactsPage() {
       </div>
 
       {selectedContacts.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-card px-3 py-2 shadow-[var(--shadow-xs)]">
           <p className="text-sm text-muted-foreground">
             {selectedContacts.length} contact(s) sélectionné(s)
           </p>

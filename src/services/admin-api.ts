@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios"
+import { authStorage } from "@/lib/auth-storage"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -11,21 +12,21 @@ export const adminApi = axios.create({
 // Helper to get stored admin token
 const getAdminToken = (): string | null => {
   if (typeof window === "undefined") return null
-  return localStorage.getItem(ADMIN_TOKEN_KEY)
+  return authStorage.getItem(ADMIN_TOKEN_KEY)
 }
 
 // Helper to store admin token
 export const setAdminToken = (token: string): void => {
   if (typeof window !== "undefined") {
-    localStorage.setItem(ADMIN_TOKEN_KEY, token)
+    authStorage.setItem(ADMIN_TOKEN_KEY, token)
   }
 }
 
 // Helper to clear admin token
 export const clearAdminToken = (): void => {
   if (typeof window !== "undefined") {
-    localStorage.removeItem(ADMIN_TOKEN_KEY)
-    localStorage.removeItem("admin_user")
+    authStorage.removeItem(ADMIN_TOKEN_KEY)
+    authStorage.removeItem("admin_user")
   }
 }
 

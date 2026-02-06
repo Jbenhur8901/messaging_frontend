@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { dashboardService } from "@/services"
+import { authStorage } from "@/lib/auth-storage"
 import type { Broadcast } from "@/types"
 import { formatNumber, formatDate } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Plus, Send, Eye, RefreshCw } from "lucide-react"
+import { ChannelTabs } from "@/components/channel-tabs"
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
@@ -41,7 +43,7 @@ export default function CampaignsPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   const loadBroadcasts = async () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+    const token = authStorage.getItem("access_token")
     if (!token) {
       setIsLoading(false)
       return
@@ -63,25 +65,27 @@ export default function CampaignsPage() {
   }, [])
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Campagnes</h1>
-          <p className="text-muted-foreground">
-            Gérez vos campagnes SMS et suivez leurs performances
+          <h1 className="text-2xl font-semibold">Campagnes</h1>
+          <p className="text-muted-foreground mt-1">
+            Gérez vos campagnes SMS et suivez leurs performances.
           </p>
         </div>
-        <Link href="/campaigns/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Nouvelle campagne
+        <div className="flex flex-wrap items-center gap-2">
+          <ChannelTabs basePath="campaigns" />
+          <Link href="/campaigns/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Nouvelle campagne
+            </Button>
+          </Link>
+          <Button variant="outline" onClick={loadBroadcasts} disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            Actualiser
           </Button>
-        </Link>
-        <Button variant="outline" onClick={loadBroadcasts} disabled={isLoading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-          Actualiser
-        </Button>
+        </div>
       </div>
 
       {/* Campaigns Table */}
