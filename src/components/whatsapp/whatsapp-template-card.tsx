@@ -9,9 +9,10 @@ interface WhatsAppTemplateCardProps {
   template: WhatsAppTemplate
   onClick?: () => void
   selected?: boolean
+  actions?: React.ReactNode
 }
 
-export function WhatsAppTemplateCard({ template, onClick, selected }: WhatsAppTemplateCardProps) {
+export function WhatsAppTemplateCard({ template, onClick, selected, actions }: WhatsAppTemplateCardProps) {
   const headerComponent = template.components.find((c) => c.type === "HEADER")
   const bodyComponent = template.components.find((c) => c.type === "BODY")
   const footerComponent = template.components.find((c) => c.type === "FOOTER")
@@ -36,6 +37,14 @@ export function WhatsAppTemplateCard({ template, onClick, selected }: WhatsAppTe
               <CategoryBadge category={template.category} />
             </div>
           </div>
+          {actions && (
+            <div
+              className="flex items-center gap-2"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {actions}
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>

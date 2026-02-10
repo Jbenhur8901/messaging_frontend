@@ -103,6 +103,28 @@ export const whatsappService = {
     return data
   },
 
+  async updateTemplate(
+    templateId: string,
+    template: {
+      name: string
+      language: string
+      category: string
+      components: unknown[]
+    }
+  ): Promise<{ success: boolean; template: WhatsAppTemplate }> {
+    const formData = new URLSearchParams()
+    formData.append("name", template.name)
+    formData.append("language", template.language)
+    formData.append("category", template.category)
+    formData.append("components", JSON.stringify(template.components))
+
+    const { data } = await api.put<{ success: boolean; template: WhatsAppTemplate }>(
+      `/v1/whatsapp/templates/${templateId}`,
+      formData
+    )
+    return data
+  },
+
   async deleteTemplate(templateId: string): Promise<{ success: boolean; message: string }> {
     const { data } = await api.delete<{ success: boolean; message: string }>(
       `/v1/whatsapp/templates/${templateId}`

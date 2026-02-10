@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { whatsappService, handleApiError } from "@/services"
@@ -28,8 +28,11 @@ export default function WhatsAppTemplateCreatePage() {
   const { currentOrganization } = useOrganizationStore()
   const searchParams = useSearchParams()
   const isEmbedded = searchParams.get("embed") === "1"
+  const templateId = searchParams.get("id")
+  const isEditMode = Boolean(templateId)
 
-  const [isCreating, setIsCreating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false)
   const [templateName, setTemplateName] = useState("")
   const [templateLanguage, setTemplateLanguage] = useState("fr")
   const [templateCategory, setTemplateCategory] = useState("UTILITY")
@@ -76,7 +79,74 @@ export default function WhatsAppTemplateCreatePage() {
     }
   }
 
-  const handleCreateTemplate = async () => {
+  useEffect(() => {
+    if (!templateId) return
+    setIsLoadingTemplate(true)
+    whatsappService.getTemplate(templateId)
+      .then((template) => {
+        setTemplateName(template.name || "")
+        setTemplateLanguage(template.language || "fr")
+        setTemplateCategory(template.category || "UTILITY")
+
+        const headerComponent = template.components.find((c) => c.type === "HEADER")
+        const bodyComponent = template.components.find((c) => c.type === "BODY")
+        const footerComponent = template.components.find((c) => c.type === "FOOTER")
+        const buttonsComponent = template.components.find((c) => c.type === "BUTTONS")
+
+        if (headerComponent) {
+          setIncludeHeader(true)
+          const format = (headerComponent.format || "TEXT") as HeaderFormat
+          setHeaderFormat(format)
+          if (format === "TEXT") {
+            setHeaderText(headerComponent.text || "")
+            setHeaderMediaUrl("")
+            setHeaderMediaFilename("")
+          } else {
+            setHeaderText("")
+            setHeaderMediaUrl(headerComponent.example?.header_handle?.[0] || "")
+            setHeaderMediaFilename(headerComponent.example?.filename || "")
+          }
+        } else {
+          setIncludeHeader(false)
+          setHeaderText("")
+          setHeaderMediaUrl("")
+          setHeaderMediaFilename("")
+        }
+
+        setTemplateBody(bodyComponent?.text || "")
+        if (footerComponent?.text) {
+          setIncludeFooter(true)
+          setFooterText(footerComponent.text)
+        } else {
+          setIncludeFooter(false)
+          setFooterText("")
+        }
+
+        if (buttonsComponent?.buttons && buttonsComponent.buttons.length > 0) {
+          setIncludeButtons(true)
+          setButtons(
+            buttonsComponent.buttons.map((btn) => ({
+              type: btn.type as ButtonType,
+              text: btn.text || "",
+              url: btn.url,
+              phone_number: btn.phone_number,
+            }))
+          )
+        } else {
+          setIncludeButtons(false)
+          setButtons([])
+        }
+      })
+      .catch((error) => {
+        const apiError = handleApiError(error)
+        toast.error(apiError.message)
+      })
+      .finally(() => {
+        setIsLoadingTemplate(false)
+      })
+  }, [templateId])
+
+  const handleSaveTemplate = async () => {
     if (!currentOrganization?.id) {
       toast.error("Aucune organisation sélectionnée")
       return
@@ -161,27 +231,39 @@ export default function WhatsAppTemplateCreatePage() {
       })
     }
 
-    setIsCreating(true)
+    setIsSaving(true)
     try {
-      const result = await whatsappService.createTemplate({
-        name,
-        language,
-        category: templateCategory,
-        components,
-      })
+      const result = isEditMode && templateId
+        ? await whatsappService.updateTemplate(templateId, {
+            name,
+            language,
+            category: templateCategory,
+            components,
+          })
+        : await whatsappService.createTemplate({
+            name,
+            language,
+            category: templateCategory,
+            components,
+          })
 
       if (result.success) {
-        toast.success("Template créé")
-        resetCreateForm()
-        postToParent({ type: "whatsapp-template:created" })
+        if (isEditMode) {
+          toast.success("Template mis à jour")
+          postToParent({ type: "whatsapp-template:updated" })
+        } else {
+          toast.success("Template créé")
+          resetCreateForm()
+          postToParent({ type: "whatsapp-template:created" })
+        }
       } else {
-        toast.error("Erreur lors de la création du template")
+        toast.error(`Erreur lors de ${isEditMode ? "la mise à jour" : "la création"} du template`)
       }
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
     } finally {
-      setIsCreating(false)
+      setIsSaving(false)
     }
   }
 
@@ -284,7 +366,9 @@ export default function WhatsAppTemplateCreatePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
               Templates
             </p>
-            <h1 className="text-3xl font-semibold tracking-tight">Créer un template WhatsApp</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {isEditMode ? "Modifier un template WhatsApp" : "Créer un template WhatsApp"}
+            </h1>
             <p className="text-muted-foreground">
               Créez un template complet avec body, footer et boutons optionnels.
             </p>
@@ -297,10 +381,17 @@ export default function WhatsAppTemplateCreatePage() {
           <CardHeader>
             <CardTitle>Détails du template</CardTitle>
             <CardDescription>
-              Remplissez les informations nécessaires pour soumettre le template.
+              {isEditMode
+                ? "Modifiez les informations nécessaires pour mettre à jour le template."
+                : "Remplissez les informations nécessaires pour soumettre le template."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {isLoadingTemplate && (
+              <div className="rounded-lg border border-border/60 bg-muted/60 p-3 text-xs text-muted-foreground">
+                Chargement du template...
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="templateName">Nom du template</Label>
               <Input
@@ -506,13 +597,16 @@ export default function WhatsAppTemplateCreatePage() {
                   resetCreateForm()
                   postToParent({ type: "whatsapp-template:close" })
                 }}
-                disabled={isCreating}
+                disabled={isSaving}
               >
                 Fermer
               </Button>
-              <Button onClick={handleCreateTemplate} disabled={isCreating || isUploadingHeader}>
-                {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Créer
+              <Button
+                onClick={handleSaveTemplate}
+                disabled={isSaving || isUploadingHeader || isLoadingTemplate}
+              >
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEditMode ? "Mettre à jour" : "Créer"}
               </Button>
             </div>
           </CardContent>

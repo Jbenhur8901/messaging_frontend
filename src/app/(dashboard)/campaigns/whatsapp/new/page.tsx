@@ -52,6 +52,19 @@ export default function NewWhatsAppCampaignPage() {
   const [variableMapping, setVariableMapping] = useState<Record<string, string>>({})
   const [customFieldInputs, setCustomFieldInputs] = useState<Record<string, string>>({})
 
+  const MAX_CONTACTS = 10000
+  const CONTACTS_PAGE_SIZE = 100
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [contactsLoadedCount, setContactsLoadedCount] = useState(0)
+  const [contactsTotalCount, setContactsTotalCount] = useState<number | null>(null)
+  const [contactsLimitReached, setContactsLimitReached] = useState(false)
+  const [tagContacts, setTagContacts] = useState<Contact[]>([])
+  const [tagContactsKey, setTagContactsKey] = useState<string | null>(null)
+  const [tagContactsLoading, setTagContactsLoading] = useState(false)
+  const [tagContactsLoadedCount, setTagContactsLoadedCount] = useState(0)
+  const [tagContactsTotalCount, setTagContactsTotalCount] = useState<number | null>(null)
+  const [tagContactsLimitReached, setTagContactsLimitReached] = useState(false)
+
   useEffect(() => {
     if (!currentOrganization?.id) {
       setIsConfigured(false)
@@ -66,6 +79,76 @@ export default function NewWhatsAppCampaignPage() {
     setCustomFieldInputs({})
   }, [selectedTemplateId])
 
+  const fetchContactsPaged = async (
+    fetchPage: (limit: number, offset: number) => Promise<{ contacts: Contact[]; pagination: { total?: number; has_more?: boolean } }>,
+    onProgress: (loaded: number, total: number | null) => void
+  ): Promise<{ contacts: Contact[]; total: number | null; truncated: boolean }> => {
+    const allContacts: Contact[] = []
+    let offset = 0
+    let total: number | null = null
+
+    while (allContacts.length < MAX_CONTACTS) {
+      const { contacts: batch, pagination } = await fetchPage(CONTACTS_PAGE_SIZE, offset)
+
+      if (pagination?.total !== undefined && total === null) {
+        total = pagination.total
+      }
+
+      if (!batch || batch.length === 0) break
+
+      allContacts.push(...batch)
+      offset += batch.length
+      onProgress(allContacts.length, total)
+
+      if (pagination?.has_more === false) break
+      if (pagination?.total !== undefined && offset >= pagination.total) break
+      if (batch.length < CONTACTS_PAGE_SIZE) break
+    }
+
+    const truncated = total !== null ? total > MAX_CONTACTS : allContacts.length >= MAX_CONTACTS
+    return { contacts: allContacts.slice(0, MAX_CONTACTS), total, truncated }
+  }
+
+  const fetchAllContacts = async (): Promise<{ contacts: Contact[]; total: number | null; truncated: boolean }> => {
+    setContactsLoading(true)
+    setContactsLoadedCount(0)
+    setContactsTotalCount(null)
+    setContactsLimitReached(false)
+
+    const result = await fetchContactsPaged(
+      (limit, offset) => contactsService.getContacts(limit, offset),
+      (loaded, total) => {
+        setContactsLoadedCount(loaded)
+        setContactsTotalCount(total)
+      }
+    )
+
+    setContactsLimitReached(result.truncated)
+    setContactsLoading(false)
+    return result
+  }
+
+  const fetchContactsByTags = async (
+    tagIds: string[]
+  ): Promise<{ contacts: Contact[]; total: number | null; truncated: boolean }> => {
+    setTagContactsLoading(true)
+    setTagContactsLoadedCount(0)
+    setTagContactsTotalCount(null)
+    setTagContactsLimitReached(false)
+
+    const result = await fetchContactsPaged(
+      (limit, offset) => contactsService.getContactsByTags(tagIds, limit, offset),
+      (loaded, total) => {
+        setTagContactsLoadedCount(loaded)
+        setTagContactsTotalCount(total)
+      }
+    )
+
+    setTagContactsLimitReached(result.truncated)
+    setTagContactsLoading(false)
+    return result
+  }
+
   const loadInitialData = async () => {
     try {
       if (!currentOrganization?.id) return
@@ -73,14 +156,12 @@ export default function NewWhatsAppCampaignPage() {
       setIsConfigured(configResult.is_configured)
 
       if (configResult.is_configured) {
-        const [templatesResult, contactsResult, tagsResult] = await Promise.all([
+        const [templatesResult, tagsResult] = await Promise.all([
           whatsappService.getTemplates(undefined, undefined, 100, 0),
-          contactsService.getContacts(100, 0),
           tagsService.getTags(),
         ])
 
         setTemplates((templatesResult.templates || []).filter((t) => t.status === "APPROVED"))
-        setContacts(contactsResult.contacts || [])
         setTags(tagsResult.tags || [])
       }
     } catch (error) {
@@ -92,7 +173,60 @@ export default function NewWhatsAppCampaignPage() {
   }
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId)
+  const selectedTagKey = useMemo(
+    () => (selectedTagIds.length > 0 ? [...selectedTagIds].sort().join(",") : ""),
+    [selectedTagIds]
+  )
+
+  useEffect(() => {
+    if (!isConfigured) return
+    if (recipientMode === "contacts" && contacts.length === 0 && !contactsLoading) {
+      fetchAllContacts()
+        .then((result) => setContacts(result.contacts))
+        .catch((error) => {
+          console.error("Error loading contacts:", error)
+          setContactsLoading(false)
+        })
+    }
+  }, [recipientMode, isConfigured, contacts.length, contactsLoading])
+
+  useEffect(() => {
+    if (!isConfigured) return
+    if (sendMode !== "personalized") return
+    if (recipientMode === "contacts") {
+      if (contacts.length === 0 && !contactsLoading) {
+        fetchAllContacts()
+          .then((result) => setContacts(result.contacts))
+          .catch((error) => {
+            console.error("Error loading contacts:", error)
+            setContactsLoading(false)
+          })
+      }
+      return
+    }
+    if (recipientMode === "tags" && selectedTagIds.length > 0 && selectedTagKey !== tagContactsKey && !tagContactsLoading) {
+      setTagContactsKey(selectedTagKey)
+      fetchContactsByTags(selectedTagIds)
+        .then((result) => setTagContacts(result.contacts))
+        .catch((error) => {
+          console.error("Error loading tag contacts:", error)
+          setTagContactsLoading(false)
+        })
+    }
+  }, [
+    sendMode,
+    recipientMode,
+    selectedTagIds.length,
+    selectedTagKey,
+    tagContactsKey,
+    tagContactsLoading,
+    isConfigured,
+    contacts.length,
+    contactsLoading,
+  ])
   const availableFields = useMemo(() => {
+    const sourceContacts =
+      sendMode === "personalized" && recipientMode === "tags" ? tagContacts : contacts
     const baseFields = [
       { value: "first_name", label: "Prénom" },
       { value: "last_name", label: "Nom" },
@@ -101,7 +235,7 @@ export default function NewWhatsAppCampaignPage() {
       { value: "phone_number", label: "Téléphone" },
     ]
     const customKeys = new Set<string>()
-    contacts.forEach((contact) => {
+    sourceContacts.forEach((contact) => {
       const fields = contact.custom_fields || {}
       Object.keys(fields).forEach((key) => customKeys.add(key))
     })
@@ -109,7 +243,7 @@ export default function NewWhatsAppCampaignPage() {
       .sort((a, b) => a.localeCompare(b))
       .map((key) => ({ value: `custom:${key}`, label: `Champ personnalisé · ${key}` }))
     return [...baseFields, ...customFields]
-  }, [contacts])
+  }, [contacts, tagContacts, sendMode, recipientMode])
 
   const templateVariables = useMemo(() => {
     if (!selectedTemplate) return []
@@ -171,7 +305,9 @@ export default function NewWhatsAppCampaignPage() {
       return contacts.filter((c) => selectedContactIds.includes(c.id))
     }
     if (recipientMode === "tags") {
-      return contacts.filter((c) => c.tags.some((t) => selectedTagIds.includes(t.id)))
+      return tagContacts.length > 0
+        ? tagContacts
+        : contacts.filter((c) => c.tags.some((t) => selectedTagIds.includes(t.id)))
     }
     return []
   }
@@ -234,6 +370,16 @@ export default function NewWhatsAppCampaignPage() {
           setIsSending(false)
           return
         }
+        if (recipientMode === "contacts" && contactsLoading) {
+          toast.error("Chargement des contacts en cours, veuillez patienter")
+          setIsSending(false)
+          return
+        }
+        if (recipientMode === "tags" && tagContactsLoading) {
+          toast.error("Chargement des contacts des tags en cours, veuillez patienter")
+          setIsSending(false)
+          return
+        }
 
         if (templateVariables.length === 0) {
           toast.error("Ce template ne contient pas de variables à personnaliser")
@@ -249,6 +395,11 @@ export default function NewWhatsAppCampaignPage() {
         }
 
         const recipientContacts = getRecipientContacts()
+        if (recipientContacts.length === 0 && recipientCount > 0) {
+          toast.error("Aucun contact chargé pour les destinataires sélectionnés")
+          setIsSending(false)
+          return
+        }
         const customKeyErrors = templateVariables.flatMap((variable) => {
           const mapping = variableMapping[variable.key]
           if (!mapping || !mapping.startsWith("custom:")) return []
@@ -297,7 +448,29 @@ export default function NewWhatsAppCampaignPage() {
           toast.error("Erreur lors de la création de la campagne")
         }
       } else {
-        const recipients = getRecipients()
+        let recipients = getRecipients()
+        if (recipientMode === "tags") {
+          if (selectedTagIds.length === 0) {
+            toast.error("Veuillez sélectionner au moins un tag")
+            setIsSending(false)
+            return
+          }
+          const tagResult = await fetchContactsByTags(selectedTagIds)
+          setTagContacts(tagResult.contacts)
+          if (tagResult.truncated) {
+            toast.error("Limite dépassée : 10 000 destinataires maximum par requête")
+            setIsSending(false)
+            return
+          }
+          const uniqueRecipients = new Map<string, string>()
+          tagResult.contacts.forEach((contact) => {
+            if (contact.id && contact.phone_number) {
+              uniqueRecipients.set(contact.id, contact.phone_number)
+            }
+          })
+          recipients = Array.from(uniqueRecipients.values())
+        }
+
         const result = await whatsappService.createBroadcast(
           recipients,
           selectedTemplate.name,
@@ -511,7 +684,18 @@ export default function NewWhatsAppCampaignPage() {
                 </TabsList>
 
                 <TabsContent value="contacts" className="mt-4">
-                  {contacts.length === 0 ? (
+                  {contactsLoading && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Chargement des contacts… {contactsLoadedCount}
+                      {contactsTotalCount !== null ? ` / ${contactsTotalCount}` : ""}
+                    </p>
+                  )}
+                  {contactsLimitReached && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                      Limite atteinte : seuls les 10&nbsp;000 premiers contacts sont chargés.
+                    </div>
+                  )}
+                  {contacts.length === 0 && !contactsLoading ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       Aucun contact disponible
                     </p>
@@ -574,6 +758,22 @@ export default function NewWhatsAppCampaignPage() {
                   <p className="text-sm text-muted-foreground mt-4">
                     ~{getRecipientCount()} destinataire(s) estimé(s)
                   </p>
+                  {getRecipientCount() > MAX_CONTACTS && (
+                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                      Limite dépassée : 10&nbsp;000 destinataires maximum par requête.
+                    </div>
+                  )}
+                  {sendMode === "personalized" && tagContactsLoading && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Chargement des contacts du/des tag(s)… {tagContactsLoadedCount}
+                      {tagContactsTotalCount !== null ? ` / ${tagContactsTotalCount}` : ""}
+                    </p>
+                  )}
+                  {sendMode === "personalized" && tagContactsLimitReached && (
+                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                      Limite atteinte : seuls les 10&nbsp;000 premiers contacts des tags sont chargés.
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="manual" className="mt-4">
@@ -718,6 +918,11 @@ export default function NewWhatsAppCampaignPage() {
                 <span className="text-muted-foreground">Destinataires</span>
                 <span className="font-medium">{getRecipientCount()}</span>
               </div>
+              {(contactsLimitReached || tagContactsLimitReached) && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  Limite 10&nbsp;000 : l’envoi est restreint aux 10&nbsp;000 premiers destinataires chargés.
+                </div>
+              )}
 
               <div className="border-t border-border/60 pt-4">
                 <Button

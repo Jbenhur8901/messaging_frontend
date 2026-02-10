@@ -29,6 +29,7 @@ export default function WhatsAppTemplatesPage() {
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [filterCategory, setFilterCategory] = useState<string>("all")
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!currentOrganization?.id) {
@@ -85,6 +86,26 @@ export default function WhatsAppTemplatesPage() {
       toast.error(apiError.message)
     } finally {
       setIsSyncing(false)
+    }
+  }
+
+  const handleDeleteTemplate = async (template: WhatsAppTemplate) => {
+    const confirmed = window.confirm(`Supprimer le template "${template.name}" ?`)
+    if (!confirmed) return
+    setDeletingTemplateId(template.id)
+    try {
+      const result = await whatsappService.deleteTemplate(template.id)
+      if (result.success) {
+        toast.success("Template supprimé")
+        setTemplates((prev) => prev.filter((t) => t.id !== template.id))
+      } else {
+        toast.error(result.message || "Erreur lors de la suppression")
+      }
+    } catch (error) {
+      const apiError = handleApiError(error)
+      toast.error(apiError.message)
+    } finally {
+      setDeletingTemplateId(null)
     }
   }
 
@@ -261,7 +282,31 @@ export default function WhatsAppTemplatesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredTemplates.map((template) => (
-            <WhatsAppTemplateCard key={template.id} template={template} />
+            <WhatsAppTemplateCard
+              key={template.id}
+              template={template}
+              actions={
+                <>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/templates/whatsapp/create?id=${template.id}`}>
+                      Modifier
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteTemplate(template)}
+                    disabled={deletingTemplateId === template.id}
+                  >
+                    {deletingTemplateId === template.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Supprimer"
+                    )}
+                  </Button>
+                </>
+              }
+            />
           ))}
         </div>
       )}
