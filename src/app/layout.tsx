@@ -19,6 +19,11 @@ const sora = Sora({
 export const metadata: Metadata = {
   title: "Flow - SMS Campaign Management",
   description: "Plateforme de gestion de campagnes SMS",
+  icons: {
+    icon: "/logo-nodes.png",
+    apple: "/logo-nodes.png",
+    shortcut: "/logo-nodes.png",
+  },
 }
 
 export default async function RootLayout({
@@ -30,7 +35,7 @@ export default async function RootLayout({
 
   return (
     <html lang="fr" suppressHydrationWarning>
-      <head nonce={nonce} />
+      <head />
       <body className={`${instrumentSans.variable} ${sora.variable}`}>
         <Providers nonce={nonce}>{children}</Providers>
       </body>

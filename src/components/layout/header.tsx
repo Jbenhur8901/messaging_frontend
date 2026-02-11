@@ -139,14 +139,24 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           {/* Credits display */}
           {balance && (
-            <Link href="/credits">
-              <Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1.5 border border-border/60 bg-secondary/70 text-secondary-foreground hover:bg-secondary/80 transition-all duration-200">
-                <CreditCard className="h-3.5 w-3.5" />
-                <span className="font-semibold">
-                  {formatNumber(balance.credit_available)} crédits
-                </span>
-              </Badge>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/credits">
+                <Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1.5 border border-border/60 bg-secondary/70 text-secondary-foreground hover:bg-secondary/80 transition-all duration-200">
+                  <CreditCard className="h-3.5 w-3.5" />
+                  <span className="font-semibold">
+                    {formatNumber(balance.credit_available)} crédits
+                  </span>
+                </Badge>
+              </Link>
+              <Link href="/credits">
+                <Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1.5 border border-border/60 bg-secondary/70 text-secondary-foreground hover:bg-secondary/80 transition-all duration-200">
+                  <CreditCard className="h-3.5 w-3.5" />
+                  <span className="font-semibold">
+                    {formatNumber(balance.whatsapp_credit_available ?? balance.whatsapp_credit_balance ?? 0)} WhatsApp
+                  </span>
+                </Badge>
+              </Link>
+            </div>
           )}
 
           {/* Theme toggle */}

@@ -130,13 +130,13 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-dashboard">
+    <div className="min-h-screen" style={{ backgroundColor: "#ffffff" }}>
       <Sidebar />
       <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
-      <div className="lg:pl-64">
+      <div className="lg:pl-16">
         <Header onMenuClick={() => setMobileNavOpen(true)} />
-        <main className="py-8">
-          <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">{children}</div>
+        <main className="py-4">
+          <div className="px-3 sm:px-4 lg:px-5 animate-fade-in">{children}</div>
         </main>
       </div>
       <MFARecommendationDialog />

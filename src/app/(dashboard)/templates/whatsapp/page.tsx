@@ -287,11 +287,6 @@ export default function WhatsAppTemplatesPage() {
               template={template}
               actions={
                 <>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/templates/whatsapp/create?id=${template.id}`}>
-                      Modifier
-                    </Link>
-                  </Button>
                   <Button
                     variant="destructive"
                     size="sm"

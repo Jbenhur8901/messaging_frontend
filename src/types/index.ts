@@ -60,6 +60,10 @@ export interface CreditBalance {
   credit_reserved: number
   credit_available: number
   last_recharge_at: string | null
+  whatsapp_credit_balance?: number
+  whatsapp_credit_reserved?: number
+  whatsapp_credit_available?: number
+  whatsapp_last_recharge_at?: string | null
   currency: string
   note: string
 }

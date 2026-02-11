@@ -41,51 +41,33 @@ export function Sidebar() {
   }, null)
 
   return (
-    <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
-      <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-border/60 bg-card px-5 pb-6 pt-4">
-        <div className="flex h-14 shrink-0 items-center">
-          <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white shadow-[var(--shadow-sm)] transition-transform group-hover:scale-105">
-              <Send className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-lg font-bold tracking-tight">Flow</p>
-              <p className="text-xs text-muted-foreground">Messaging Platform</p>
+    <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-16 lg:flex-col">
+      <div className="flex grow flex-col gap-y-3 overflow-y-auto border-r border-border/60 bg-[#2f2fd3] px-2 pb-4 pt-3 text-white">
+        <div className="flex h-12 shrink-0 items-center justify-center">
+          <Link href="/dashboard" className="group" aria-label="Dashboard">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white ring-1 ring-white/15 shadow-[var(--shadow-sm)] transition-transform group-hover:scale-105">
+              <Send className="h-4.5 w-4.5" />
             </div>
           </Link>
         </div>
         <nav className="flex flex-1 flex-col">
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60">
-            Navigation
-          </p>
-          <ul role="list" className="flex flex-1 flex-col gap-y-0.5">
+          <ul role="list" className="flex flex-1 flex-col items-center gap-y-1.5">
             {navigation.map((item) => {
               const isActive = activeHref === item.href
               return (
                 <li key={item.name}>
                   <Link
                     href={item.href}
+                    aria-label={item.name}
+                    title={item.name}
                     className={cn(
-                      "group relative flex items-center gap-x-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                      "group relative flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-medium transition-all duration-200",
                       isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                        ? "bg-white text-[#2f2fd3] shadow-[var(--shadow-sm)]"
+                        : "text-white/80 hover:bg-white/10 hover:text-white"
                     )}
                   >
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary" />
-                    )}
-                    <span
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200",
-                        isActive
-                          ? "bg-primary/15 text-primary"
-                          : "bg-muted/60 text-muted-foreground group-hover:bg-muted group-hover:text-foreground"
-                      )}
-                    >
-                      <item.icon className="h-4 w-4" />
-                    </span>
-                    <span>{item.name}</span>
+                    <item.icon className="h-5 w-5" />
                   </Link>
                 </li>
               )

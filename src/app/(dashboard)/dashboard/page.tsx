@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { dashboardService } from "@/services"
-import type { DashboardOverview, DailyStat, Broadcast } from "@/types"
+import { dashboardService, whatsappService, creditsService } from "@/services"
+import type { DashboardOverview, DailyStat, Broadcast, WhatsAppStats, CreditBalance } from "@/types"
 import { formatNumber, formatDate } from "@/lib/utils"
 import { authStorage } from "@/lib/auth-storage"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -124,6 +124,8 @@ export default function DashboardPage() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null)
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
   const [recentBroadcasts, setRecentBroadcasts] = useState<Broadcast[]>([])
+  const [whatsappStats, setWhatsappStats] = useState<WhatsAppStats | null>(null)
+  const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const broadcastTotals = calculateBroadcastTotals(recentBroadcasts)
   const derivedDeliveryRate = calculateDeliveryRateFromBroadcasts(recentBroadcasts)
@@ -140,10 +142,20 @@ export default function DashboardPage() {
       }
 
       try {
-        const [overviewData, statsData, broadcastsData] = await Promise.all([
+        const whatsappStatsPromise = whatsappService.getStats(7).catch(() => null)
+        const creditsBalancePromise = creditsService.getBalance().catch(() => null)
+        const [
+          overviewData,
+          statsData,
+          broadcastsData,
+          whatsappStatsData,
+          creditsBalanceData,
+        ] = await Promise.all([
           dashboardService.getOverview(),
           dashboardService.getDailyStats(14),
           dashboardService.getRecentBroadcasts(5),
+          whatsappStatsPromise,
+          creditsBalancePromise,
         ])
         const statsArray = Array.isArray(statsData)
           ? statsData
@@ -169,6 +181,12 @@ export default function DashboardPage() {
           })
         } else {
           setOverview(overviewData)
+        }
+        if (whatsappStatsData) {
+          setWhatsappStats(whatsappStatsData)
+        }
+        if (creditsBalanceData) {
+          setCreditBalance(creditsBalanceData)
         }
       } catch (error) {
         console.error("Error loading dashboard data:", error)
@@ -210,6 +228,21 @@ export default function DashboardPage() {
       </div>
     )
   }
+
+  const whatsappSummary: WhatsAppStats = whatsappStats ?? {
+    total_messages: 0,
+    delivered: 0,
+    read: 0,
+    failed: 0,
+    delivery_rate: 0,
+    read_rate: 0,
+    period_days: 7,
+  }
+  const whatsappCreditsAvailable =
+    creditBalance?.whatsapp_credit_available ??
+    creditBalance?.whatsapp_credit_balance ??
+    overview?.credits.available ??
+    0
 
   return (
     <div className="space-y-8">
@@ -302,6 +335,82 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">WhatsApp</h2>
+          <p className="text-sm text-muted-foreground">
+            Indicateurs des {whatsappSummary.period_days} derniers jours
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Crédits WhatsApp
+              </CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">
+              {formatNumber(whatsappCreditsAvailable)}
+            </div>
+          </CardContent>
+        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Messages WhatsApp
+              </CardTitle>
+              <Send className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold">
+                {formatNumber(whatsappSummary.total_messages || 0)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {formatNumber(whatsappSummary.delivered || 0)} livrés
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Taux de livraison WhatsApp
+              </CardTitle>
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold">
+                {Number.isFinite(whatsappSummary.delivery_rate)
+                  ? whatsappSummary.delivery_rate.toFixed(1)
+                  : "0.0"}
+                %
+              </div>
+              <Progress value={whatsappSummary.delivery_rate || 0} className="mt-3 h-1.5" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Taux de lecture WhatsApp
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold">
+                {Number.isFinite(whatsappSummary.read_rate)
+                  ? whatsappSummary.read_rate.toFixed(1)
+                  : "0.0"}
+                %
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {formatNumber(whatsappSummary.read || 0)} lus
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

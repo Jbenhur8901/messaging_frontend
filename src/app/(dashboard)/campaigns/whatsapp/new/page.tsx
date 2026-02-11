@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Select,
@@ -22,9 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import { ArrowLeft, Loader2, Send, Users, Tags as TagsIcon, Phone, AlertTriangle, Settings, Sparkles } from "lucide-react"
+import { ArrowLeft, Loader2, Send, Users, Tags as TagsIcon, FileText, AlertTriangle, Settings, Sparkles } from "lucide-react"
 
 type RecipientMode = "contacts" | "tags" | "manual"
 type SendMode = "standard" | "personalized"
@@ -52,7 +53,7 @@ export default function NewWhatsAppCampaignPage() {
   const [variableMapping, setVariableMapping] = useState<Record<string, string>>({})
   const [customFieldInputs, setCustomFieldInputs] = useState<Record<string, string>>({})
 
-  const MAX_CONTACTS = 10000
+  const MAX_CONTACTS = Number.MAX_SAFE_INTEGER
   const CONTACTS_PAGE_SIZE = 100
   const [contactsLoading, setContactsLoading] = useState(false)
   const [contactsLoadedCount, setContactsLoadedCount] = useState(0)
@@ -357,10 +358,6 @@ export default function NewWhatsAppCampaignPage() {
       toast.error("Veuillez sélectionner au moins un destinataire")
       return
     }
-    if (recipientCount > 10000) {
-      toast.error("Limite dépassée : 10 000 destinataires maximum par requête")
-      return
-    }
 
     setIsSending(true)
     try {
@@ -457,11 +454,6 @@ export default function NewWhatsAppCampaignPage() {
           }
           const tagResult = await fetchContactsByTags(selectedTagIds)
           setTagContacts(tagResult.contacts)
-          if (tagResult.truncated) {
-            toast.error("Limite dépassée : 10 000 destinataires maximum par requête")
-            setIsSending(false)
-            return
-          }
           const uniqueRecipients = new Map<string, string>()
           tagResult.contacts.forEach((contact) => {
             if (contact.id && contact.phone_number) {
@@ -666,117 +658,145 @@ export default function NewWhatsAppCampaignPage() {
                 Sélectionnez les destinataires de votre campagne
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Tabs value={recipientMode} onValueChange={(v) => setRecipientMode(v as RecipientMode)}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="contacts" className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Contacts
-                  </TabsTrigger>
-                  <TabsTrigger value="tags" className="flex items-center gap-2">
-                    <TagsIcon className="h-4 w-4" />
-                    Tags
-                  </TabsTrigger>
-                  <TabsTrigger value="manual" className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    Manuel
-                  </TabsTrigger>
-                </TabsList>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={recipientMode === "contacts" ? "default" : "outline"}
+                  onClick={() => setRecipientMode("contacts")}
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  Contacts
+                </Button>
+                <Button
+                  type="button"
+                  variant={recipientMode === "tags" ? "default" : "outline"}
+                  onClick={() => setRecipientMode("tags")}
+                >
+                  <TagsIcon className="mr-2 h-4 w-4" />
+                  Tags
+                </Button>
+                <Button
+                  type="button"
+                  variant={recipientMode === "manual" ? "default" : "outline"}
+                  onClick={() => setRecipientMode("manual")}
+                  disabled={sendMode === "personalized"}
+                  title={sendMode === "personalized" ? "Non disponible en mode personnalisé" : undefined}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Manuel
+                </Button>
+              </div>
 
-                <TabsContent value="contacts" className="mt-4">
-                  {contactsLoading && (
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Chargement des contacts… {contactsLoadedCount}
-                      {contactsTotalCount !== null ? ` / ${contactsTotalCount}` : ""}
-                    </p>
-                  )}
-                  {contactsLimitReached && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                      Limite atteinte : seuls les 10&nbsp;000 premiers contacts sont chargés.
-                    </div>
-                  )}
-                  {contacts.length === 0 && !contactsLoading ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Aucun contact disponible
-                    </p>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {contacts.map((contact) => (
-                        <div
-                          key={contact.id}
-                          className={`flex items-center justify-between rounded-lg border border-border/60 p-2 transition-colors ${
-                            selectedContactIds.includes(contact.id)
-                              ? "border-primary bg-primary/5"
-                              : "hover:bg-muted/60"
-                          }`}
-                          onClick={() => toggleContact(contact.id)}
+              {recipientMode === "contacts" && (
+                <ScrollArea className="h-64 rounded-md border">
+                  <div className="space-y-2 p-4">
+                    {contactsLoading && (
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Chargement des contacts… {contactsLoadedCount}
+                        {contactsTotalCount !== null ? ` / ${contactsTotalCount}` : ""}
+                      </p>
+                    )}
+                    {!contactsLoading && contacts.length > 0 && (
+                      <div className="flex items-center space-x-2 pb-2">
+                        <Checkbox
+                          id="select-all-contacts-wa"
+                          checked={
+                            contacts.length > 0 &&
+                            selectedContactIds.length === contacts.length
+                          }
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedContactIds(contacts.map((c) => c.id))
+                            } else {
+                              setSelectedContactIds([])
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor="select-all-contacts-wa"
+                          className="text-sm cursor-pointer"
                         >
-                          <div>
-                            <p className="text-sm font-medium">
-                              {contact.first_name || contact.last_name
-                                ? `${contact.first_name || ""} ${contact.last_name || ""}`.trim()
-                                : contact.phone_number}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {contact.phone_number}
-                            </p>
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={selectedContactIds.includes(contact.id)}
-                            onChange={() => {}}
-                            className="h-4 w-4 accent-primary"
-                          />
-                        </div>
-                      ))}
-                    </div>
+                          Tout sélectionner ({contacts.length})
+                        </label>
+                      </div>
+                    )}
+                    {contacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className="flex items-center space-x-2 rounded-md px-2 py-1 hover:bg-muted/60"
+                      >
+                        <Checkbox
+                          id={`contact-wa-${contact.id}`}
+                          checked={selectedContactIds.includes(contact.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedContactIds([...selectedContactIds, contact.id])
+                            } else {
+                              setSelectedContactIds(
+                                selectedContactIds.filter((id) => id !== contact.id)
+                              )
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`contact-wa-${contact.id}`}
+                          className="flex-1 text-sm cursor-pointer"
+                        >
+                          {contact.first_name || contact.last_name
+                            ? `${contact.first_name || ""} ${contact.last_name || ""}`.trim()
+                            : contact.phone_number}{" "}
+                          ({contact.phone_number})
+                        </label>
+                      </div>
+                    ))}
+                    {contacts.length === 0 && !contactsLoading && (
+                      <p className="text-center text-muted-foreground py-4">
+                        Aucun contact
+                      </p>
+                    )}
+                  </div>
+                </ScrollArea>
+              )}
+              {recipientMode === "contacts" && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedContactIds.length} contact(s) sélectionné(s)
+                </p>
+              )}
+
+              {recipientMode === "tags" && (
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <Badge
+                      key={tag.id}
+                      variant={selectedTagIds.includes(tag.id) ? "default" : "outline"}
+                      className="cursor-pointer transition-colors"
+                      onClick={() => toggleTag(tag.id)}
+                    >
+                      {tag.name} ({tag.contact_count})
+                    </Badge>
+                  ))}
+                  {tags.length === 0 && (
+                    <p className="text-muted-foreground">Aucun tag</p>
                   )}
+                </div>
+              )}
+              {recipientMode === "tags" && (
+                <>
                   <p className="text-sm text-muted-foreground mt-2">
-                    {selectedContactIds.length} contact(s) sélectionné(s)
-                  </p>
-                </TabsContent>
-
-                <TabsContent value="tags" className="mt-4">
-                  {tags.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Aucun tag disponible
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {tags.map((tag) => (
-                        <Badge
-                          key={tag.id}
-                          variant={selectedTagIds.includes(tag.id) ? "default" : "outline"}
-                          className="cursor-pointer"
-                          onClick={() => toggleTag(tag.id)}
-                        >
-                          {tag.name} ({tag.contact_count})
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                  <p className="text-sm text-muted-foreground mt-4">
                     ~{getRecipientCount()} destinataire(s) estimé(s)
                   </p>
-                  {getRecipientCount() > MAX_CONTACTS && (
-                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                      Limite dépassée : 10&nbsp;000 destinataires maximum par requête.
-                    </div>
-                  )}
                   {sendMode === "personalized" && tagContactsLoading && (
                     <p className="text-xs text-muted-foreground mt-2">
                       Chargement des contacts du/des tag(s)… {tagContactsLoadedCount}
                       {tagContactsTotalCount !== null ? ` / ${tagContactsTotalCount}` : ""}
                     </p>
                   )}
-                  {sendMode === "personalized" && tagContactsLimitReached && (
-                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                      Limite atteinte : seuls les 10&nbsp;000 premiers contacts des tags sont chargés.
-                    </div>
-                  )}
-                </TabsContent>
+                </>
+              )}
 
-                <TabsContent value="manual" className="mt-4">
+              {recipientMode === "manual" && (
+                <>
                   <div className="space-y-2">
                     <Label htmlFor="manualNumbers">Numéros de téléphone</Label>
                     <Textarea
@@ -796,8 +816,8 @@ export default function NewWhatsAppCampaignPage() {
                   <p className="text-sm text-muted-foreground mt-2">
                     {parseManualNumbers().length} numéro(s) détecté(s)
                   </p>
-                </TabsContent>
-              </Tabs>
+                </>
+              )}
             </CardContent>
           </Card>
 
