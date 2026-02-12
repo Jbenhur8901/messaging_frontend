@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { whatsappService, contactsService, tagsService, handleApiError } from "@/services"
-import type { WhatsAppTemplate, Contact, Tag } from "@/types"
+import { whatsappService, contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
+import type { WhatsAppTemplate, Contact, Tag, CustomField } from "@/types"
 import { WhatsAppTemplateSelector } from "@/components/whatsapp/whatsapp-template-selector"
 import { WhatsAppTemplateCard } from "@/components/whatsapp/whatsapp-template-card"
 import { useOrganizationStore } from "@/stores"
@@ -41,6 +41,7 @@ export default function NewWhatsAppCampaignPage() {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
   const [tags, setTags] = useState<Tag[]>([])
+  const [globalCustomFields, setGlobalCustomFields] = useState<CustomField[]>([])
 
   // Form state
   const [campaignName, setCampaignName] = useState("")
@@ -51,7 +52,6 @@ export default function NewWhatsAppCampaignPage() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [manualNumbers, setManualNumbers] = useState("")
   const [variableMapping, setVariableMapping] = useState<Record<string, string>>({})
-  const [customFieldInputs, setCustomFieldInputs] = useState<Record<string, string>>({})
 
   const MAX_CONTACTS = Number.MAX_SAFE_INTEGER
   const CONTACTS_PAGE_SIZE = 100
@@ -77,7 +77,6 @@ export default function NewWhatsAppCampaignPage() {
 
   useEffect(() => {
     setVariableMapping({})
-    setCustomFieldInputs({})
   }, [selectedTemplateId])
 
   const fetchContactsPaged = async (
@@ -157,13 +156,19 @@ export default function NewWhatsAppCampaignPage() {
       setIsConfigured(configResult.is_configured)
 
       if (configResult.is_configured) {
-        const [templatesResult, tagsResult] = await Promise.all([
+        const [templatesResult, tagsResult, customFieldsResult] = await Promise.all([
           whatsappService.getTemplates(undefined, undefined, 100, 0),
           tagsService.getTags(),
+          customFieldsService.getCustomFields(),
         ])
 
         setTemplates((templatesResult.templates || []).filter((t) => t.status === "APPROVED"))
         setTags(tagsResult.tags || [])
+        setGlobalCustomFields(
+          (customFieldsResult.custom_fields || []).filter(
+            (field) => !field.is_system && field.is_active !== false
+          )
+        )
       }
     } catch (error) {
       console.error("Error loading data:", error)
@@ -225,26 +230,65 @@ export default function NewWhatsAppCampaignPage() {
     contacts.length,
     contactsLoading,
   ])
-  const availableFields = useMemo(() => {
+  const getContactCustomFields = (contact: Contact): Record<string, unknown> => {
+    const fields = contact.custom_fields as unknown
+    if (fields && typeof fields === "object" && "custom_fields" in fields) {
+      const nested = (fields as { custom_fields?: unknown }).custom_fields
+      if (nested && typeof nested === "object") {
+        return nested as Record<string, unknown>
+      }
+    }
+    return (fields as Record<string, unknown>) || {}
+  }
+
+  const systemVariableOptions = useMemo(
+    () => [
+      { value: "first_name", label: "Prénom (contact)" },
+      { value: "last_name", label: "Nom (contact)" },
+      { value: "full_name", label: "Nom complet (contact)" },
+      { value: "email", label: "Email (contact)" },
+      { value: "phone_number", label: "Téléphone (contact)" },
+    ],
+    []
+  )
+
+  const customVariableOptions = useMemo(() => {
     const sourceContacts =
       sendMode === "personalized" && recipientMode === "tags" ? tagContacts : contacts
-    const baseFields = [
-      { value: "first_name", label: "Prénom" },
-      { value: "last_name", label: "Nom" },
-      { value: "full_name", label: "Nom complet" },
-      { value: "email", label: "Email" },
-      { value: "phone_number", label: "Téléphone" },
-    ]
     const customKeys = new Set<string>()
+    globalCustomFields.forEach((field) => {
+      if (field.field_key) customKeys.add(field.field_key)
+    })
     sourceContacts.forEach((contact) => {
-      const fields = contact.custom_fields || {}
+      const fields = getContactCustomFields(contact)
       Object.keys(fields).forEach((key) => customKeys.add(key))
     })
-    const customFields = Array.from(customKeys)
+    return Array.from(customKeys)
       .sort((a, b) => a.localeCompare(b))
-      .map((key) => ({ value: `custom:${key}`, label: `Champ personnalisé · ${key}` }))
-    return [...baseFields, ...customFields]
-  }, [contacts, tagContacts, sendMode, recipientMode])
+      .map((key) => ({ value: `custom:${key}`, label: key }))
+  }, [contacts, tagContacts, sendMode, recipientMode, globalCustomFields])
+
+  const customFieldsByTag = useMemo(() => {
+    if (recipientMode !== "tags" || selectedTagIds.length === 0) return []
+    const results = selectedTagIds
+      .map((tagId) => {
+        const tag = tags.find((t) => t.id === tagId)
+        const keys = new Set<string>()
+        tagContacts
+          .filter((c) => c.tags.some((t) => t.id === tagId))
+          .forEach((contact) => {
+            const fields = getContactCustomFields(contact)
+            Object.keys(fields).forEach((key) => keys.add(key))
+          })
+        return {
+          tagId,
+          tagName: tag?.name || tagId,
+          fields: Array.from(keys).sort((a, b) => a.localeCompare(b)),
+        }
+      })
+      .sort((a, b) => a.tagName.localeCompare(b.tagName))
+    return results
+  }, [recipientMode, selectedTagIds, tags, tagContacts])
 
   const templateVariables = useMemo(() => {
     if (!selectedTemplate) return []
@@ -324,7 +368,7 @@ export default function NewWhatsAppCampaignPage() {
     if (field === "phone_number") return contact.phone_number || ""
     if (field.startsWith("custom:")) {
       const key = field.replace("custom:", "")
-      const value = contact.custom_fields?.[key]
+      const value = getContactCustomFields(contact)[key]
       if (value === null || value === undefined) return ""
       if (Array.isArray(value)) return value.join(", ")
       if (typeof value === "object") return JSON.stringify(value)
@@ -402,7 +446,7 @@ export default function NewWhatsAppCampaignPage() {
           if (!mapping || !mapping.startsWith("custom:")) return []
           const key = mapping.replace("custom:", "")
           const missingCount = recipientContacts.filter((contact) => {
-            const value = contact.custom_fields?.[key]
+            const value = getContactCustomFields(contact)[key]
             return value === null || value === undefined || value === ""
           }).length
           if (missingCount === 0) return []
@@ -846,45 +890,73 @@ export default function NewWhatsAppCampaignPage() {
                             value={variableMapping[variable.key] || ""}
                             onValueChange={(value) => {
                               setVariableMapping((prev) => ({ ...prev, [variable.key]: value }))
-                              if (value !== "custom:__manual__") {
-                                setCustomFieldInputs((prev) => ({ ...prev, [variable.key]: "" }))
-                              }
                             }}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Choisir un champ" />
                             </SelectTrigger>
                             <SelectContent>
-                              {availableFields.map((field) => (
+                              <SelectItem value="__system_group__" disabled>
+                                Infos contact (système)
+                              </SelectItem>
+                              {systemVariableOptions.map((field) => (
                                 <SelectItem key={field.value} value={field.value}>
                                   {field.label}
                                 </SelectItem>
                               ))}
-                              <SelectItem value="custom:__manual__">
-                                Champ personnalisé · Nom libre
+                              <SelectItem value="__custom_group__" disabled>
+                                Champs personnalisés globaux
                               </SelectItem>
+                              {customVariableOptions.length === 0 ? (
+                                <SelectItem value="__no_custom__" disabled>
+                                  Aucun champ personnalisé global
+                                </SelectItem>
+                              ) : (
+                                customVariableOptions.map((field) => (
+                                  <SelectItem key={field.value} value={field.value}>
+                                    {field.label}
+                                  </SelectItem>
+                                ))
+                              )}
                             </SelectContent>
                           </Select>
-
-                          {variableMapping[variable.key] === "custom:__manual__" && (
-                            <div className="flex gap-2">
-                              <Input
-                                placeholder="Nom du champ (ex: contrat_id)"
-                                value={customFieldInputs[variable.key] || ""}
-                                onChange={(e) => {
-                                  const val = e.target.value.trim()
-                                  setCustomFieldInputs((prev) => ({ ...prev, [variable.key]: val }))
-                                  setVariableMapping((prev) => ({
-                                    ...prev,
-                                    [variable.key]: val ? `custom:${val}` : "custom:__manual__",
-                                  }))
-                                }}
-                              />
-                            </div>
-                          )}
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {recipientMode === "tags" && selectedTagIds.length > 0 && (
+                  <div className="rounded-lg border border-border/60 bg-muted/60 p-4 text-xs text-muted-foreground">
+                    <div className="font-medium text-foreground mb-2">
+                      Champs personnalisés par tag
+                    </div>
+                    <div className="mb-2 text-[11px]">
+                      Cette section affiche les champs déjà renseignés sur les contacts du tag.
+                      Le dropdown ci-dessus propose les champs globaux disponibles.
+                    </div>
+                    {customFieldsByTag.length === 0 ? (
+                      <div>Aucun champ personnalisé détecté.</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {customFieldsByTag.map((entry) => (
+                          <div key={entry.tagId}>
+                            <div className="font-medium">{entry.tagName}</div>
+                            {entry.fields.length === 0 ? (
+                              <div className="text-muted-foreground">Aucun champ personnalisé</div>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {entry.fields.map((field) => (
+                                  <Badge key={field} variant="outline" className="text-[10px]">
+                                    {field}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

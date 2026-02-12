@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+:root {
+  --font-instrument-sans: "Segoe UI";
+  --font-sora: "Segoe UI";
+}
+
 @theme {
   /* Minimal enterprise light mode */
   --color-background: #f7f9fc;

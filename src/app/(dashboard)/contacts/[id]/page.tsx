@@ -6,16 +6,23 @@ import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { contactsService, tagsService, handleApiError } from "@/services"
-import type { Contact, Tag } from "@/types"
+import { contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
+import type { Contact, Tag, CustomField } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from "sonner"
-import { Loader2, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react"
+import { Loader2, ArrowLeft } from "lucide-react"
 
 const contactSchema = z.object({
   phone_number: z.string().min(1, "Numéro de téléphone requis"),
@@ -26,6 +33,42 @@ const contactSchema = z.object({
 
 type ContactForm = z.infer<typeof contactSchema>
 
+const extractCustomFields = (value: unknown): Record<string, unknown> => {
+  if (!value || typeof value !== "object") return {}
+  if ("custom_fields" in (value as Record<string, unknown>)) {
+    const nested = (value as { custom_fields?: unknown }).custom_fields
+    if (nested && typeof nested === "object") {
+      return nested as Record<string, unknown>
+    }
+  }
+  return value as Record<string, unknown>
+}
+
+const stringifyFieldValue = (value: unknown): string => {
+  if (value === null || value === undefined) return ""
+  if (Array.isArray(value)) return value.join(", ")
+  if (typeof value === "boolean") return value ? "true" : "false"
+  return String(value)
+}
+
+const normalizeFieldValue = (field: CustomField, value: string): unknown => {
+  if (value.trim() === "") return undefined
+  if (field.field_type === "number") {
+    const parsed = Number(value)
+    return Number.isNaN(parsed) ? undefined : parsed
+  }
+  if (field.field_type === "boolean") {
+    if (value === "true") return true
+    if (value === "false") return false
+    return undefined
+  }
+  if (field.field_type === "multiselect") {
+    const items = value.split(",").map((item) => item.trim()).filter(Boolean)
+    return items.length > 0 ? items : undefined
+  }
+  return value
+}
+
 export default function EditContactPage() {
   const router = useRouter()
   const params = useParams()
@@ -33,9 +76,10 @@ export default function EditContactPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [tags, setTags] = useState<Tag[]>([])
+  const [customFields, setCustomFields] = useState<CustomField[]>([])
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [contact, setContact] = useState<Contact | null>(null)
-  const [showCustomFields, setShowCustomFields] = useState(false)
 
   const {
     register,
@@ -50,13 +94,24 @@ export default function EditContactPage() {
     const loadData = async () => {
       setIsLoading(true)
       try {
-        const [contactData, tagsData] = await Promise.all([
+        const [contactData, tagsData, fieldsData] = await Promise.all([
           contactsService.getContact(contactId),
           tagsService.getTags(),
+          customFieldsService.getCustomFields(),
         ])
         setContact(contactData)
         setTags(tagsData.tags)
+        const activeCustomFields = (fieldsData.custom_fields || []).filter(
+          (field) => !field.is_system && field.is_active !== false
+        )
+        setCustomFields(activeCustomFields)
         setSelectedTags(contactData.tags.map((t) => t.id))
+        const existingCustomFields = extractCustomFields(contactData.custom_fields)
+        const initialCustomValues: Record<string, string> = {}
+        activeCustomFields.forEach((field) => {
+          initialCustomValues[field.field_key] = stringifyFieldValue(existingCustomFields[field.field_key])
+        })
+        setCustomFieldValues(initialCustomValues)
         setValue("phone_number", contactData.phone_number)
         setValue("first_name", contactData.first_name || "")
         setValue("last_name", contactData.last_name || "")
@@ -78,11 +133,23 @@ export default function EditContactPage() {
     if (!contactId) return
     setIsSaving(true)
     try {
+      const existingCustomFields = extractCustomFields(contact?.custom_fields)
+      const updatedCustomFields: Record<string, unknown> = { ...existingCustomFields }
+      customFields.forEach((field) => {
+        const value = normalizeFieldValue(field, customFieldValues[field.field_key] || "")
+        if (value === undefined) {
+          delete updatedCustomFields[field.field_key]
+        } else {
+          updatedCustomFields[field.field_key] = value
+        }
+      })
+
       await contactsService.updateContact(contactId, {
         phone_number: data.phone_number,
         first_name: data.first_name || undefined,
         last_name: data.last_name || undefined,
         email: data.email || undefined,
+        custom_fields: updatedCustomFields,
         tag_ids: selectedTags,
       })
       toast.success("Contact mis à jour")
@@ -213,94 +280,81 @@ export default function EditContactPage() {
             </CardContent>
           </Card>
 
-          {/* Custom Fields */}
-          <Card>
-            <CardHeader
-              className="cursor-pointer"
-              onClick={() => setShowCustomFields(!showCustomFields)}
-            >
-              <div className="flex items-center justify-between">
+          {customFields.length > 0 && (
+            <Card>
+              <CardHeader>
                 <CardTitle>Champs personnalisés</CardTitle>
-                {showCustomFields ? (
-                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
-            </CardHeader>
-            {showCustomFields && (
-              <CardContent>
-                <div className="space-y-3">
-                  {/* System variables */}
-                  <div className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2">
-                    <span className="text-sm text-muted-foreground">first_name</span>
-                    <span className="text-sm font-medium text-right break-words">
-                      {contact.first_name || "-"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2">
-                    <span className="text-sm text-muted-foreground">last_name</span>
-                    <span className="text-sm font-medium text-right break-words">
-                      {contact.last_name || "-"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2">
-                    <span className="text-sm text-muted-foreground">email</span>
-                    <span className="text-sm font-medium text-right break-words">
-                      {contact.email || "-"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2">
-                    <span className="text-sm text-muted-foreground">phone_number</span>
-                    <span className="text-sm font-medium text-right break-words">
-                      {contact.phone_number || "-"}
-                    </span>
-                  </div>
-
-                  {/* Custom fields */}
-                  {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
-                    <>
-                      {Object.entries(contact.custom_fields).map(([key, value]) => {
-                        // Render nested object as multiple rows
-                        if (value && typeof value === "object" && !Array.isArray(value)) {
-                          return Object.entries(value as Record<string, unknown>).map(([subKey, subValue]) => (
-                            <div key={`${key}-${subKey}`} className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2 last:border-0">
-                              <span className="text-sm text-muted-foreground">{subKey}</span>
-                              <span className="text-sm font-medium text-right break-words">
-                                {subValue === null || subValue === undefined
-                                  ? "-"
-                                  : typeof subValue === "boolean"
-                                  ? subValue ? "Oui" : "Non"
-                                  : Array.isArray(subValue)
-                                  ? subValue.join(", ")
-                                  : String(subValue)}
-                              </span>
-                            </div>
-                          ))
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {customFields.map((field) => (
+                  <div key={field.id} className="space-y-2">
+                    <Label>{field.label}</Label>
+                    {field.field_type === "boolean" ? (
+                      <Select
+                        value={customFieldValues[field.field_key] ?? ""}
+                        onValueChange={(value) =>
+                          setCustomFieldValues((prev) => ({ ...prev, [field.field_key]: value }))
                         }
-
-                        const displayValue = (() => {
-                          if (value === null || value === undefined) return "-"
-                          if (typeof value === "boolean") return value ? "Oui" : "Non"
-                          if (Array.isArray(value)) return value.join(", ")
-                          return String(value)
-                        })()
-
-                        return (
-                          <div key={key} className="grid grid-cols-2 gap-4 border-b border-border/60 pb-2 last:border-0">
-                            <span className="text-sm text-muted-foreground">{key}</span>
-                            <span className="text-sm font-medium text-right break-words">
-                              {displayValue}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </>
-                  )}
-                </div>
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">Oui</SelectItem>
+                          <SelectItem value="false">Non</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : field.field_type === "select" && field.options && field.options.length > 0 ? (
+                      <Select
+                        value={customFieldValues[field.field_key] ?? ""}
+                        onValueChange={(value) =>
+                          setCustomFieldValues((prev) => ({ ...prev, [field.field_key]: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={field.placeholder || "Sélectionner"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {field.options.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        type={
+                          field.field_type === "number"
+                            ? "number"
+                            : field.field_type === "date"
+                            ? "date"
+                            : field.field_type === "email"
+                            ? "email"
+                            : field.field_type === "url"
+                            ? "url"
+                            : "text"
+                        }
+                        placeholder={
+                          field.placeholder ||
+                          (field.field_type === "multiselect"
+                            ? "Valeur1, Valeur2"
+                            : undefined)
+                        }
+                        value={customFieldValues[field.field_key] ?? ""}
+                        onChange={(event) =>
+                          setCustomFieldValues((prev) => ({
+                            ...prev,
+                            [field.field_key]: event.target.value,
+                          }))
+                        }
+                      />
+                    )}
+                  </div>
+                ))}
               </CardContent>
-            )}
-          </Card>
+            </Card>
+          )}
 
           <div className="flex gap-4">
             <Link href="/contacts">

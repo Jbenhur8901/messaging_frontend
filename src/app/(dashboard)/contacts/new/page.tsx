@@ -6,13 +6,20 @@ import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { contactsService, tagsService, handleApiError } from "@/services"
-import type { Tag } from "@/types"
+import { contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
+import type { Tag, CustomField } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from "sonner"
 import { Loader2, ArrowLeft } from "lucide-react"
 
@@ -36,10 +43,30 @@ const contactSchema = z.object({
 
 type ContactForm = z.infer<typeof contactSchema>
 
+const normalizeFieldValue = (field: CustomField, value: string): unknown => {
+  if (value.trim() === "") return undefined
+  if (field.field_type === "number") {
+    const parsed = Number(value)
+    return Number.isNaN(parsed) ? undefined : parsed
+  }
+  if (field.field_type === "boolean") {
+    if (value === "true") return true
+    if (value === "false") return false
+    return undefined
+  }
+  if (field.field_type === "multiselect") {
+    const items = value.split(",").map((item) => item.trim()).filter(Boolean)
+    return items.length > 0 ? items : undefined
+  }
+  return value
+}
+
 export default function NewContactPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [tags, setTags] = useState<Tag[]>([])
+  const [customFields, setCustomFields] = useState<CustomField[]>([])
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
   const [selectedTags, setSelectedTags] = useState<string[]>([])
 
   const {
@@ -51,25 +78,42 @@ export default function NewContactPage() {
   })
 
   useEffect(() => {
-    const loadTags = async () => {
+    const loadData = async () => {
       try {
-        const result = await tagsService.getTags()
-        setTags(result.tags)
+        const [tagsResult, fieldsResult] = await Promise.all([
+          tagsService.getTags(),
+          customFieldsService.getCustomFields(),
+        ])
+        setTags(tagsResult.tags)
+        setCustomFields(
+          (fieldsResult.custom_fields || []).filter(
+            (field) => !field.is_system && field.is_active !== false
+          )
+        )
       } catch (error) {
-        console.error("Error loading tags:", error)
+        console.error("Error loading form data:", error)
       }
     }
-    loadTags()
+    loadData()
   }, [])
 
   const onSubmit = async (data: ContactForm) => {
     setIsLoading(true)
     try {
+      const customFieldsPayload: Record<string, unknown> = {}
+      customFields.forEach((field) => {
+        const value = normalizeFieldValue(field, customFieldValues[field.field_key] || "")
+        if (value !== undefined) {
+          customFieldsPayload[field.field_key] = value
+        }
+      })
+
       const result = await contactsService.createContact({
         phone_number: normalizePhoneNumber(data.phone_number),
         first_name: data.first_name || undefined,
         last_name: data.last_name || undefined,
         email: data.email || undefined,
+        custom_fields: Object.keys(customFieldsPayload).length > 0 ? customFieldsPayload : undefined,
       })
 
       // Add tags if selected
@@ -205,6 +249,82 @@ export default function NewContactPage() {
               </div>
             </CardContent>
           </Card>
+
+          {customFields.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Champs personnalisés</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {customFields.map((field) => (
+                  <div key={field.id} className="space-y-2">
+                    <Label>{field.label}</Label>
+                    {field.field_type === "boolean" ? (
+                      <Select
+                        value={customFieldValues[field.field_key] ?? ""}
+                        onValueChange={(value) =>
+                          setCustomFieldValues((prev) => ({ ...prev, [field.field_key]: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">Oui</SelectItem>
+                          <SelectItem value="false">Non</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : field.field_type === "select" && field.options && field.options.length > 0 ? (
+                      <Select
+                        value={customFieldValues[field.field_key] ?? ""}
+                        onValueChange={(value) =>
+                          setCustomFieldValues((prev) => ({ ...prev, [field.field_key]: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={field.placeholder || "Sélectionner"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {field.options.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        type={
+                          field.field_type === "number"
+                            ? "number"
+                            : field.field_type === "date"
+                            ? "date"
+                            : field.field_type === "email"
+                            ? "email"
+                            : field.field_type === "url"
+                            ? "url"
+                            : "text"
+                        }
+                        placeholder={
+                          field.placeholder ||
+                          (field.field_type === "multiselect"
+                            ? "Valeur1, Valeur2"
+                            : undefined)
+                        }
+                        value={customFieldValues[field.field_key] ?? ""}
+                        onChange={(event) =>
+                          setCustomFieldValues((prev) => ({
+                            ...prev,
+                            [field.field_key]: event.target.value,
+                          }))
+                        }
+                      />
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="flex gap-4">
             <Link href="/contacts">

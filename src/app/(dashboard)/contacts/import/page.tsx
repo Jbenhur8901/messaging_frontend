@@ -4,12 +4,13 @@ import { useState, useCallback, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Papa from "papaparse"
-import { contactsService, tagsService, handleApiError } from "@/services"
-import type { Tag, ContactImportResult } from "@/types"
+import { contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
+import type { Tag, ContactImportResult, CustomField } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Select,
@@ -59,7 +60,12 @@ interface ColumnMapping {
 }
 
 interface CustomFieldMapping {
-  [csvColumn: string]: string // nom du champ custom
+  [csvColumn: string]: string // id du champ custom global
+}
+
+interface LocalImportError {
+  row: number
+  error: string
 }
 
 const normalizePhoneNumber = (value: string) => {
@@ -73,10 +79,39 @@ const normalizePhoneNumber = (value: string) => {
   return /^\d+$/.test(trimmed) ? `+${trimmed}` : trimmed
 }
 
+const normalizeCustomFieldValue = (field: CustomField, value: string): unknown => {
+  if (field.field_type === "number") {
+    const parsed = Number(value)
+    return Number.isNaN(parsed) ? value : parsed
+  }
+  if (field.field_type === "boolean") {
+    const normalized = value.toLowerCase()
+    if (["true", "1", "oui", "yes"].includes(normalized)) return true
+    if (["false", "0", "non", "no"].includes(normalized)) return false
+    return value
+  }
+  if (field.field_type === "multiselect") {
+    return value.split(",").map((item) => item.trim()).filter(Boolean)
+  }
+  if (field.field_type === "date") {
+    // Accept dd/mm/yyyy and convert to ISO date for backend.
+    const frMatch = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+    if (frMatch) {
+      const [, dd, mm, yyyy] = frMatch
+      return `${yyyy}-${mm}-${dd}`
+    }
+  }
+  return value
+}
+
+const isIsoDateLike = (value: string) =>
+  /^\d{4}-\d{2}-\d{2}(T.*)?$/.test(value)
+
 export default function ImportContactsPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [tags, setTags] = useState<Tag[]>([])
+  const [globalCustomFields, setGlobalCustomFields] = useState<CustomField[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [result, setResult] = useState<ContactImportResult | null>(null)
 
@@ -89,20 +124,30 @@ export default function ImportContactsPage() {
   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({})
   const [customFieldNames, setCustomFieldNames] = useState<CustomFieldMapping>({})
   const [step, setStep] = useState<"upload" | "mapping" | "result">("upload")
+  const [updateExisting, setUpdateExisting] = useState(false)
+  const [localErrors, setLocalErrors] = useState<LocalImportError[]>([])
 
   // JSON import
   const [jsonData, setJsonData] = useState("")
 
   useEffect(() => {
-    const loadTags = async () => {
+    const loadData = async () => {
       try {
-        const result = await tagsService.getTags()
-        setTags(result.tags)
+        const [tagsResult, customFieldsResult] = await Promise.all([
+          tagsService.getTags(),
+          customFieldsService.getCustomFields(),
+        ])
+        setTags(tagsResult.tags)
+        setGlobalCustomFields(
+          (customFieldsResult.custom_fields || []).filter(
+            (field) => !field.is_system && field.is_active !== false
+          )
+        )
       } catch (error) {
-        console.error("Error loading tags:", error)
+        console.error("Error loading import data:", error)
       }
     }
-    loadTags()
+    loadData()
   }, [])
 
   // Auto-mapping intelligent basé sur les noms de colonnes
@@ -171,6 +216,8 @@ export default function ImportContactsPage() {
 
         setCsvData({ headers, rows, delimiter })
         setColumnMapping(autoMapColumns(headers))
+        setCustomFieldNames({})
+        setLocalErrors([])
         setStep("mapping")
         toast.success(`${rows.length} lignes détectées (séparateur: "${delimiter}")`)
       },
@@ -205,17 +252,49 @@ export default function ImportContactsPage() {
   }
 
   const handleMappingChange = (csvColumn: string, targetField: string) => {
+    setLocalErrors([])
     setColumnMapping((prev) => ({
       ...prev,
       [csvColumn]: targetField as TargetFieldValue | "custom" | "ignore",
+    }))
+    if (targetField !== "custom") {
+      setCustomFieldNames((prev) => {
+        const next = { ...prev }
+        delete next[csvColumn]
+        return next
+      })
+      return
+    }
+
+    setCustomFieldNames((prev) => {
+      const selected = prev[csvColumn]
+      const exists =
+        !!selected &&
+        globalCustomFields.some((field) => field.id === selected || field.field_key === selected)
+      if (exists) return prev
+      const next = { ...prev }
+      delete next[csvColumn]
+      return next
+    })
+  }
+
+  const handleCustomFieldSelection = (csvColumn: string, fieldId: string) => {
+    setLocalErrors([])
+    setCustomFieldNames((prev) => ({
+      ...prev,
+      [csvColumn]: fieldId,
     }))
   }
 
   // Vérifier si le mapping est valide
   const isMappingValid = useMemo(() => {
     const mappedFields = Object.values(columnMapping)
-    return mappedFields.includes("phone_number")
-  }, [columnMapping])
+    const hasPhoneMapping = mappedFields.includes("phone_number")
+    const customMappingsAreValid = Object.entries(columnMapping)
+      .filter(([, targetField]) => targetField === "custom")
+      .every(([csvColumn]) => Boolean(customFieldNames[csvColumn]))
+    return hasPhoneMapping && customMappingsAreValid
+  }, [columnMapping, customFieldNames])
 
   // Transformer les données CSV selon le mapping
   const transformData = useCallback(() => {
@@ -247,8 +326,14 @@ export default function ImportContactsPage() {
         } else if (targetField === "email") {
           contact.email = value
         } else if (targetField === "custom") {
-          const customName = customFieldNames[csvColumn] || csvColumn
-          customFields[customName] = value
+          const selectedFieldToken = customFieldNames[csvColumn]
+          const selectedField = globalCustomFields.find(
+            (field) => field.id === selectedFieldToken || field.field_key === selectedFieldToken
+          )
+          const customFieldKey = selectedField?.field_key
+          if (selectedField && customFieldKey) {
+            customFields[customFieldKey] = normalizeCustomFieldValue(selectedField, value)
+          }
         }
         // ignore = on ne fait rien
       })
@@ -259,21 +344,113 @@ export default function ImportContactsPage() {
 
       return contact
     }).filter((c) => c.phone_number)
-  }, [csvData, columnMapping, customFieldNames])
+  }, [csvData, columnMapping, customFieldNames, globalCustomFields])
+
+  const validateContactsForImport = useCallback(
+    (contacts: Array<{ phone_number: string; custom_fields?: Record<string, unknown> }>): LocalImportError[] => {
+      const errors: LocalImportError[] = []
+      const allowedFields = new Map(
+        globalCustomFields
+          .filter((field) => field.field_key)
+          .map((field) => [field.field_key, field])
+      )
+
+      contacts.forEach((contact, index) => {
+        const rowNumber = index + 1
+        const customFields = contact.custom_fields || {}
+        Object.entries(customFields).forEach(([key, rawValue]) => {
+          const field = allowedFields.get(key)
+          if (!field) {
+            errors.push({
+              row: rowNumber,
+              error: `Clé custom inconnue: ${key}`,
+            })
+            return
+          }
+
+          if (field.field_type === "number" && typeof rawValue !== "number") {
+            errors.push({ row: rowNumber, error: `${key}: doit être un nombre` })
+          }
+
+          if (field.field_type === "boolean" && typeof rawValue !== "boolean") {
+            errors.push({ row: rowNumber, error: `${key}: doit être un booléen` })
+          }
+
+          if (field.field_type === "multiselect" && !Array.isArray(rawValue)) {
+            errors.push({ row: rowNumber, error: `${key}: doit être un tableau` })
+          }
+
+          if (field.field_type === "select" && Array.isArray(field.options) && field.options.length > 0) {
+            if (typeof rawValue !== "string" || !field.options.includes(rawValue)) {
+              errors.push({
+                row: rowNumber,
+                error: `${key}: valeur non autorisée`,
+              })
+            }
+          }
+
+          if (field.field_type === "multiselect" && Array.isArray(field.options) && field.options.length > 0) {
+            if (
+              Array.isArray(rawValue) &&
+              rawValue.some((item) => typeof item !== "string" || !field.options?.includes(item))
+            ) {
+              errors.push({
+                row: rowNumber,
+                error: `${key}: une ou plusieurs valeurs ne sont pas autorisées`,
+              })
+            }
+          }
+
+          if (field.field_type === "date") {
+            if (typeof rawValue !== "string" || !isIsoDateLike(rawValue)) {
+              errors.push({
+                row: rowNumber,
+                error: `${key}: format date invalide (ISO recommandé: YYYY-MM-DD)`,
+              })
+            }
+          }
+        })
+      })
+
+      return errors
+    },
+    [globalCustomFields]
+  )
 
   const handleImport = async () => {
     const contacts = transformData()
+    setLocalErrors([])
 
     if (contacts.length === 0) {
       toast.error("Aucun contact valide à importer (numéro de téléphone manquant)")
       return
     }
 
+    const validationErrors = validateContactsForImport(
+      contacts as Array<{ phone_number: string; custom_fields?: Record<string, unknown> }>
+    )
+    if (validationErrors.length > 0) {
+      setLocalErrors(validationErrors)
+      toast.error("Erreurs de validation locale détectées")
+      return
+    }
+
     setIsLoading(true)
     try {
+      const aggregatedCustomFields = contacts.reduce<Record<string, unknown>>((acc, contact) => {
+        if (contact.custom_fields) {
+          Object.assign(acc, contact.custom_fields)
+        }
+        return acc
+      }, {})
+      if (Object.keys(aggregatedCustomFields).length > 0) {
+        await customFieldsService.validateCustomFields(aggregatedCustomFields)
+      }
+
       const importResult = await contactsService.importContactsJson(
         contacts,
-        selectedTags.length > 0 ? selectedTags : undefined
+        selectedTags.length > 0 ? selectedTags : undefined,
+        updateExisting
       )
       setResult(importResult)
       setStep("result")
@@ -285,6 +462,9 @@ export default function ImportContactsPage() {
       }
     } catch (error) {
       const apiError = handleApiError(error)
+      if (apiError.message.includes("Custom fields invalides")) {
+        toast.error(`Import rejeté: ${apiError.message}`)
+      }
       toast.error(apiError.message)
     } finally {
       setIsLoading(false)
@@ -292,6 +472,7 @@ export default function ImportContactsPage() {
   }
 
   const handleJsonImport = async () => {
+    setLocalErrors([])
     if (!jsonData.trim()) {
       toast.error("Veuillez entrer des données JSON")
       return
@@ -319,9 +500,21 @@ export default function ImportContactsPage() {
         }
         return contact
       })
+
+      const validationErrors = validateContactsForImport(
+        normalizedContacts as Array<{ phone_number: string; custom_fields?: Record<string, unknown> }>
+      )
+      if (validationErrors.length > 0) {
+        setLocalErrors(validationErrors)
+        toast.error("Erreurs de validation locale détectées")
+        setIsLoading(false)
+        return
+      }
+
       const importResult = await contactsService.importContactsJson(
         normalizedContacts,
-        selectedTags.length > 0 ? selectedTags : undefined
+        selectedTags.length > 0 ? selectedTags : undefined,
+        updateExisting
       )
       setResult(importResult)
       setStep("result")
@@ -345,6 +538,7 @@ export default function ImportContactsPage() {
     setColumnMapping({})
     setCustomFieldNames({})
     setResult(null)
+    setLocalErrors([])
     setStep("upload")
     setJsonData("")
   }
@@ -538,18 +732,37 @@ export default function ImportContactsPage() {
                             </SelectContent>
                           </Select>
                           {columnMapping[header] === "custom" && (
-                            <input
-                              type="text"
-                              placeholder="Nom du champ"
-                              className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
-                              value={customFieldNames[header] || ""}
-                              onChange={(e) =>
-                                setCustomFieldNames((prev) => ({
-                                  ...prev,
-                                  [header]: e.target.value,
-                                }))
-                              }
-                            />
+                            <div className="mt-2 space-y-2">
+                              <Select
+                                value={customFieldNames[header] || "unselected"}
+                                onValueChange={(value) => {
+                                  if (value !== "unselected") {
+                                    handleCustomFieldSelection(header, value)
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-[260px]">
+                                  <SelectValue placeholder="Sélectionner un champ global" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unselected">Sélectionner...</SelectItem>
+                                  {globalCustomFields.map((field) => (
+                                    <SelectItem key={field.id} value={field.id}>
+                                      {field.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {globalCustomFields.length === 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  Aucun champ personnalisé global disponible. Créez-en dans{" "}
+                                  <Link href="/contacts/tags?tab=fields" className="text-primary hover:underline">
+                                    Paramétrage
+                                  </Link>
+                                  .
+                                </p>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
@@ -561,10 +774,28 @@ export default function ImportContactsPage() {
               {!isMappingValid && (
                 <div className="flex items-center gap-2 text-destructive text-sm">
                   <AlertCircle className="h-4 w-4" />
-                  <span>Vous devez mapper une colonne vers &quot;Numéro de téléphone&quot;</span>
+                  <span>
+                    Vous devez mapper une colonne vers &quot;Numéro de téléphone&quot; et sélectionner un champ global pour chaque
+                    mapping &quot;Champ personnalisé&quot;.
+                  </span>
                 </div>
               )}
             </div>
+
+            {localErrors.length > 0 && (
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3">
+                <p className="mb-2 text-sm font-medium text-destructive">
+                  Erreurs locales détectées ({localErrors.length})
+                </p>
+                <ul className="max-h-40 space-y-1 overflow-y-auto text-sm">
+                  {localErrors.slice(0, 20).map((error, i) => (
+                    <li key={`${error.row}-${i}`}>
+                      Ligne {error.row}: {error.error}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Aperçu des données transformées */}
             <div className="space-y-4">
@@ -631,6 +862,16 @@ export default function ImportContactsPage() {
             </div>
 
             {/* Actions */}
+            <div className="flex items-center gap-2 pt-2">
+              <Checkbox
+                id="update-existing"
+                checked={updateExisting}
+                onCheckedChange={(checked) => setUpdateExisting(checked === true)}
+              />
+              <label htmlFor="update-existing" className="text-sm text-muted-foreground">
+                Mettre à jour les contacts existants (`update_existing=true`)
+              </label>
+            </div>
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={() => setStep("upload")}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -744,6 +985,21 @@ export default function ImportContactsPage() {
                   value={jsonData}
                   onChange={(e) => setJsonData(e.target.value)}
                 />
+
+                {localErrors.length > 0 && (
+                  <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3">
+                    <p className="mb-2 text-sm font-medium text-destructive">
+                      Erreurs locales détectées ({localErrors.length})
+                    </p>
+                    <ul className="max-h-40 space-y-1 overflow-y-auto text-sm">
+                      {localErrors.slice(0, 20).map((error, i) => (
+                        <li key={`${error.row}-${i}`}>
+                          Ligne {error.row}: {error.error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* Tags pour JSON */}
                 <Card className="border-dashed">

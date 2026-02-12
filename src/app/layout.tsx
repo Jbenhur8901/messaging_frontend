@@ -1,20 +1,7 @@
 import type { Metadata } from "next"
-import { Instrument_Sans, Sora } from "next/font/google"
 import { headers } from "next/headers"
 import "./globals.css"
 import { Providers } from "@/components/providers"
-
-const instrumentSans = Instrument_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-instrument-sans",
-})
-
-const sora = Sora({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-sora",
-})
 
 export const metadata: Metadata = {
   title: "Flow - SMS Campaign Management",
@@ -36,7 +23,7 @@ export default async function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <head />
-      <body className={`${instrumentSans.variable} ${sora.variable}`}>
+      <body>
         <Providers nonce={nonce}>{children}</Providers>
       </body>
     </html>

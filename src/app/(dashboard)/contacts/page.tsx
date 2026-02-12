@@ -94,7 +94,7 @@ export default function ContactsPage() {
   const [bulkTagsOpen, setBulkTagsOpen] = useState(false)
   const [bulkTagsMode, setBulkTagsMode] = useState<"add" | "remove">("add")
   const [bulkTagIds, setBulkTagIds] = useState<string[]>([])
-  const limit = 50
+  const limit = 100
 
   const loadAllContacts = async () => {
     setIsLoading(true)
@@ -219,7 +219,7 @@ export default function ContactsPage() {
     if (!deleteContactId) return
 
     try {
-      await contactsService.bulkDelete([deleteContactId], "soft")
+      await contactsService.bulkDelete([deleteContactId], "hard")
       await loadAllContacts()
       toast.success("Contact supprimé")
     } catch (error) {
@@ -261,7 +261,7 @@ export default function ContactsPage() {
   const handleBulkDelete = async () => {
     if (selectedContacts.length === 0) return
     try {
-      await contactsService.bulkDelete(selectedContacts, "soft", bulkDeleteReason || undefined)
+      await contactsService.bulkDelete(selectedContacts, "hard", bulkDeleteReason || undefined)
       toast.success(`${selectedContacts.length} contact(s) supprimé(s)`)
       setSelectedContacts([])
       await loadAllContacts()
@@ -824,8 +824,8 @@ export default function ContactsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer le contact ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Le contact sera retiré de la liste (soft delete) et pourra être
-              restauré.
+              Cette action est irréversible. Le contact sera définitivement
+              supprimé.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -854,7 +854,7 @@ export default function ContactsPage() {
           <DialogHeader>
             <DialogTitle>Supprimer des contacts</DialogTitle>
             <DialogDescription>
-              Cette action supprimera {selectedContacts.length} contact(s).
+              Cette action est irréversible et supprimera définitivement {selectedContacts.length} contact(s).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">

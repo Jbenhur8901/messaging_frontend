@@ -89,10 +89,31 @@ export const contactsService = {
     limit = 50,
     offset = 0
   ): Promise<{ contacts: Contact[]; pagination: Pagination }> {
-    const { data } = await api.get("/v1/contacts/by-tags", {
-      params: { tag_ids: tagIds.join(","), limit, offset },
-    })
-    return data
+    try {
+      const { data } = await api.get("/v1/contacts/by-tags", {
+        params: { tag_ids: tagIds.join(","), limit, offset },
+      })
+      return data
+    } catch (error) {
+      if (error && typeof error === "object" && "response" in error) {
+        const response = (error as { response?: { status?: number; data?: { detail?: string } } }).response
+        if (response?.status === 404) {
+          const detail = response.data?.detail || ""
+          if (detail.includes("Contact non trouvé") || detail.includes("Contact not found")) {
+            return {
+              contacts: [],
+              pagination: {
+                total: 0,
+                limit,
+                offset,
+                has_more: false,
+              },
+            }
+          }
+        }
+      }
+      throw error
+    }
   },
 
   async getContact(contactId: string): Promise<Contact> {
@@ -152,13 +173,16 @@ export const contactsService = {
   },
 
   async deleteContact(contactId: string): Promise<{ success: boolean; message: string }> {
-    const { data } = await api.delete(`/v1/contacts/${contactId}`)
+    const { data } = await apiJson.post("/v1/contacts/bulk/delete", {
+      contact_ids: [contactId],
+      mode: "hard",
+    })
     return data
   },
 
   async bulkDelete(
     contactIds: string[],
-    mode: "soft" | "hard" = "soft",
+    mode: "soft" | "hard" = "hard",
     reason?: string
   ): Promise<{ success: boolean; deleted_count: number; mode: string; message?: string }> {
     const { data } = await apiJson.post("/v1/contacts/bulk/delete", {
@@ -209,13 +233,44 @@ export const contactsService = {
       email?: string
       custom_fields?: Record<string, unknown>
     }>,
-    tagIds?: string[]
+    tagIds?: string[],
+    updateExisting = false
   ): Promise<ContactImportResult> {
-    const { data } = await apiJson.post<ContactImportResult>("/v1/contacts/import/json", {
+    const url = updateExisting
+      ? "/v1/contacts/import/json?update_existing=true"
+      : "/v1/contacts/import/json"
+
+    const payload = {
       contacts,
       tag_ids: tagIds,
-    })
-    return data
+    }
+
+    try {
+      const { data } = await apiJson.post<ContactImportResult>(url, payload)
+      return data
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "response" in error &&
+        (error as { response?: { data?: { detail?: string } } }).response?.data?.detail?.includes("Custom fields invalides")
+      ) {
+        // Backward/variant compatibility: some backends validate import custom fields from nested payload.
+        const fallbackContacts = contacts.map((contact) => {
+          if (!contact.custom_fields) return contact
+          return {
+            ...contact,
+            custom_fields: { custom_fields: contact.custom_fields },
+          }
+        })
+        const { data } = await apiJson.post<ContactImportResult>(url, {
+          contacts: fallbackContacts,
+          tag_ids: tagIds,
+        })
+        return data
+      }
+      throw error
+    }
   },
 
   async importContactsCsv(file: File, tagIds?: string[]): Promise<ContactImportResult> {

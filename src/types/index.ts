@@ -244,6 +244,8 @@ export interface CustomField {
   field_type: "text" | "number" | "date" | "boolean" | "select" | "multiselect" | "email" | "url" | "phone"
   is_required: boolean
   is_active: boolean
+  is_system?: boolean
+  is_global?: boolean
   placeholder?: string
   options?: string[]
 }

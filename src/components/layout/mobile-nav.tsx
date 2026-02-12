@@ -23,7 +23,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Campagnes", href: "/campaigns", icon: Send },
   { name: "Contacts", href: "/contacts", icon: Users },
-  { name: "Tags", href: "/contacts/tags", icon: Tags },
+  { name: "Paramétrage", href: "/contacts/tags", icon: Tags },
   { name: "Templates", href: "/templates", icon: FileText },
   { name: "Services", href: "/services", icon: Radio },
   { name: "Crédits", href: "/credits", icon: CreditCard },
