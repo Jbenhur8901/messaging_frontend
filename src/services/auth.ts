@@ -42,8 +42,8 @@ export const authService = {
           data.user.api_key = keyResponse.data.api_key
           data.user.api_key_id = keyResponse.data.key_id
         }
-      } catch (error) {
-        console.error("Error creating API key:", error)
+      } catch {
+        // Ignore API key creation error at signup.
       }
 
       authStorage.setItem("user", JSON.stringify(data.user))
@@ -113,8 +113,8 @@ export const authService = {
               data.user.api_key_id = keyResponse.data.key_id
             }
           }
-        } catch (error) {
-          console.error("Error checking/creating API key:", error)
+        } catch {
+          // Ignore API key lookup/creation errors at signin.
         }
       }
 

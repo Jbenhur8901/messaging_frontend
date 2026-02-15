@@ -73,7 +73,6 @@ export default function CampaignDetailPage() {
       setMessages(messagesData.messages)
       setPagination(messagesData.pagination)
     } catch (error) {
-      console.error("Error loading broadcast:", error)
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)

@@ -54,7 +54,6 @@ export default function CampaignsPage() {
       const result = await dashboardService.getRecentBroadcasts(50)
       setBroadcasts(result.broadcasts)
     } catch (error) {
-      console.error("Error loading broadcasts:", error)
     } finally {
       setIsLoading(false)
     }

@@ -86,7 +86,6 @@ export default function SettingsPage() {
         setMfaVerifiedAt(status.mfa_verified_at || null)
       } catch (error) {
         // Silently fail - MFA might not be set up or session missing
-        console.error("Error loading MFA factors:", error)
         setMfaEnabled(false)
         setMfaVerifiedAt(null)
       } finally {

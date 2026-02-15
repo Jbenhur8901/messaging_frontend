@@ -31,7 +31,6 @@ export default function ToolsPage() {
       setSuggestions(optimizeResult.suggestions)
       setSpecialChars(specialResult.non_gsm_characters)
     } catch (error) {
-      console.error("Error analyzing message:", error)
     } finally {
       setIsAnalyzing(false)
     }

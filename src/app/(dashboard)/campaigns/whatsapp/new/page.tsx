@@ -171,7 +171,6 @@ export default function NewWhatsAppCampaignPage() {
         )
       }
     } catch (error) {
-      console.error("Error loading data:", error)
       setIsConfigured(false)
     } finally {
       setIsLoading(false)
@@ -190,7 +189,6 @@ export default function NewWhatsAppCampaignPage() {
       fetchAllContacts()
         .then((result) => setContacts(result.contacts))
         .catch((error) => {
-          console.error("Error loading contacts:", error)
           setContactsLoading(false)
         })
     }
@@ -204,7 +202,6 @@ export default function NewWhatsAppCampaignPage() {
         fetchAllContacts()
           .then((result) => setContacts(result.contacts))
           .catch((error) => {
-            console.error("Error loading contacts:", error)
             setContactsLoading(false)
           })
       }
@@ -215,7 +212,6 @@ export default function NewWhatsAppCampaignPage() {
       fetchContactsByTags(selectedTagIds)
         .then((result) => setTagContacts(result.contacts))
         .catch((error) => {
-          console.error("Error loading tag contacts:", error)
           setTagContactsLoading(false)
         })
     }

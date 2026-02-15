@@ -65,7 +65,6 @@ export default function CreditsPage() {
         setBalance(balanceData)
         setUsage(usageData)
       } catch (error) {
-        console.error("Error loading credits data:", error)
       } finally {
         setIsLoading(false)
       }
@@ -88,7 +87,6 @@ export default function CreditsPage() {
         setTransactions(result.transactions)
         setPagination(result.pagination)
       } catch (error) {
-        console.error("Error loading transactions:", error)
       }
     }
 

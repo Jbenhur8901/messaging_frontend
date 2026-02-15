@@ -55,7 +55,6 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
       const result = await tagsService.getTags()
       set({ tags: result.tags })
     } catch (error) {
-      console.error("Error fetching tags:", error)
     }
   },
 

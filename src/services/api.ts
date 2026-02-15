@@ -58,15 +58,6 @@ api.interceptors.request.use(
       if (apiKey && !isAuthEndpoint(config.url)) {
         config.headers["X-API-Key"] = apiKey
       }
-      if (process.env.NEXT_PUBLIC_DEBUG_API === "true") {
-        console.log("[API] Request", {
-          method: config.method,
-          url: config.url,
-          hasAuth: !!token,
-          hasApiKey: !!apiKey,
-          apiKeyPrefix: typeof apiKey === "string" ? apiKey.slice(0, 10) : null,
-        })
-      }
     }
     // Set Content-Type for POST/PUT/PATCH requests only
     if (config.method && ["post", "put", "patch"].includes(config.method.toLowerCase())) {

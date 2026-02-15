@@ -140,7 +140,6 @@ export default function NewCampaignPage() {
           setSelectedServiceSid(defaultService.service_sid)
         }
       } catch (error) {
-        console.error("Error loading data:", error)
       } finally {
         setIsLoading(false)
       }
@@ -157,7 +156,6 @@ export default function NewCampaignPage() {
           const result = await smsService.analyzeMessage(message)
           setAnalysis(result)
         } catch (error) {
-          console.error("Error analyzing message:", error)
         }
       } else {
         setAnalysis(null)

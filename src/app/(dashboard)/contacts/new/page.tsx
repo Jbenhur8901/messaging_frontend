@@ -91,7 +91,6 @@ export default function NewContactPage() {
           )
         )
       } catch (error) {
-        console.error("Error loading form data:", error)
       }
     }
     loadData()

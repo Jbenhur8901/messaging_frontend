@@ -63,7 +63,6 @@ export const useAuthStore = create<AuthState>()(
 
       setRequiresMFAVerification: (requires, preAuthToken) => set((state) => {
         const newIsAuthenticated = requires ? state.isAuthenticated : !!state.user
-        console.log("setRequiresMFAVerification:", { requires, user: !!state.user, newIsAuthenticated })
         if (typeof window !== "undefined") {
           if (requires) {
             sessionStorage.setItem("mfa_required", "1")
@@ -102,8 +101,8 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null })
         try {
           const response = await authService.signin(email, password)
-          // Store API key if returned
-          const apiKey = (() => {
+          let effectiveUser = response.user
+          let effectiveApiKey = (() => {
             const key = response.user.api_key as unknown
             if (typeof key === "string") return key
             if (key && typeof key === "object" && typeof (key as { key?: string }).key === "string") {
@@ -118,8 +117,8 @@ export const useAuthStore = create<AuthState>()(
               requiresMFAVerification: true,
               mfaPreAuthToken: response.pre_auth_token || null,
               // Store user temporarily but not authenticated yet
-              user: response.user,
-              apiKey,
+              user: effectiveUser,
+              apiKey: effectiveApiKey,
             })
             if (typeof window !== "undefined") {
               sessionStorage.setItem("mfa_required", "1")
@@ -130,16 +129,13 @@ export const useAuthStore = create<AuthState>()(
             return { requiresMFA: true, factorId: undefined }
           }
 
-          if (!apiKey) {
+          if (!effectiveApiKey) {
             try {
               const createdKey = await authService.createApiKey("Clé par défaut", "live")
               if (createdKey.success) {
-                set({ apiKey: createdKey.api_key })
-                if (response.user) {
-                  const updatedUser = { ...response.user, api_key: createdKey.api_key, api_key_id: createdKey.key_id }
-                  set({ user: updatedUser })
-                  authStorage.setItem("user", JSON.stringify(updatedUser))
-                }
+                effectiveApiKey = createdKey.api_key
+                effectiveUser = { ...response.user, api_key: createdKey.api_key, api_key_id: createdKey.key_id }
+                authStorage.setItem("user", JSON.stringify(effectiveUser))
               }
             } catch {
               // Ignore key creation errors for now
@@ -152,8 +148,8 @@ export const useAuthStore = create<AuthState>()(
 
           setSessionStarted()
           set({
-            user: response.user,
-            apiKey,
+            user: effectiveUser,
+            apiKey: effectiveApiKey,
             isAuthenticated: true,
             isLoading: false,
             showMFARecommendation,

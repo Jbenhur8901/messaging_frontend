@@ -189,7 +189,6 @@ export default function DashboardPage() {
           setCreditBalance(creditsBalanceData)
         }
       } catch (error) {
-        console.error("Error loading dashboard data:", error)
       } finally {
         setIsLoading(false)
       }

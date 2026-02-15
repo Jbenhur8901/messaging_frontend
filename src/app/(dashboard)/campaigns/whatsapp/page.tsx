@@ -49,7 +49,6 @@ export default function WhatsAppCampaignsPage() {
         await loadBroadcasts()
       }
     } catch (error) {
-      console.error("Error checking config:", error)
       setIsConfigured(false)
     } finally {
       setIsLoading(false)
@@ -62,7 +61,6 @@ export default function WhatsAppCampaignsPage() {
       const result = await whatsappService.getBroadcasts(50, 0)
       setBroadcasts(result.broadcasts || [])
     } catch (error) {
-      console.error("Error loading broadcasts:", error)
     } finally {
       setIsLoading(false)
     }

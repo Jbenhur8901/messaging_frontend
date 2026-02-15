@@ -15,7 +15,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
-  const { user, isAuthenticated, fetchProfile, isLoading, requiresMFAVerification } = useAuthStore()
+  const { user, isAuthenticated, fetchProfile, isLoading, requiresMFAVerification, setUser } = useAuthStore()
   const { fetchBalance } = useCreditsStore()
   const { fetchOrganizations, setCurrentOrganization } = useOrganizationStore()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -24,8 +24,6 @@ export default function DashboardLayout({
   const [apiKeyEnsured, setApiKeyEnsured] = useState(false)
 
   const checkAuth = useCallback(async () => {
-    console.log("Dashboard checkAuth:", { requiresMFAVerification, isAuthenticated, user: !!user })
-
     // Check if we have a token
     const token = authStorage.getItem("access_token")
     const mfaRequired =
@@ -38,7 +36,6 @@ export default function DashboardLayout({
 
     // Check if MFA verification is pending (only if not already authenticated)
     if ((requiresMFAVerification || mfaRequired) && !isAuthenticated) {
-      console.log("MFA verification required, redirecting...")
       router.replace("/auth/verify-2fa")
       return
     }
@@ -93,9 +90,10 @@ export default function DashboardLayout({
         try {
           const createdKey = await authService.createApiKey("Clé par défaut", "live")
           if (createdKey.success) {
-            const updatedUser = user ? { ...user, api_key: createdKey.api_key, api_key_id: createdKey.key_id } : null
+            const updatedUser = currentUser ? { ...currentUser, api_key: createdKey.api_key, api_key_id: createdKey.key_id } : null
             if (updatedUser) {
               authStorage.setItem("user", JSON.stringify(updatedUser))
+              setUser(updatedUser)
             }
           }
         } catch {
@@ -106,7 +104,7 @@ export default function DashboardLayout({
     }
 
     setAuthChecked(true)
-  }, [user, fetchProfile, fetchBalance, router, requiresMFAVerification, isAuthenticated, fetchOrganizations, setCurrentOrganization])
+  }, [user, fetchProfile, fetchBalance, router, requiresMFAVerification, isAuthenticated, fetchOrganizations, setCurrentOrganization, apiKeyEnsured, setUser])
 
   useEffect(() => {
     checkAuth()

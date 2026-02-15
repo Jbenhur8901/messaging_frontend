@@ -144,7 +144,6 @@ export default function ImportContactsPage() {
           )
         )
       } catch (error) {
-        console.error("Error loading import data:", error)
       }
     }
     loadData()

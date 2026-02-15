@@ -131,7 +131,6 @@ export default function ContactsPage() {
       })
       setSelectedContacts([])
     } catch (error) {
-      console.error("Error loading contacts:", error)
     } finally {
       setIsLoading(false)
     }
@@ -209,7 +208,6 @@ export default function ContactsPage() {
         const result = await tagsService.getTags()
         setTags(result.tags)
       } catch (error) {
-        console.error("Error loading tags:", error)
       }
     }
     loadTags()

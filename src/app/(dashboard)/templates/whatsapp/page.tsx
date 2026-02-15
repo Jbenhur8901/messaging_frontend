@@ -50,7 +50,6 @@ export default function WhatsAppTemplatesPage() {
         await loadTemplates()
       }
     } catch (error) {
-      console.error("Error checking config:", error)
       setIsConfigured(false)
     } finally {
       setIsLoading(false)
@@ -67,7 +66,6 @@ export default function WhatsAppTemplatesPage() {
       )
       setTemplates(result.templates || [])
     } catch (error) {
-      console.error("Error loading templates:", error)
     }
   }
 

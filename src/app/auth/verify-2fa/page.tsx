@@ -29,9 +29,7 @@ export default function Verify2FAPage() {
 
   // Navigate to dashboard when verification is complete and state is updated
   useEffect(() => {
-    console.log("Auth state:", { verificationComplete, isAuthenticated, requiresMFAVerification })
     if (verificationComplete && isAuthenticated && !requiresMFAVerification) {
-      console.log("Navigating to dashboard...")
       router.replace("/dashboard")
     }
   }, [verificationComplete, isAuthenticated, requiresMFAVerification, router])
@@ -67,7 +65,6 @@ export default function Verify2FAPage() {
 
     setIsVerifying(true)
     try {
-      console.log("Verifying MFA challenge...")
       const result = await authService.verifyMFA(mfaPreAuthToken, code)
       if (!result.session) {
         throw new Error("Session MFA manquante")
@@ -95,22 +92,13 @@ export default function Verify2FAPage() {
           // Ignore API key creation errors here
         }
       }
-      console.log("MFA verification successful")
 
       // Complete authentication
       completeMFA()
       setVerificationComplete(true)
-      console.log("State updated")
 
       toast.success("Authentification réussie")
-
-      // Navigate after a short delay to ensure state is persisted
-      setTimeout(() => {
-        console.log("Navigating to dashboard via timeout...")
-        router.replace("/dashboard")
-      }, 100)
     } catch (error) {
-      console.error("MFA verification failed:", error)
       const apiError = handleApiError(error)
       toast.error(apiError.message || "Code invalide")
       setCode("")

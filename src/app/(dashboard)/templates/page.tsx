@@ -64,7 +64,6 @@ export default function TemplatesPage() {
       const result = await templatesService.getTemplates(undefined, 100, 0)
       setTemplates((result.templates || []).filter(Boolean))
     } catch (error) {
-      console.error("Error loading templates:", error)
     } finally {
       setIsLoading(false)
     }

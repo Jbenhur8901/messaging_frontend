@@ -69,7 +69,6 @@ export default function WhatsAppConfigPage() {
         setIsEnabled(enabledValue ?? true)
       }
     } catch (error) {
-      console.error("Error loading config:", error)
     } finally {
       setIsLoading(false)
     }
