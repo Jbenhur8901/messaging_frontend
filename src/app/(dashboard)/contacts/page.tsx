@@ -590,7 +590,7 @@ export default function ContactsPage() {
       </div>
 
       {selectedContacts.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-card px-3 py-2 shadow-[var(--shadow-xs)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/40 bg-card px-3 py-2">
           <p className="text-sm text-muted-foreground">
             {selectedContacts.length} contact(s) sélectionné(s)
           </p>

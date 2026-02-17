@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useAuthStore, useCreditsStore, useOrganizationStore } from "@/stores"
 import { authService } from "@/services"
 import { Sidebar, Header, MobileNav } from "@/components/layout"
@@ -15,6 +15,8 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const isEditorRoute = Boolean(pathname?.match(/^\/scenarios\/[^/]+$/))
   const { user, isAuthenticated, fetchProfile, isLoading, requiresMFAVerification, setUser } = useAuthStore()
   const { fetchBalance } = useCreditsStore()
   const { fetchOrganizations, setCurrentOrganization } = useOrganizationStore()
@@ -22,6 +24,7 @@ export default function DashboardLayout({
   const [authChecked, setAuthChecked] = useState(false)
   const [isReady, setIsReady] = useState(false)
   const [apiKeyEnsured, setApiKeyEnsured] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   const checkAuth = useCallback(async () => {
     // Check if we have a token
@@ -110,6 +113,24 @@ export default function DashboardLayout({
     checkAuth()
   }, [checkAuth])
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const stored = window.localStorage.getItem("dashboard:sidebar-collapsed")
+    if (stored === "1") {
+      setIsSidebarCollapsed(true)
+    }
+  }, [])
+
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("dashboard:sidebar-collapsed", next ? "1" : "0")
+      }
+      return next
+    })
+  }, [])
+
   // Show loading while checking auth
   if (!authChecked || !isReady || isLoading) {
     return (
@@ -128,13 +149,19 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#ffffff" }}>
-      <Sidebar />
+    <div className="min-h-screen bg-dashboard">
+      <Sidebar collapsed={isSidebarCollapsed} onToggleCollapse={toggleSidebar} />
       <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
-      <div className="lg:pl-16">
-        <Header onMenuClick={() => setMobileNavOpen(true)} />
-        <main className="py-4">
-          <div className="px-3 sm:px-4 lg:px-5 animate-fade-in">{children}</div>
+      <div className={isSidebarCollapsed ? "transition-[padding] duration-200 lg:pl-[60px]" : "transition-[padding] duration-200 lg:pl-56"}>
+        <Header
+          onMenuClick={() => setMobileNavOpen(true)}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onSidebarToggle={toggleSidebar}
+        />
+        <main className={isEditorRoute ? "" : "py-4"}>
+          <div className={isEditorRoute ? "animate-fade-in" : "px-4 sm:px-5 lg:px-6 animate-fade-in"}>
+            {children}
+          </div>
         </main>
       </div>
       <MFARecommendationDialog />

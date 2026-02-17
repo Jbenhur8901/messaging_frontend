@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { featureFlags } from "@/config/features"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -165,6 +166,12 @@ export default function NewCampaignPage() {
     const timeout = setTimeout(analyzeMessage, 300)
     return () => clearTimeout(timeout)
   }, [message])
+
+  useEffect(() => {
+    if (!featureFlags.SMS_ENABLED) router.replace("/campaigns/whatsapp/new")
+  }, [router])
+
+  if (!featureFlags.SMS_ENABLED) return null
 
   // Calculate recipients (phone numbers for standard mode)
   const getRecipients = (): string[] => {
@@ -422,7 +429,7 @@ export default function NewCampaignPage() {
                 <Separator />
 
                 {selectionMode === "contacts" && (
-                  <ScrollArea className="h-64 rounded-md border border-border/60 bg-background p-4">
+                  <ScrollArea className="h-64 rounded-md border border-border/40 bg-background p-4">
                     <div className="space-y-2">
                       {isLoading && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -560,7 +567,7 @@ export default function NewCampaignPage() {
                         {templates.map((template) => (
                           <div
                             key={template.id}
-                            className="cursor-pointer rounded-md border border-border/60 p-3 transition-colors hover:bg-muted/60"
+                            className="cursor-pointer rounded-md border border-border/40 p-3 transition-colors hover:bg-muted/60"
                             onClick={() => applyTemplate(template)}
                           >
                             <p className="font-medium">{template.name}</p>
@@ -631,7 +638,7 @@ export default function NewCampaignPage() {
                     </div>
 
                     {selectedTemplateId && (
-                      <div className="rounded-lg border border-border/60 bg-muted/60 p-4">
+                      <div className="rounded-lg border border-border/40 bg-muted/60 p-4">
                         <p className="text-sm font-medium mb-2">Aperçu du template :</p>
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                           {templates.find((t) => t.id === selectedTemplateId)?.body}

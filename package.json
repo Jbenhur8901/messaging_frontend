@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "typecheck": "next typegen && tsc --noEmit",
+    "typecheck": "rm -f tsconfig.tsbuildinfo && next typegen && tsc --noEmit",
     "lint": "npm run typecheck"
   },
   "dependencies": {
@@ -29,6 +29,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toast": "^1.2.15",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@supabase/supabase-js": "^2.95.3",
     "@tailwindcss/postcss": "^4.1.18",
     "@tanstack/react-table": "^8.21.3",
     "@types/node": "^25.0.10",

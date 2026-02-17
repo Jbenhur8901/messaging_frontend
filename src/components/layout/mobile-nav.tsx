@@ -1,35 +1,20 @@
 "use client"
 
-import { Fragment } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from "@headlessui/react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import {
-  LayoutDashboard,
-  Send,
-  Users,
-  FileText,
-  CreditCard,
-  Settings,
-  MessageSquare,
-  Tags,
-  Radio,
-  X,
-} from "lucide-react"
-
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Campagnes", href: "/campaigns", icon: Send },
-  { name: "Contacts", href: "/contacts", icon: Users },
-  { name: "Paramétrage", href: "/contacts/tags", icon: Tags },
-  { name: "Templates", href: "/templates", icon: FileText },
-  { name: "Services", href: "/services", icon: Radio },
-  { name: "Crédits", href: "/credits", icon: CreditCard },
-  { name: "SMS Tools", href: "/tools", icon: MessageSquare },
-  { name: "Paramètres", href: "/settings", icon: Settings },
-]
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { ChevronDown } from "lucide-react"
+import {
+  getActiveHref,
+  getFilteredNavigationSections,
+} from "./navigation"
 
 interface MobileNavProps {
   open: boolean
@@ -38,115 +23,189 @@ interface MobileNavProps {
 
 export function MobileNav({ open, onClose }: MobileNavProps) {
   const pathname = usePathname()
+  const sections = getFilteredNavigationSections()
+  const activeHref = getActiveHref(pathname, sections)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+
+  const mainSections = sections.filter((s) => s.position !== "bottom")
+  const bottomSections = sections.filter((s) => s.position === "bottom")
 
   return (
-    <Transition show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-50 lg:hidden" onClose={onClose}>
-        <TransitionChild
-          as={Fragment}
-          enter="transition-opacity ease-linear duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="transition-opacity ease-linear duration-300"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black/80" />
-        </TransitionChild>
-
-        <div className="fixed inset-0 flex">
-          <TransitionChild
-            as={Fragment}
-            enter="transition ease-in-out duration-300 transform"
-            enterFrom="-translate-x-full"
-            enterTo="translate-x-0"
-            leave="transition ease-in-out duration-300 transform"
-            leaveFrom="translate-x-0"
-            leaveTo="-translate-x-full"
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent
+        side="left"
+        className="w-64 bg-white p-0 sm:max-w-64 [&>button]:hidden"
+      >
+        {/* Header */}
+        <div className="flex h-14 items-center border-b border-border/40 px-4">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2.5"
+            onClick={onClose}
           >
-            <DialogPanel className="relative mr-16 flex w-full max-w-xs flex-1">
-              <TransitionChild
-                as={Fragment}
-                enter="ease-in-out duration-300"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="ease-in-out duration-300"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-                <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-white"
-                    onClick={onClose}
-                  >
-                    <X className="h-6 w-6" />
-                    <span className="sr-only">Fermer</span>
-                  </Button>
-                </div>
-              </TransitionChild>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-white">
+              <span className="text-xs font-bold">F</span>
+            </div>
+            <div>
+              <SheetTitle className="text-sm font-semibold leading-tight">
+                Flow
+              </SheetTitle>
+              <p className="text-[11px] text-muted-foreground">
+                Messaging Platform
+              </p>
+            </div>
+          </Link>
+        </div>
 
-              <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-background/90 px-6 pb-6 pt-4 backdrop-blur">
-                <div className="flex h-12 shrink-0 items-center">
-                  <Link
-                    href="/dashboard"
-                    className="flex items-center gap-3"
-                    onClick={onClose}
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[var(--shadow-sm)]">
-                      <Send className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold">Flow</p>
-                      <p className="text-xs text-muted-foreground">Messaging Platform</p>
-                    </div>
-                  </Link>
-                </div>
-                <DialogTitle className="sr-only">Navigation</DialogTitle>
-                <nav className="flex flex-1 flex-col">
-                  <p className="px-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-                    Navigation
-                  </p>
-                  <ul role="list" className="mt-3 flex flex-1 flex-col gap-y-1">
-                    {navigation.map((item) => {
-                      const isActive =
-                        pathname === item.href ||
-                        pathname.startsWith(item.href + "/")
-                      return (
-                        <li key={item.name}>
+        {/* Navigation */}
+        <nav className="flex flex-1 flex-col overflow-y-auto px-3 py-3">
+          <div className="flex-1 space-y-1">
+            {mainSections.map((section, sectionIndex) => {
+              const isCollapsible =
+                !!section.title &&
+                !!section.icon &&
+                section.items.length > 1
+
+              const sectionHasActive = section.items.some(
+                (item) =>
+                  activeHref === item.href ||
+                  item.children?.some((c) => activeHref === c.href)
+              )
+
+              const isSectionOpen = isCollapsible
+                ? (openGroups[`section:${section.title}`] ?? sectionHasActive)
+                : true
+
+              return (
+                <div key={section.title || `section-${sectionIndex}`}>
+                  {sectionIndex > 0 && (
+                    <Separator className="my-2 bg-border/30" />
+                  )}
+
+                  {isCollapsible ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenGroups((prev) => ({
+                            ...prev,
+                            [`section:${section.title}`]: !isSectionOpen,
+                          }))
+                        }
+                        className={cn(
+                          "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors",
+                          sectionHasActive
+                            ? "text-foreground"
+                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        )}
+                      >
+                        {section.icon && (
+                          <section.icon className="h-[18px] w-[18px] shrink-0" />
+                        )}
+                        <span className="flex-1 truncate text-left">
+                          {section.title}
+                        </span>
+                        <ChevronDown
+                          className={cn(
+                            "h-3.5 w-3.5 text-muted-foreground/50 transition-transform duration-200",
+                            !isSectionOpen && "-rotate-90"
+                          )}
+                        />
+                      </button>
+
+                      {isSectionOpen && (
+                        <div className="relative mt-0.5 ml-[17px] border-l border-border/30 pl-3">
+                          <div className="space-y-0.5">
+                            {section.items.map((item) => {
+                              const isActive = activeHref === item.href
+                              const hasActiveChild = (
+                                item.children || []
+                              ).some((c) => activeHref === c.href)
+
+                              return (
+                                <Link
+                                  key={item.name}
+                                  href={item.href}
+                                  onClick={onClose}
+                                  className={cn(
+                                    "relative flex items-center gap-2 rounded-md px-2 py-[6px] text-[13px] transition-colors",
+                                    isActive || hasActiveChild
+                                      ? "bg-primary/[0.06] font-medium text-primary"
+                                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                  )}
+                                >
+                                  {(isActive || hasActiveChild) && (
+                                    <span className="absolute -left-[13px] top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                                  )}
+                                  <item.icon className="h-3.5 w-3.5 shrink-0" />
+                                  <span>{item.name}</span>
+                                </Link>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {section.items.map((item) => {
+                        const isActive = activeHref === item.href
+                        return (
                           <Link
+                            key={item.name}
                             href={item.href}
                             onClick={onClose}
                             className={cn(
-                              "group flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                              "relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors",
                               isActive
-                                ? "bg-primary/10 text-primary ring-1 ring-primary/20"
-                                : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                                ? "bg-primary/[0.06] text-primary"
+                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
                             )}
                           >
-                            <span
-                              className={cn(
-                                "flex h-9 w-9 items-center justify-center rounded-lg border border-transparent bg-muted/60 text-muted-foreground transition-colors",
-                                isActive
-                                  ? "border-primary/20 bg-primary/10 text-primary"
-                                  : "group-hover:border-border/80 group-hover:text-foreground"
-                              )}
-                            >
-                              <item.icon className="h-4 w-4" />
-                            </span>
+                            {isActive && (
+                              <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                            )}
+                            <item.icon className="h-[18px] w-[18px] shrink-0" />
                             <span>{item.name}</span>
                           </Link>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </nav>
-              </div>
-            </DialogPanel>
-          </TransitionChild>
-        </div>
-      </Dialog>
-    </Transition>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {bottomSections.length > 0 && (
+            <div className="mt-auto pt-1">
+              <Separator className="mb-2 bg-border/30" />
+              {bottomSections.flatMap((s) => s.items).map((item) => {
+                const isActive = activeHref === item.href
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={onClose}
+                    className={cn(
+                      "relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors",
+                      isActive
+                        ? "bg-primary/[0.06] text-primary"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    )}
+                  >
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                    )}
+                    <item.icon className="h-[18px] w-[18px] shrink-0" />
+                    <span>{item.name}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </nav>
+      </SheetContent>
+    </Sheet>
   )
 }

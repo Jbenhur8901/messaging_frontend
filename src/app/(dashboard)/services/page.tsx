@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { featureFlags } from "@/config/features"
 import { messagingServicesService, handleApiError } from "@/services"
 import type { MessagingService } from "@/types"
 import { formatDate } from "@/lib/utils"
@@ -83,6 +85,7 @@ const USECASE_LABELS: Record<string, { label: string; icon: React.ReactNode; col
 }
 
 export default function ServicesPage() {
+  const router = useRouter()
   const [services, setServices] = useState<MessagingService[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -98,6 +101,10 @@ export default function ServicesPage() {
     loadServices()
   }, [])
 
+  useEffect(() => {
+    if (!featureFlags.SMS_ENABLED) router.replace("/dashboard")
+  }, [router])
+
   const loadServices = async () => {
     const token = authStorage.getItem("access_token")
     if (!token) {
@@ -109,6 +116,8 @@ export default function ServicesPage() {
     setServices(result.services)
     setIsLoading(false)
   }
+
+  if (!featureFlags.SMS_ENABLED) return null
 
   const handleCreateService = async () => {
     if (!serviceName.trim()) {

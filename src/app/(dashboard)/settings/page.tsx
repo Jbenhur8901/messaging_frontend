@@ -276,11 +276,9 @@ export default function SettingsPage() {
               </div>
             ) : hasActiveMFA ? (
               <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+              <div className="flex items-center justify-between rounded-lg border border-border/40 bg-card p-4 ">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Smartphone className="h-5 w-5 text-primary" />
-                  </div>
+                  <Smartphone className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <p className="font-medium">
                         Application d'authentification
@@ -305,9 +303,7 @@ export default function SettingsPage() {
             ) : (
               <div className="text-center py-6">
                 <div className="flex justify-center mb-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border/60 bg-muted/60">
-                    <ShieldOff className="h-8 w-8 text-muted-foreground" />
-                  </div>
+                  <ShieldOff className="h-8 w-8 text-muted-foreground/50" />
                 </div>
                 <h3 className="font-medium mb-2">2FA non configuré</h3>
                 <p className="text-sm text-muted-foreground mb-4">
@@ -409,7 +405,7 @@ export default function SettingsPage() {
             <div className="space-y-6 py-4">
               {/* QR Code */}
               <div className="flex justify-center">
-                <div className="rounded-lg border border-border/60 bg-white p-4 shadow-[var(--shadow-xs)]">
+                <div className="rounded-lg border border-border/40 bg-white p-4 ">
                   <img
                     src={enrollmentData.qr_code}
                     alt="QR Code"
@@ -424,7 +420,7 @@ export default function SettingsPage() {
                   Ou entrez ce code manuellement :
                 </Label>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 rounded border border-border/60 bg-muted/60 px-3 py-2 text-sm font-mono">
+                  <code className="flex-1 rounded border border-border/40 bg-muted/60 px-3 py-2 text-sm font-mono">
                     {enrollmentData.secret}
                   </code>
                   <Button
@@ -456,7 +452,7 @@ export default function SettingsPage() {
               </div>
 
               {backupCodes.length > 0 && (
-                <div className="space-y-3 rounded-lg border border-border/60 bg-muted/60 p-4">
+                <div className="space-y-3 rounded-lg border border-border/40 bg-muted/60 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">Codes de récupération</p>
@@ -475,7 +471,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm font-mono">
                     {backupCodes.map((code) => (
-                      <div key={code} className="rounded border border-border/60 bg-background px-2 py-1 text-center">
+                      <div key={code} className="rounded border border-border/40 bg-background px-2 py-1 text-center">
                         {code}
                       </div>
                     ))}

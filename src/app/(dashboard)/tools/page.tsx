@@ -1,6 +1,9 @@
 "use client"
 
+import { useEffect } from "react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { featureFlags } from "@/config/features"
 import { smsService } from "@/services"
 import type { SMSAnalysis, NonGSMCharacter } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -11,11 +14,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2, MessageSquare, AlertTriangle, Lightbulb } from "lucide-react"
 
 export default function ToolsPage() {
+  const router = useRouter()
   const [message, setMessage] = useState("")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<SMSAnalysis | null>(null)
   const [specialChars, setSpecialChars] = useState<NonGSMCharacter[]>([])
   const [suggestions, setSuggestions] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!featureFlags.SMS_ENABLED) router.replace("/dashboard")
+  }, [router])
+
+  if (!featureFlags.SMS_ENABLED) return null
 
   const analyzeMessage = async () => {
     if (!message.trim()) return
@@ -107,11 +117,11 @@ export default function ToolsPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+                  <div className="rounded-lg border border-border/40 bg-card p-4 ">
                     <p className="text-3xl font-bold">{analysis.segments}</p>
                     <p className="text-sm text-muted-foreground">segment(s)</p>
                   </div>
-                  <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+                  <div className="rounded-lg border border-border/40 bg-card p-4 ">
                     <p className="text-3xl font-bold">{analysis.characters}</p>
                     <p className="text-sm text-muted-foreground">caractères</p>
                   </div>
@@ -149,7 +159,7 @@ export default function ToolsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-4 rounded-md border border-border/60 bg-muted/60 p-4 font-mono text-sm">
+                <div className="mb-4 rounded-md border border-border/40 bg-muted/60 p-4 font-mono text-sm">
                   {highlightSpecialChars(message, specialChars)}
                 </div>
                 <div className="space-y-2">
@@ -192,7 +202,7 @@ export default function ToolsPage() {
               <TabsTrigger value="ucs2">UCS-2 (Unicode)</TabsTrigger>
             </TabsList>
             <TabsContent value="gsm7" className="space-y-4">
-              <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+              <div className="rounded-lg border border-border/40 bg-card p-4 ">
                 <h4 className="font-medium mb-2">Caractéristiques</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• 160 caractères par segment (153 si multi-segments)</li>
@@ -200,7 +210,7 @@ export default function ToolsPage() {
                   <li>• Encodage le plus économique</li>
                 </ul>
               </div>
-              <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+              <div className="rounded-lg border border-border/40 bg-card p-4 ">
                 <h4 className="font-medium mb-2">Caractères supportés</h4>
                 <p className="text-sm text-muted-foreground font-mono">
                   A-Z a-z 0-9 @ £ $ ¥ è é ù ì ò Ç Ø ø Å å Δ _ Φ Γ Λ Ω Π Ψ Σ Θ Ξ
@@ -210,7 +220,7 @@ export default function ToolsPage() {
               </div>
             </TabsContent>
             <TabsContent value="ucs2" className="space-y-4">
-              <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+              <div className="rounded-lg border border-border/40 bg-card p-4 ">
                 <h4 className="font-medium mb-2">Caractéristiques</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• 70 caractères par segment (67 si multi-segments)</li>

@@ -88,24 +88,19 @@ export default function WhatsAppCampaignsPage() {
   if (isConfigured === false) {
     return (
       <div className="space-y-8">
-        <section className="rounded-xl border border-border/60 bg-card p-6 shadow-[var(--shadow-sm)]">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-                Campagnes
-              </p>
-              <h1 className="text-3xl font-semibold tracking-tight">Campagnes WhatsApp</h1>
-              <p className="text-muted-foreground">
-                Gérez vos campagnes et suivez leurs performances.
-              </p>
-            </div>
-            <ChannelTabs basePath="campaigns" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Campagnes WhatsApp</h1>
+            <p className="text-muted-foreground mt-1">
+              Gérez vos campagnes et suivez leurs performances.
+            </p>
           </div>
-        </section>
+          <ChannelTabs basePath="campaigns" />
+        </div>
 
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <AlertTriangle className="h-12 w-12 text-amber-600 mb-4" />
+            <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <p className="text-lg font-medium">WhatsApp non configuré</p>
             <p className="text-muted-foreground mb-4 text-center max-w-md">
               Configurez vos credentials WhatsApp Business API pour créer des campagnes
@@ -124,32 +119,27 @@ export default function WhatsAppCampaignsPage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-xl border border-border/60 bg-card p-6 shadow-[var(--shadow-sm)]">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-              Campagnes
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">Campagnes WhatsApp</h1>
-            <p className="text-muted-foreground">
-              Gérez vos campagnes WhatsApp et suivez leurs performances.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <ChannelTabs basePath="campaigns" />
-            <Link href="/campaigns/whatsapp/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouvelle campagne
-              </Button>
-            </Link>
-            <Button variant="outline" onClick={loadBroadcasts} disabled={isLoading}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-              Actualiser
-            </Button>
-          </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Campagnes WhatsApp</h1>
+          <p className="text-muted-foreground mt-1">
+            Gérez vos campagnes WhatsApp et suivez leurs performances.
+          </p>
         </div>
-      </section>
+        <div className="flex flex-wrap items-center gap-2">
+          <ChannelTabs basePath="campaigns" />
+          <Link href="/campaigns/whatsapp/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Nouvelle campagne
+            </Button>
+          </Link>
+          <Button variant="outline" onClick={loadBroadcasts} disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            Actualiser
+          </Button>
+        </div>
+      </div>
 
       {/* Campaigns Table */}
       <Card>

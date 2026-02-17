@@ -159,34 +159,29 @@ export default function WhatsAppConfigPage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-xl border border-border/60 bg-card p-6 shadow-[var(--shadow-sm)]">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-              WhatsApp
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold tracking-tight">Configuration WhatsApp</h1>
-              <Badge variant={isConfigured ? "success" : "secondary"}>
-                {isConfigured ? (
-                  <>
-                    <CheckCircle2 className="mr-1 h-3 w-3" />
-                    Configuré
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="mr-1 h-3 w-3" />
-                    Non configuré
-                  </>
-                )}
-              </Badge>
-            </div>
-            <p className="text-muted-foreground">
-              Configurez vos credentials WhatsApp Business API.
-            </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold">Configuration WhatsApp</h1>
+            <Badge variant={isConfigured ? "success" : "secondary"}>
+              {isConfigured ? (
+                <>
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                  Configuré
+                </>
+              ) : (
+                <>
+                  <XCircle className="mr-1 h-3 w-3" />
+                  Non configuré
+                </>
+              )}
+            </Badge>
           </div>
+          <p className="text-muted-foreground mt-1">
+            Configurez vos credentials WhatsApp Business API.
+          </p>
         </div>
-      </section>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Configuration Form */}
@@ -249,7 +244,7 @@ export default function WhatsAppConfigPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-border/60 p-3">
+            <div className="flex items-center justify-between rounded-lg border border-border/40 p-3">
               <div className="space-y-1">
                 <p className="text-sm font-medium">Activer WhatsApp</p>
                 <p className="text-xs text-muted-foreground">

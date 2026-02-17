@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import {
   Menu,
   Bell,
@@ -27,6 +26,7 @@ import {
   Building2,
   ChevronDown,
   Check,
+  PanelLeft,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { formatNumber } from "@/lib/utils"
@@ -34,9 +34,11 @@ import { authStorage } from "@/lib/auth-storage"
 
 interface HeaderProps {
   onMenuClick?: () => void
+  isSidebarCollapsed?: boolean
+  onSidebarToggle?: () => void
 }
 
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: HeaderProps) {
   const router = useRouter()
   const { user, logout, setUser } = useAuthStore()
   const { balance, fetchBalance } = useCreditsStore()
@@ -86,147 +88,169 @@ export function Header({ onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border/60 bg-background/85 px-4 backdrop-blur-sm shadow-[var(--shadow-xs)] sm:gap-x-6 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-x-3 border-b border-border/40 bg-white px-4 sm:px-6 lg:px-8">
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden"
+        className="h-8 w-8 lg:hidden"
         onClick={onMenuClick}
       >
-        <Menu className="h-5 w-5" />
+        <Menu className="h-4 w-4" />
         <span className="sr-only">Ouvrir le menu</span>
       </Button>
 
-      <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-        <div className="flex flex-1 items-center justify-end gap-x-3 lg:gap-x-4">
-          {/* Organization switcher */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 border-border/70 bg-background/80 shadow-[var(--shadow-xs)]">
-                <Building2 className="h-4 w-4" />
-                <span className="max-w-[180px] truncate">
-                  {currentOrganization?.name || user?.organization_name || "Organisation"}
-                </span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64" align="end">
-              <DropdownMenuLabel>Organisations</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {organizations.length === 0 ? (
-                <DropdownMenuItem disabled>Aucune organisation</DropdownMenuItem>
-              ) : (
-                organizations.map((org) => (
-                  <DropdownMenuItem key={org.id} onClick={() => handleOrganizationChange(org.id)}>
-                    <div className="flex w-full items-center justify-between">
-                      <span className="truncate">{org.name}</span>
-                      {currentOrganization?.id === org.id && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                ))
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/organization" className="cursor-pointer">
-                  <Building2 className="mr-2 h-4 w-4" />
-                  Gérer les organisations
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+      {isSidebarCollapsed && onSidebarToggle && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hidden h-8 w-8 text-muted-foreground lg:flex"
+          onClick={onSidebarToggle}
+        >
+          <PanelLeft className="h-4 w-4" />
+          <span className="sr-only">Ouvrir la sidebar</span>
+        </Button>
+      )}
 
-          {/* Credits display */}
-          {balance && (
-            <div className="flex items-center gap-2">
-              <Link href="/credits">
-                <Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1.5 border border-border/60 bg-secondary/70 text-secondary-foreground hover:bg-secondary/80 transition-all duration-200">
-                  <CreditCard className="h-3.5 w-3.5" />
-                  <span className="font-semibold">
-                    {formatNumber(balance.credit_available)} crédits
-                  </span>
-                </Badge>
+      <div className="flex flex-1 items-center justify-end gap-x-2">
+        {/* Organization switcher */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="h-8 gap-2 px-2.5 text-[13px] font-medium text-muted-foreground hover:text-foreground"
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              <span className="max-w-[140px] truncate">
+                {currentOrganization?.name || user?.organization_name || "Organisation"}
+              </span>
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end">
+            <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+              Organisations
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {organizations.length === 0 ? (
+              <DropdownMenuItem disabled className="text-[13px]">
+                Aucune organisation
+              </DropdownMenuItem>
+            ) : (
+              organizations.map((org) => (
+                <DropdownMenuItem
+                  key={org.id}
+                  onClick={() => handleOrganizationChange(org.id)}
+                  className="text-[13px]"
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span className="truncate">{org.name}</span>
+                    {currentOrganization?.id === org.id && (
+                      <Check className="h-3.5 w-3.5 text-primary" />
+                    )}
+                  </div>
+                </DropdownMenuItem>
+              ))
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className="text-[13px]">
+              <Link href="/organization" className="cursor-pointer">
+                <Building2 className="mr-2 h-3.5 w-3.5" />
+                Gérer les organisations
               </Link>
-              <Link href="/credits">
-                <Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1.5 border border-border/60 bg-secondary/70 text-secondary-foreground hover:bg-secondary/80 transition-all duration-200">
-                  <CreditCard className="h-3.5 w-3.5" />
-                  <span className="font-semibold">
-                    {formatNumber(balance.whatsapp_credit_available ?? balance.whatsapp_credit_balance ?? 0)} WhatsApp
-                  </span>
-                </Badge>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Credits display */}
+        {balance && (
+          <div className="hidden items-center gap-1.5 sm:flex">
+            <Link
+              href="/credits"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              {formatNumber(balance.credit_available)}
+            </Link>
+            <Link
+              href="/credits"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              {formatNumber(balance.whatsapp_credit_available ?? balance.whatsapp_credit_balance ?? 0)} WA
+            </Link>
+          </div>
+        )}
+
+        {/* Theme toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        >
+          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="sr-only">Changer le thème</span>
+        </Button>
+
+        {/* Notifications */}
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+          <Bell className="h-4 w-4" />
+          <span className="sr-only">Notifications</span>
+        </Button>
+
+        {/* User menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
+              <Avatar className="h-7 w-7">
+                <AvatarFallback className="bg-accent text-[11px] font-medium text-foreground">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-52" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col gap-0.5">
+                <p className="text-[13px] font-medium">
+                  {user?.first_name} {user?.last_name}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {user?.email}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className="text-[13px]">
+              <Link href="/settings/profile" className="cursor-pointer">
+                <User className="mr-2 h-3.5 w-3.5" />
+                Profil
               </Link>
-            </div>
-          )}
-
-          {/* Theme toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Changer le thème</span>
-          </Button>
-
-          {/* Notifications */}
-          <Button variant="ghost" size="icon">
-            <Bell className="h-5 w-5" />
-            <span className="sr-only">Notifications</span>
-          </Button>
-
-          {/* User menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                <Avatar className="h-9 w-9 ring-1 ring-border/70 ring-offset-2 ring-offset-background transition-all hover:ring-primary/40">
-                  <AvatarFallback className="bg-primary text-white text-sm font-semibold">{initials}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {user?.first_name} {user?.last_name}
-                  </p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user?.email}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/settings/profile" className="cursor-pointer">
-                  <User className="mr-2 h-4 w-4" />
-                  Profil
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/organization" className="cursor-pointer">
-                  <Building2 className="mr-2 h-4 w-4" />
-                  Organisation
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings" className="cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Paramètres
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="cursor-pointer text-destructive focus:text-destructive"
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                {isLoggingOut ? "Déconnexion..." : "Se déconnecter"}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className="text-[13px]">
+              <Link href="/organization" className="cursor-pointer">
+                <Building2 className="mr-2 h-3.5 w-3.5" />
+                Organisation
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className="text-[13px]">
+              <Link href="/settings" className="cursor-pointer">
+                <Settings className="mr-2 h-3.5 w-3.5" />
+                Paramètres
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="cursor-pointer text-[13px] text-destructive focus:text-destructive"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            >
+              <LogOut className="mr-2 h-3.5 w-3.5" />
+              {isLoggingOut ? "Déconnexion..." : "Se déconnecter"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   )

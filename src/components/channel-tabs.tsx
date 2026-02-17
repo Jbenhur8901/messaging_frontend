@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { MessageSquare, MessageSquareMore } from "lucide-react"
+import { featureFlags } from "@/config/features"
 
 interface ChannelTabsProps {
   basePath: "campaigns" | "templates"
@@ -12,12 +13,13 @@ interface ChannelTabsProps {
 export function ChannelTabs({ basePath }: ChannelTabsProps) {
   const pathname = usePathname()
 
-  const tabs = [
+  const allTabs = [
     {
       name: "SMS",
       href: `/${basePath}`,
       icon: MessageSquare,
       isActive: pathname === `/${basePath}` || (pathname.startsWith(`/${basePath}/`) && !pathname.includes("/whatsapp")),
+      smsOnly: true,
     },
     {
       name: "WhatsApp",
@@ -27,20 +29,24 @@ export function ChannelTabs({ basePath }: ChannelTabsProps) {
     },
   ]
 
+  const tabs = allTabs.filter((tab) => !tab.smsOnly || featureFlags.SMS_ENABLED)
+
+  if (tabs.length <= 1) return null
+
   return (
-    <div className="flex items-center gap-1 rounded-md border border-border/60 bg-background/70 p-1">
+    <div className="flex items-center gap-1 rounded-md border border-border/40 bg-background p-1">
       {tabs.map((tab) => (
         <Link
           key={tab.name}
           href={tab.href}
           className={cn(
-            "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            "flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
             tab.isActive
-              ? "bg-card text-foreground shadow-[var(--shadow-sm)]"
+              ? "bg-white text-foreground"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <tab.icon className="h-4 w-4" />
+          <tab.icon className="h-3.5 w-3.5" />
           {tab.name}
         </Link>
       ))}

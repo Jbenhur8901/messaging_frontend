@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { whatsappService, contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
 import type { WhatsAppTemplate, Contact, Tag, CustomField } from "@/types"
+import { uploadMediaToSupabase } from "@/lib/supabase"
 import { WhatsAppTemplateSelector } from "@/components/whatsapp/whatsapp-template-selector"
 import { WhatsAppTemplateCard } from "@/components/whatsapp/whatsapp-template-card"
 import { useOrganizationStore } from "@/stores"
@@ -25,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { ArrowLeft, Loader2, Send, Users, Tags as TagsIcon, FileText, AlertTriangle, Settings, Sparkles } from "lucide-react"
+import { ArrowLeft, Loader2, Send, Users, Tags as TagsIcon, FileText, AlertTriangle, Settings, Sparkles, Image, Video, File, X } from "lucide-react"
 
 type RecipientMode = "contacts" | "tags" | "manual"
 type SendMode = "standard" | "personalized"
@@ -52,6 +53,10 @@ export default function NewWhatsAppCampaignPage() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [manualNumbers, setManualNumbers] = useState("")
   const [variableMapping, setVariableMapping] = useState<Record<string, string>>({})
+  const [headerMediaUrl, setHeaderMediaUrl] = useState("")
+  const [headerFile, setHeaderFile] = useState<File | null>(null)
+  const [headerUploading, setHeaderUploading] = useState(false)
+  const [headerDragActive, setHeaderDragActive] = useState(false)
 
   const MAX_CONTACTS = Number.MAX_SAFE_INTEGER
   const CONTACTS_PAGE_SIZE = 100
@@ -77,6 +82,8 @@ export default function NewWhatsAppCampaignPage() {
 
   useEffect(() => {
     setVariableMapping({})
+    setHeaderMediaUrl("")
+    setHeaderFile(null)
   }, [selectedTemplateId])
 
   const fetchContactsPaged = async (
@@ -178,6 +185,61 @@ export default function NewWhatsAppCampaignPage() {
   }
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId)
+
+  const headerComponent = selectedTemplate?.components.find((c) => c.type === "HEADER")
+  const headerMediaFormat = headerComponent?.format
+  const needsHeaderMedia = headerMediaFormat === "IMAGE" || headerMediaFormat === "VIDEO" || headerMediaFormat === "DOCUMENT"
+
+  const acceptedMimeTypes: Record<string, string> = {
+    IMAGE: "image/jpeg,image/png,image/webp",
+    VIDEO: "video/mp4,video/3gpp",
+    DOCUMENT: "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  }
+
+  const handleHeaderFile = useCallback(async (file: File) => {
+    setHeaderFile(file)
+    setHeaderUploading(true)
+    try {
+      const publicUrl = await uploadMediaToSupabase(file)
+      setHeaderMediaUrl(publicUrl)
+      toast.success("Fichier uploadé")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'upload")
+      setHeaderFile(null)
+      setHeaderMediaUrl("")
+    } finally {
+      setHeaderUploading(false)
+    }
+  }, [])
+
+  const handleHeaderDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setHeaderDragActive(true)
+    } else if (e.type === "dragleave") {
+      setHeaderDragActive(false)
+    }
+  }, [])
+
+  const handleHeaderDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setHeaderDragActive(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) handleHeaderFile(file)
+  }, [handleHeaderFile])
+
+  const handleHeaderInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) handleHeaderFile(file)
+  }, [handleHeaderFile])
+
+  const removeHeaderFile = useCallback(() => {
+    setHeaderFile(null)
+    setHeaderMediaUrl("")
+  }, [])
+
   const selectedTagKey = useMemo(
     () => (selectedTagIds.length > 0 ? [...selectedTagIds].sort().join(",") : ""),
     [selectedTagIds]
@@ -302,7 +364,7 @@ export default function NewWhatsAppCampaignPage() {
       return []
     }
 
-    return selectedTemplate.components
+    const headerBodyVars = selectedTemplate.components
       .filter((component) => component.type === "BODY" || component.type === "HEADER")
       .flatMap((component) => {
         const fallbackCount =
@@ -311,10 +373,31 @@ export default function NewWhatsAppCampaignPage() {
             : component.example?.header_text?.length
         return extractIndexes(component.text, fallbackCount).map((index) => ({
           key: `${component.type.toLowerCase()}:${index}`,
-          componentType: component.type.toLowerCase() as "header" | "body",
+          componentType: component.type.toLowerCase() as "header" | "body" | "button",
           index,
+          buttonIndex: undefined as number | undefined,
+          buttonSubType: undefined as string | undefined,
         }))
       })
+
+    const buttonVars = selectedTemplate.components
+      .filter((component) => component.type === "BUTTONS")
+      .flatMap((component) =>
+        (component.buttons || []).flatMap((button, btnIndex) => {
+          if (button.type !== "URL" || !button.url) return []
+          const urlParams = extractIndexes(button.url)
+          if (urlParams.length === 0) return []
+          return urlParams.map((paramIndex) => ({
+            key: `button:${btnIndex}:${paramIndex}`,
+            componentType: "button" as const,
+            index: paramIndex,
+            buttonIndex: btnIndex,
+            buttonSubType: "url",
+          }))
+        })
+      )
+
+    return [...headerBodyVars, ...buttonVars]
   }, [selectedTemplate])
 
   // Parse manual numbers
@@ -387,6 +470,29 @@ export default function NewWhatsAppCampaignPage() {
     }
   }
 
+  const buildHeaderMediaComponent = (): {
+    type: "header"
+    parameters: Array<{
+      type: "text" | "image" | "document" | "video"
+      text?: string
+      image?: { link: string }
+      video?: { link: string }
+      document?: { link: string; filename?: string }
+    }>
+  } | null => {
+    if (!needsHeaderMedia || !headerMediaUrl.trim()) return null
+    if (headerMediaFormat === "IMAGE") {
+      return { type: "header", parameters: [{ type: "image", image: { link: headerMediaUrl.trim() } }] }
+    }
+    if (headerMediaFormat === "VIDEO") {
+      return { type: "header", parameters: [{ type: "video", video: { link: headerMediaUrl.trim() } }] }
+    }
+    if (headerMediaFormat === "DOCUMENT") {
+      return { type: "header", parameters: [{ type: "document", document: { link: headerMediaUrl.trim() } }] }
+    }
+    return null
+  }
+
   const handleSend = async () => {
     if (!selectedTemplate) {
       toast.error("Veuillez sélectionner un template")
@@ -396,6 +502,11 @@ export default function NewWhatsAppCampaignPage() {
     const recipientCount = getRecipientCount()
     if (recipientCount === 0) {
       toast.error("Veuillez sélectionner au moins un destinataire")
+      return
+    }
+
+    if (needsHeaderMedia && !headerMediaUrl.trim()) {
+      toast.error("Veuillez fournir l'URL du média pour le header du template")
       return
     }
 
@@ -454,20 +565,46 @@ export default function NewWhatsAppCampaignPage() {
           return
         }
 
+        const headerMediaComp = buildHeaderMediaComponent()
+
         const recipients = recipientContacts.map((contact) => {
-          const components = ["header", "body"].flatMap((componentType) => {
+          const headerBodyComponents = ["header", "body"].flatMap((componentType) => {
+            // If header needs media, skip text-variable header — we use the media component instead
+            if (componentType === "header" && headerMediaComp) return []
             const variables = templateVariables.filter((v) => v.componentType === componentType)
             if (variables.length === 0) return []
             const parameters = variables.map((variable) => ({
               type: "text" as const,
               text: resolveFieldValue(contact, variableMapping[variable.key]),
             }))
-            return [{ type: componentType as "header" | "body", parameters }]
+            return [{ type: componentType as "header" | "body" | "button", parameters }]
           })
+
+          const buttonVariables = templateVariables.filter((v) => v.componentType === "button")
+          const buttonsByIndex = new Map<number, typeof buttonVariables>()
+          for (const v of buttonVariables) {
+            if (v.buttonIndex === undefined) continue
+            const existing = buttonsByIndex.get(v.buttonIndex) || []
+            existing.push(v)
+            buttonsByIndex.set(v.buttonIndex, existing)
+          }
+          const buttonComponents = Array.from(buttonsByIndex.entries()).map(([btnIndex, vars]) => ({
+            type: "button" as const,
+            sub_type: vars[0].buttonSubType || "url",
+            index: String(btnIndex),
+            parameters: vars.map((variable) => ({
+              type: "text" as const,
+              text: resolveFieldValue(contact, variableMapping[variable.key]),
+            })),
+          }))
 
           return {
             phone: contact.phone_number,
-            components,
+            components: [
+              ...(headerMediaComp ? [headerMediaComp] : []),
+              ...headerBodyComponents,
+              ...buttonComponents,
+            ],
           }
         })
 
@@ -503,11 +640,15 @@ export default function NewWhatsAppCampaignPage() {
           recipients = Array.from(uniqueRecipients.values())
         }
 
+        const headerMediaComp = buildHeaderMediaComponent()
+        const broadcastComponents = headerMediaComp ? [headerMediaComp] : undefined
+
         const result = await whatsappService.createBroadcast(
           recipients,
           selectedTemplate.name,
           selectedTemplate.language,
-          campaignName || undefined
+          campaignName || undefined,
+          broadcastComponents as typeof broadcastComponents
         )
 
         if (result.success) {
@@ -555,28 +696,23 @@ export default function NewWhatsAppCampaignPage() {
   if (isConfigured === false) {
     return (
       <div className="space-y-8">
-        <section className="rounded-xl border border-border/60 bg-card p-6 shadow-[var(--shadow-sm)]">
-          <div className="flex items-center gap-4">
-            <Link href="/campaigns/whatsapp">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-                Campagnes
-              </p>
-              <h1 className="text-3xl font-semibold tracking-tight">Nouvelle campagne WhatsApp</h1>
-              <p className="text-muted-foreground">
-                Créez une campagne WhatsApp avec un template approuvé.
-              </p>
-            </div>
+        <div className="flex items-center gap-4">
+          <Link href="/campaigns/whatsapp">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold">Nouvelle campagne WhatsApp</h1>
+            <p className="text-muted-foreground mt-1">
+              Créez une campagne WhatsApp avec un template approuvé.
+            </p>
           </div>
-        </section>
+        </div>
 
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <AlertTriangle className="h-12 w-12 text-amber-600 mb-4" />
+            <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <p className="text-lg font-medium">WhatsApp non configuré</p>
             <p className="text-muted-foreground mb-4 text-center max-w-md">
               Configurez vos credentials WhatsApp Business API pour créer des campagnes
@@ -595,24 +731,19 @@ export default function NewWhatsAppCampaignPage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-xl border border-border/60 bg-card p-6 shadow-[var(--shadow-sm)]">
-        <div className="flex items-center gap-4">
-          <Link href="/campaigns/whatsapp">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-              Campagnes
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">Nouvelle campagne WhatsApp</h1>
-            <p className="text-muted-foreground">
-              Créez une campagne WhatsApp avec un template approuvé.
-            </p>
-          </div>
+      <div className="flex items-center gap-4">
+        <Link href="/campaigns/whatsapp">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-2xl font-semibold">Nouvelle campagne WhatsApp</h1>
+          <p className="text-muted-foreground mt-1">
+            Créez une campagne WhatsApp avec un template approuvé.
+          </p>
         </div>
-      </section>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left Column - Form */}
@@ -689,6 +820,88 @@ export default function NewWhatsAppCampaignPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Header Media */}
+          {selectedTemplate && needsHeaderMedia && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  {headerMediaFormat === "IMAGE" && <Image className="h-4 w-4" />}
+                  {headerMediaFormat === "VIDEO" && <Video className="h-4 w-4" />}
+                  {headerMediaFormat === "DOCUMENT" && <File className="h-4 w-4" />}
+                  Header du template
+                </CardTitle>
+                <CardDescription>
+                  Ce template nécessite {headerMediaFormat === "IMAGE" ? "une image" : headerMediaFormat === "VIDEO" ? "une vidéo" : "un document"} en header.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {headerFile && headerMediaUrl ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 rounded-md border border-border/40 p-3">
+                      {headerMediaFormat === "IMAGE" && <Image className="h-5 w-5 shrink-0 text-muted-foreground" />}
+                      {headerMediaFormat === "VIDEO" && <Video className="h-5 w-5 shrink-0 text-muted-foreground" />}
+                      {headerMediaFormat === "DOCUMENT" && <File className="h-5 w-5 shrink-0 text-muted-foreground" />}
+                      <span className="flex-1 truncate text-sm">{headerFile.name}</span>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={removeHeaderFile}>
+                        <X className="h-3.5 w-3.5" />
+                        <span className="sr-only">Supprimer</span>
+                      </Button>
+                    </div>
+                    {headerMediaFormat === "IMAGE" && (
+                      <div className="rounded-md border border-border/40 overflow-hidden">
+                        <img
+                          src={headerMediaUrl}
+                          alt="Aperçu header"
+                          className="max-h-48 w-full object-contain bg-muted/30"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className={`relative rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+                      headerDragActive
+                        ? "border-primary bg-primary/5"
+                        : "border-border/40 bg-muted/30"
+                    }`}
+                    onDragEnter={handleHeaderDrag}
+                    onDragLeave={handleHeaderDrag}
+                    onDragOver={handleHeaderDrag}
+                    onDrop={handleHeaderDrop}
+                  >
+                    {headerUploading ? (
+                      <div className="flex flex-col items-center gap-2 py-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Upload en cours…</p>
+                      </div>
+                    ) : (
+                      <>
+                        {headerMediaFormat === "IMAGE" && <Image className="mx-auto h-8 w-8 text-muted-foreground mb-2" />}
+                        {headerMediaFormat === "VIDEO" && <Video className="mx-auto h-8 w-8 text-muted-foreground mb-2" />}
+                        {headerMediaFormat === "DOCUMENT" && <File className="mx-auto h-8 w-8 text-muted-foreground mb-2" />}
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Glissez-déposez votre fichier ici, ou
+                        </p>
+                        <label htmlFor="header-media-upload">
+                          <Button variant="outline" size="sm" asChild>
+                            <span>Parcourir</span>
+                          </Button>
+                          <input
+                            id="header-media-upload"
+                            type="file"
+                            accept={acceptedMimeTypes[headerMediaFormat || "IMAGE"]}
+                            onChange={handleHeaderInputChange}
+                            className="hidden"
+                          />
+                        </label>
+                      </>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Recipients */}
           <Card>
@@ -871,7 +1084,7 @@ export default function NewWhatsAppCampaignPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {templateVariables.length === 0 ? (
-                  <div className="rounded-lg border border-border/60 bg-muted/60 p-4 text-sm text-muted-foreground">
+                  <div className="rounded-lg border border-border/40 bg-muted/60 p-4 text-sm text-muted-foreground">
                     Ce template ne contient pas de variables ({"{{1}}, {{2}}, ..."}).
                   </div>
                 ) : (
@@ -923,7 +1136,7 @@ export default function NewWhatsAppCampaignPage() {
                 )}
 
                 {recipientMode === "tags" && selectedTagIds.length > 0 && (
-                  <div className="rounded-lg border border-border/60 bg-muted/60 p-4 text-xs text-muted-foreground">
+                  <div className="rounded-lg border border-border/40 bg-muted/60 p-4 text-xs text-muted-foreground">
                     <div className="font-medium text-foreground mb-2">
                       Champs personnalisés par tag
                     </div>
@@ -956,7 +1169,7 @@ export default function NewWhatsAppCampaignPage() {
                   </div>
                 )}
 
-                <div className="rounded-lg border border-border/60 bg-card p-4 text-xs text-muted-foreground">
+                <div className="rounded-lg border border-border/40 bg-card p-4 text-xs text-muted-foreground">
                   Limites: 10 000 destinataires par requête · 80 messages/seconde.
                 </div>
               </CardContent>
@@ -1012,7 +1225,7 @@ export default function NewWhatsAppCampaignPage() {
                 </div>
               )}
 
-              <div className="border-t border-border/60 pt-4">
+              <div className="border-t border-border/40 pt-4">
                 <Button
                   className="w-full"
                   size="lg"

@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { featureFlags } from "@/config/features"
 import { smsService } from "@/services"
 import type { Broadcast, BroadcastMessage, Pagination } from "@/types"
 import { formatNumber, formatDate } from "@/lib/utils"
@@ -49,6 +50,7 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
 }
 
 export default function CampaignDetailPage() {
+  const router = useRouter()
   const params = useParams()
   const broadcastId = params.id as string
 
@@ -91,7 +93,13 @@ export default function CampaignDetailPage() {
     }
   }, [broadcast?.status, loadData])
 
+  useEffect(() => {
+    if (!featureFlags.SMS_ENABLED) router.replace("/dashboard")
+  }, [router])
+
   const totalPages = pagination ? Math.ceil(pagination.total / limit) : 1
+
+  if (!featureFlags.SMS_ENABLED) return null
 
   if (isLoading) {
     return (
@@ -171,12 +179,10 @@ export default function CampaignDetailPage() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="hover-lift">
+        <Card className="">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total</CardTitle>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Send className="h-4 w-4 text-primary" />
-            </div>
+            <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -186,12 +192,10 @@ export default function CampaignDetailPage() {
           </CardContent>
         </Card>
 
-        <Card className="hover-lift">
+        <Card className="">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Envoyés</CardTitle>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
-              <CheckCircle className="h-4 w-4" />
-            </div>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -204,12 +208,10 @@ export default function CampaignDetailPage() {
           </CardContent>
         </Card>
 
-        <Card className="hover-lift">
+        <Card className="">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Échoués</CardTitle>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-              <XCircle className="h-4 w-4" />
-            </div>
+            <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -221,12 +223,10 @@ export default function CampaignDetailPage() {
           </CardContent>
         </Card>
 
-        <Card className="hover-lift">
+        <Card className="">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">En attente</CardTitle>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/10 text-amber-700">
-              <Clock className="h-4 w-4" />
-            </div>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -246,7 +246,7 @@ export default function CampaignDetailPage() {
             <CardTitle>Message</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="whitespace-pre-wrap rounded-md border border-border/60 bg-muted/60 p-4 text-sm leading-relaxed">
+            <p className="whitespace-pre-wrap rounded-md border border-border/40 bg-muted/60 p-4 text-sm leading-relaxed">
               {broadcast.body}
             </p>
             <div className="mt-2 flex gap-4 text-sm text-muted-foreground">

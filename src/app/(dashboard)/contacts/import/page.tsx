@@ -546,58 +546,47 @@ export default function ImportContactsPage() {
   if (step === "result" && result) {
     return (
       <div className="space-y-8">
-        <section className="rounded-xl border border-border/60 bg-card p-6 shadow-[var(--shadow-sm)]">
-          <div className="flex items-center gap-4">
-            <Link href="/contacts">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-                Contacts
-              </p>
-              <h1 className="text-3xl font-semibold tracking-tight">
-                Résultat de l&apos;import
-              </h1>
-              <p className="text-muted-foreground">
-                Résumé des contacts traités lors de l&apos;import.
-              </p>
-            </div>
+        <div className="flex items-center gap-4">
+          <Link href="/contacts">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold">
+              Résultat de l&apos;import
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Résumé des contacts traités lors de l&apos;import.
+            </p>
           </div>
-        </section>
+        </div>
 
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-full mb-4 ${
-                result.imported > 0
-                  ? "bg-emerald-100 dark:bg-emerald-900"
-                  : "bg-amber-100 dark:bg-amber-900"
-              }`}>
-                {result.imported > 0 ? (
-                  <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                )}
-              </div>
+              {result.imported > 0 ? (
+                <CheckCircle className="h-8 w-8 text-emerald-600 mb-4" />
+              ) : (
+                <AlertCircle className="h-8 w-8 text-muted-foreground/50 mb-4" />
+              )}
               <h2 className="text-xl font-semibold mb-2">
                 {result.imported > 0 ? "Import terminé" : "Import terminé avec des erreurs"}
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 w-full max-w-lg">
-                <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+                <div className="rounded-lg border border-border/40 bg-card p-4 ">
                   <p className="text-2xl font-semibold">{result.total}</p>
                   <p className="text-sm text-muted-foreground">Total</p>
                 </div>
-                <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+                <div className="rounded-lg border border-border/40 bg-card p-4 ">
                   <p className="text-2xl font-semibold text-emerald-600">{result.imported}</p>
                   <p className="text-sm text-muted-foreground">Importés</p>
                 </div>
-                <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+                <div className="rounded-lg border border-border/40 bg-card p-4 ">
                   <p className="text-2xl font-semibold text-sky-600">{result.updated}</p>
                   <p className="text-sm text-muted-foreground">Mis à jour</p>
                 </div>
-                <div className="rounded-lg border border-border/60 bg-card p-4 shadow-[var(--shadow-xs)]">
+                <div className="rounded-lg border border-border/40 bg-card p-4 ">
                   <p className="text-2xl font-semibold text-destructive">{result.failed}</p>
                   <p className="text-sm text-muted-foreground">Échoués</p>
                 </div>
@@ -654,22 +643,17 @@ export default function ImportContactsPage() {
   if (step === "mapping" && csvData) {
     return (
       <div className="space-y-8">
-        <section className="rounded-xl border border-border/60 bg-card p-6 shadow-[var(--shadow-sm)]">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setStep("upload")}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-                Contacts
-              </p>
-              <h1 className="text-3xl font-semibold tracking-tight">Mapper les colonnes</h1>
-              <p className="text-muted-foreground">
-                Associez chaque colonne de votre fichier aux champs de contact.
-              </p>
-            </div>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => setStep("upload")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-semibold">Mapper les colonnes</h1>
+            <p className="text-muted-foreground mt-1">
+              Associez chaque colonne de votre fichier aux champs de contact.
+            </p>
           </div>
-        </section>
+        </div>
 
         <Card>
           <CardHeader>
@@ -799,7 +783,7 @@ export default function ImportContactsPage() {
             {/* Aperçu des données transformées */}
             <div className="space-y-4">
               <h3 className="font-medium">Aperçu (5 premières lignes)</h3>
-                <div className="rounded-md border border-border/60 overflow-x-auto">
+                <div className="rounded-md border border-border/40 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -929,7 +913,7 @@ export default function ImportContactsPage() {
                   className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
                     dragActive
                       ? "border-primary bg-primary/5"
-                      : "border-border/60 bg-muted/40"
+                      : "border-border/40 bg-muted/40"
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -955,7 +939,7 @@ export default function ImportContactsPage() {
                 </div>
 
                 {file && !csvData && (
-                  <div className="flex items-center gap-2 rounded-md border border-border/60 bg-card p-3 shadow-[var(--shadow-xs)]">
+                  <div className="flex items-center gap-2 rounded-md border border-border/40 bg-card p-3">
                     <FileText className="h-5 w-5 text-muted-foreground" />
                     <span className="flex-1 truncate">{file.name}</span>
                     <Loader2 className="h-4 w-4 animate-spin" />

@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { whatsappService, handleApiError } from "@/services"
 import { useOrganizationStore } from "@/stores"
+import { uploadMediaToBackend } from "@/lib/media-upload"
+import { cn } from "@/lib/utils"
 import { WhatsAppTemplatePreview } from "@/components/whatsapp/whatsapp-template-card"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,12 +21,139 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft, Plus, X, FileText as FileTextIcon, Image as ImageIcon } from "lucide-react"
 
 type ButtonType = "QUICK_REPLY" | "URL" | "PHONE_NUMBER"
 type HeaderFormat = "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT"
 
+const BODY_VARIABLE_REGEX = /\{\{\s*(\d+)\s*\}\}/g
+
+const extractBodyVariableIndexes = (value: string): number[] => {
+  const found = new Set<number>()
+  for (const match of value.matchAll(new RegExp(BODY_VARIABLE_REGEX.source, "g"))) {
+    const parsed = Number.parseInt(match[1], 10)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      found.add(parsed)
+    }
+  }
+  return Array.from(found).sort((a, b) => a - b)
+}
+
+function HeaderMediaUpload({
+  format,
+  mediaUrl,
+  mediaFilename,
+  previewUrl,
+  isUploading,
+  onUpload,
+  onRemove,
+}: {
+  format: "IMAGE" | "DOCUMENT"
+  mediaUrl: string
+  mediaFilename: string
+  previewUrl: string | null
+  isUploading: boolean
+  onUpload: (file: File) => void
+  onRemove: () => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const accept = format === "IMAGE" ? "image/*" : "application/pdf"
+
+  const handleFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    onUpload(files[0])
+  }
+
+  const displayUrl = previewUrl || mediaUrl
+
+  if (isUploading) {
+    return (
+      <div className="flex items-center justify-center rounded-lg border border-dashed border-border/40 bg-muted/30 p-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-sm text-muted-foreground">Upload en cours...</span>
+      </div>
+    )
+  }
+
+  if (displayUrl) {
+    return (
+      <div className="relative rounded-lg border border-border/40 bg-muted/30 p-3">
+        {format === "IMAGE" ? (
+          <div className="relative">
+            <img
+              src={displayUrl}
+              alt="Header"
+              className="max-h-40 rounded-md object-contain"
+            />
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              className="absolute -right-2 -top-2 h-6 w-6"
+              onClick={onRemove}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
+              <FileTextIcon className="h-5 w-5 text-red-600" />
+            </div>
+            <span className="flex-1 truncate text-sm">{mediaFilename || "document.pdf"}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onRemove}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-colors cursor-pointer",
+        isDragOver
+          ? "border-primary/60 bg-primary/5"
+          : "border-border/40 bg-muted/30 hover:border-border"
+      )}
+      onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => { e.preventDefault(); setIsDragOver(false); handleFiles(e.dataTransfer.files) }}
+      onClick={() => inputRef.current?.click()}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={(e) => handleFiles(e.target.files)}
+      />
+      {format === "IMAGE" ? (
+        <ImageIcon className="h-8 w-8 text-muted-foreground/50 mb-2" />
+      ) : (
+        <FileTextIcon className="h-8 w-8 text-muted-foreground/50 mb-2" />
+      )}
+      <p className="text-sm text-muted-foreground">
+        Glissez-déposez ou <span className="text-primary font-medium">parcourez</span>
+      </p>
+      <p className="text-xs text-muted-foreground/70 mt-1">
+        {format === "IMAGE" ? "JPG, PNG, WEBP" : "PDF uniquement"}
+      </p>
+    </div>
+  )
+}
+
 export default function WhatsAppTemplateCreatePage() {
+  const router = useRouter()
   const { currentOrganization } = useOrganizationStore()
   const searchParams = useSearchParams()
   const isEmbedded = searchParams.get("embed") === "1"
@@ -37,6 +166,7 @@ export default function WhatsAppTemplateCreatePage() {
   const [templateLanguage, setTemplateLanguage] = useState("fr")
   const [templateCategory, setTemplateCategory] = useState("UTILITY")
   const [templateBody, setTemplateBody] = useState("")
+  const [bodyVariableExamples, setBodyVariableExamples] = useState<Record<string, string>>({})
   const [includeHeader, setIncludeHeader] = useState(false)
   const [headerText, setHeaderText] = useState("")
   const [headerFormat, setHeaderFormat] = useState<HeaderFormat>("TEXT")
@@ -50,12 +180,14 @@ export default function WhatsAppTemplateCreatePage() {
   const [buttons, setButtons] = useState<
     Array<{ type: ButtonType; text: string; url?: string; phone_number?: string }>
   >([])
+  const bodyVariableIndexes = useMemo(() => extractBodyVariableIndexes(templateBody), [templateBody])
 
   const resetCreateForm = () => {
     setTemplateName("")
     setTemplateLanguage("fr")
     setTemplateCategory("UTILITY")
     setTemplateBody("")
+    setBodyVariableExamples({})
     setIncludeHeader(false)
     setHeaderText("")
     setHeaderFormat("TEXT")
@@ -71,6 +203,52 @@ export default function WhatsAppTemplateCreatePage() {
     setIncludeButtons(false)
     setButtons([])
   }
+
+  const handleHeaderMediaUpload = useCallback(async (file: File) => {
+    if (headerFormat === "IMAGE" && !file.type.startsWith("image/")) {
+      toast.error("Veuillez sélectionner une image (JPG, PNG, WEBP)")
+      return
+    }
+    if (headerFormat === "DOCUMENT" && file.type !== "application/pdf") {
+      toast.error("Veuillez sélectionner un fichier PDF")
+      return
+    }
+
+    if (headerMediaPreviewUrl) {
+      URL.revokeObjectURL(headerMediaPreviewUrl)
+    }
+    const localPreview = URL.createObjectURL(file)
+    setHeaderMediaPreviewUrl(localPreview)
+    setHeaderMediaFilename(file.name)
+    setIsUploadingHeader(true)
+
+    try {
+      const result = await uploadMediaToBackend(file)
+      setHeaderMediaUrl(result.file_handle)
+      toast.success("Média uploadé")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'upload")
+      setHeaderMediaPreviewUrl(null)
+      setHeaderMediaFilename("")
+    } finally {
+      setIsUploadingHeader(false)
+    }
+  }, [headerFormat, headerMediaPreviewUrl])
+
+  const handleHeaderMediaRemove = useCallback(() => {
+    if (headerMediaPreviewUrl) {
+      URL.revokeObjectURL(headerMediaPreviewUrl)
+    }
+    setHeaderMediaUrl("")
+    setHeaderMediaFilename("")
+    setHeaderMediaPreviewUrl(null)
+  }, [headerMediaPreviewUrl])
+
+  useEffect(() => {
+    return () => {
+      if (headerMediaPreviewUrl) URL.revokeObjectURL(headerMediaPreviewUrl)
+    }
+  }, [headerMediaPreviewUrl])
 
   const postToParent = (payload: Record<string, unknown>) => {
     if (typeof window === "undefined") return
@@ -113,7 +291,21 @@ export default function WhatsAppTemplateCreatePage() {
           setHeaderMediaFilename("")
         }
 
-        setTemplateBody(bodyComponent?.text || "")
+        const loadedBody = bodyComponent?.text || ""
+        setTemplateBody(loadedBody)
+        const loadedBodyVars = extractBodyVariableIndexes(loadedBody)
+        const loadedBodyExamples = bodyComponent?.example?.body_text?.[0] || []
+        if (loadedBodyVars.length > 0) {
+          setBodyVariableExamples(
+            loadedBodyVars.reduce<Record<string, string>>((acc, variableNumber, index) => {
+              const value = loadedBodyExamples[index]
+              acc[String(variableNumber)] = typeof value === "string" ? value : ""
+              return acc
+            }, {})
+          )
+        } else {
+          setBodyVariableExamples({})
+        }
         if (footerComponent?.text) {
           setIncludeFooter(true)
           setFooterText(footerComponent.text)
@@ -146,6 +338,16 @@ export default function WhatsAppTemplateCreatePage() {
       })
   }, [templateId])
 
+  useEffect(() => {
+    setBodyVariableExamples((prev) =>
+      bodyVariableIndexes.reduce<Record<string, string>>((acc, variableNumber) => {
+        const key = String(variableNumber)
+        acc[key] = prev[key] || ""
+        return acc
+      }, {})
+    )
+  }, [bodyVariableIndexes])
+
   const handleSaveTemplate = async () => {
     if (!currentOrganization?.id) {
       toast.error("Aucune organisation sélectionnée")
@@ -159,6 +361,23 @@ export default function WhatsAppTemplateCreatePage() {
     if (!name || !language || !body) {
       toast.error("Nom, langue et contenu sont requis")
       return
+    }
+
+    const hasNonSequentialVariables = bodyVariableIndexes.some((variableNumber, index) => variableNumber !== index + 1)
+    if (hasNonSequentialVariables) {
+      toast.error("Les variables BODY doivent être numérotées sans trou: {{1}}, {{2}}, {{3}}...")
+      return
+    }
+
+    if (bodyVariableIndexes.length > 0) {
+      const missingExampleVariable = bodyVariableIndexes.find((variableNumber) => {
+        const value = bodyVariableExamples[String(variableNumber)]
+        return !value || !value.trim()
+      })
+      if (missingExampleVariable) {
+        toast.error(`Renseignez un exemple pour la variable {{${missingExampleVariable}}}`)
+        return
+      }
     }
 
     if (includeHeader && !headerText.trim()) {
@@ -215,7 +434,21 @@ export default function WhatsAppTemplateCreatePage() {
         })
       }
     }
-    components.push({ type: "BODY", text: body })
+    components.push({
+      type: "BODY",
+      text: body,
+      ...(bodyVariableIndexes.length > 0
+        ? {
+            example: {
+              body_text: [
+                bodyVariableIndexes.map((variableNumber) =>
+                  bodyVariableExamples[String(variableNumber)].trim()
+                ),
+              ],
+            },
+          }
+        : {}),
+    })
     if (includeFooter) {
       components.push({ type: "FOOTER", text: footerText.trim() })
     }
@@ -252,9 +485,13 @@ export default function WhatsAppTemplateCreatePage() {
           toast.success("Template mis à jour")
           postToParent({ type: "whatsapp-template:updated" })
         } else {
-          toast.success("Template créé")
-          resetCreateForm()
           postToParent({ type: "whatsapp-template:created" })
+          if (isEmbedded) {
+            toast.success("Template créé")
+            resetCreateForm()
+          } else {
+            router.push("/templates/whatsapp?created=1&refresh=1")
+          }
         }
       } else {
         toast.error(`Erreur lors de ${isEditMode ? "la mise à jour" : "la création"} du template`)
@@ -293,6 +530,13 @@ export default function WhatsAppTemplateCreatePage() {
     setButtons((prev) => [...prev, { type: "QUICK_REPLY", text: "" }])
   }
 
+  const addBodyVariable = () => {
+    const next = bodyVariableIndexes.length > 0 ? Math.max(...bodyVariableIndexes) + 1 : 1
+    const token = `{{${next}}}`
+    setTemplateBody((prev) => `${prev}${prev.endsWith(" ") || prev.length === 0 ? "" : " "}${token}`.trim())
+    setBodyVariableExamples((prev) => ({ ...prev, [String(next)]: prev[String(next)] || "" }))
+  }
+
   const draftTemplate = useMemo(() => {
     return {
       id: "draft",
@@ -309,7 +553,7 @@ export default function WhatsAppTemplateCreatePage() {
                   type: "HEADER" as const,
                   format: headerFormat,
                   example: {
-                    header_handle: [headerMediaUrl || "https://example.com/media"],
+                    header_handle: [headerMediaPreviewUrl || headerMediaUrl || "https://example.com/media"],
                     ...(headerFormat === "DOCUMENT" && headerMediaFilename
                       ? { filename: headerMediaFilename }
                       : {}),
@@ -342,6 +586,8 @@ export default function WhatsAppTemplateCreatePage() {
     buttons,
     footerText,
     headerFormat,
+    headerMediaFilename,
+    headerMediaPreviewUrl,
     headerMediaUrl,
     headerText,
     includeButtons,
@@ -363,13 +609,10 @@ export default function WhatsAppTemplateCreatePage() {
             </Button>
           </Link>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-              Templates
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">
+            <h1 className="text-2xl font-semibold">
               {isEditMode ? "Modifier un template WhatsApp" : "Créer un template WhatsApp"}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mt-1">
               Créez un template complet avec body, footer et boutons optionnels.
             </p>
           </div>
@@ -388,7 +631,7 @@ export default function WhatsAppTemplateCreatePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoadingTemplate && (
-              <div className="rounded-lg border border-border/60 bg-muted/60 p-3 text-xs text-muted-foreground">
+              <div className="rounded-lg border border-border/40 bg-muted/60 p-3 text-xs text-muted-foreground">
                 Chargement du template...
               </div>
             )}
@@ -427,7 +670,75 @@ export default function WhatsAppTemplateCreatePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="templateBody">Contenu (BODY)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Header (optionnel)</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIncludeHeader((prev) => !prev)
+                    if (includeHeader) {
+                      setHeaderText("")
+                      setHeaderFormat("TEXT")
+                      handleHeaderMediaRemove()
+                    }
+                  }}
+                >
+                  {includeHeader ? "Retirer" : "Ajouter"}
+                </Button>
+              </div>
+              {includeHeader && (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    {(["TEXT", "IMAGE", "DOCUMENT"] as const).map((fmt) => (
+                      <Button
+                        key={fmt}
+                        type="button"
+                        variant={headerFormat === fmt ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setHeaderFormat(fmt)
+                          if (fmt === "TEXT") {
+                            handleHeaderMediaRemove()
+                          } else {
+                            setHeaderText("")
+                          }
+                        }}
+                      >
+                        {fmt === "TEXT" ? "Texte" : fmt === "IMAGE" ? "Image" : "Document"}
+                      </Button>
+                    ))}
+                  </div>
+                  {headerFormat === "TEXT" ? (
+                    <Input
+                      placeholder="Texte du header"
+                      value={headerText}
+                      onChange={(e) => setHeaderText(e.target.value)}
+                    />
+                  ) : (
+                    <HeaderMediaUpload
+                      format={headerFormat as "IMAGE" | "DOCUMENT"}
+                      mediaUrl={headerMediaUrl}
+                      mediaFilename={headerMediaFilename}
+                      previewUrl={headerMediaPreviewUrl}
+                      isUploading={isUploadingHeader}
+                      onUpload={handleHeaderMediaUpload}
+                      onRemove={handleHeaderMediaRemove}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="templateBody">Contenu (BODY)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addBodyVariable}>
+                  <Plus className="mr-2 h-3.5 w-3.5" />
+                  Ajouter une variable
+                </Button>
+              </div>
               <Textarea
                 id="templateBody"
                 placeholder="Bonjour {{1}}, votre commande {{2}} est prête."
@@ -435,9 +746,51 @@ export default function WhatsAppTemplateCreatePage() {
                 onChange={(e) => setTemplateBody(e.target.value)}
                 rows={5}
               />
-              <p className="text-xs text-muted-foreground">
-                Utilisez des variables comme {"{{1}}"} et {"{{2}}"} si besoin.
-              </p>
+              <div className="rounded-lg border border-border/40 bg-muted/40 p-3">
+                <p className="text-xs font-medium text-foreground">Variables détectées</p>
+                {bodyVariableIndexes.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {bodyVariableIndexes.map((variableNumber) => (
+                      <span
+                        key={variableNumber}
+                        className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
+                      >
+                        {`{{${variableNumber}}}`}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Aucune variable. Utilisez le bouton pour insérer automatiquement {"{{1}}"}, {"{{2}}"}, etc.
+                  </p>
+                )}
+              </div>
+              {bodyVariableIndexes.length > 0 && (
+                <div className="space-y-2 rounded-lg border border-amber-300/40 bg-amber-50/50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-300">
+                    Exemples requis (Meta)
+                  </p>
+                  {bodyVariableIndexes.map((variableNumber) => (
+                    <div key={variableNumber} className="space-y-1">
+                      <Label htmlFor={`body-variable-example-${variableNumber}`} className="text-xs">
+                        Exemple de valeur pour {`{{${variableNumber}}}`} *
+                      </Label>
+                      <Input
+                        id={`body-variable-example-${variableNumber}`}
+                        placeholder={`Exemple pour {{${variableNumber}}}`}
+                        value={bodyVariableExamples[String(variableNumber)] || ""}
+                        onChange={(e) =>
+                          setBodyVariableExamples((prev) => ({
+                            ...prev,
+                            [String(variableNumber)]: e.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -481,7 +834,7 @@ export default function WhatsAppTemplateCreatePage() {
               {includeButtons && (
                 <div className="space-y-3">
                   {buttons.map((btn, index) => (
-                    <div key={index} className="rounded-lg border border-border/60 p-3 space-y-3">
+                    <div key={index} className="rounded-lg border border-border/40 p-3 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Bouton {index + 1}</span>
                         <Button
@@ -619,9 +972,9 @@ export default function WhatsAppTemplateCreatePage() {
           </CardHeader>
           <CardContent>
             {templateBody.trim() ? (
-              <div className="mx-auto w-full max-w-[320px] rounded-[36px] border border-border/70 bg-gradient-to-b from-muted/60 to-background p-4 shadow-[var(--shadow-md)]">
+              <div className="mx-auto w-full max-w-[320px] rounded-[36px] border border-border/40 bg-gradient-to-b from-muted/60 to-background p-4">
                 <div className="mx-auto mb-3 h-1.5 w-16 rounded-full bg-muted-foreground/30" />
-                <div className="rounded-xl border border-border/60 bg-background p-3 shadow-[var(--shadow-sm)]">
+                <div className="rounded-xl border border-border/40 bg-background p-3">
                   <div className="mb-2 flex items-center gap-2">
                     <div className="h-6 w-6 rounded-full bg-emerald-500/20" />
                     <div>

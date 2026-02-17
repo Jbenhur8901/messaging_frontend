@@ -99,24 +99,19 @@ export default function WhatsAppCampaignDetailPage() {
   if (!broadcast) {
     return (
       <div className="space-y-8">
-        <section className="rounded-xl border border-border/60 bg-card p-6 shadow-[var(--shadow-sm)]">
-          <div className="flex items-center gap-4">
-            <Link href="/campaigns/whatsapp">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-                Campagnes
-              </p>
-              <h1 className="text-3xl font-semibold tracking-tight">Campagne non trouvée</h1>
-              <p className="text-muted-foreground">
-                Cette campagne n&apos;existe pas ou a été supprimée.
-              </p>
-            </div>
+        <div className="flex items-center gap-4">
+          <Link href="/campaigns/whatsapp">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold">Campagne non trouvée</h1>
+            <p className="text-muted-foreground mt-1">
+              Cette campagne n&apos;existe pas ou a été supprimée.
+            </p>
           </div>
-        </section>
+        </div>
       </div>
     )
   }
@@ -170,39 +165,34 @@ export default function WhatsAppCampaignDetailPage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-xl border border-border/60 bg-card p-6 shadow-[var(--shadow-sm)]">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/campaigns/whatsapp">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-                Campagnes
-              </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl font-semibold tracking-tight">
-                  {broadcast.campaign_name || "Campagne sans nom"}
-                </h1>
-                <BroadcastStatusBadge status={broadcast.status} />
-              </div>
-              <p className="text-muted-foreground">
-                Template: {broadcast.template_name} ({broadcast.template_language})
-              </p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/campaigns/whatsapp">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-semibold">
+                {broadcast.campaign_name || "Campagne sans nom"}
+              </h1>
+              <BroadcastStatusBadge status={broadcast.status} />
             </div>
+            <p className="text-muted-foreground mt-1">
+              Template: {broadcast.template_name} ({broadcast.template_language})
+            </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={refreshMessages}
-            disabled={isLoadingMessages}
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingMessages ? "animate-spin" : ""}`} />
-            Actualiser
-          </Button>
         </div>
-      </section>
+        <Button
+          variant="outline"
+          onClick={refreshMessages}
+          disabled={isLoadingMessages}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingMessages ? "animate-spin" : ""}`} />
+          Actualiser
+        </Button>
+      </div>
 
       {/* Progress */}
       <Card>

@@ -57,9 +57,11 @@ export const whatsappService = {
 
   // ============ Templates ============
 
-  async syncTemplates(): Promise<{ success: boolean; synced: number; message: string }> {
+  async syncTemplates(force = false): Promise<{ success: boolean; synced: number; message: string }> {
+    const formData = force ? new URLSearchParams({ force: "true" }) : undefined
     const { data } = await api.post<{ success: boolean; synced: number; message: string }>(
-      "/v1/whatsapp/templates/sync"
+      "/v1/whatsapp/templates/sync",
+      formData
     )
     return data
   },
@@ -125,9 +127,9 @@ export const whatsappService = {
     return data
   },
 
-  async deleteTemplate(templateId: string): Promise<{ success: boolean; message: string }> {
+  async deleteTemplate(templateName: string): Promise<{ success: boolean; message: string }> {
     const { data } = await api.delete<{ success: boolean; message: string }>(
-      `/v1/whatsapp/templates/${templateId}`
+      `/v1/whatsapp/templates/${encodeURIComponent(templateName)}`
     )
     return data
   },
@@ -137,15 +139,31 @@ export const whatsappService = {
   async sendTemplateMessage(
     to: string,
     templateName: string,
-    language: string,
-    parameters?: Record<string, unknown[]>
+    languageCode: string,
+    components?: Array<{
+      type: "header" | "body" | "button"
+      sub_type?: string
+      index?: string
+      parameters: Array<{
+        type: "text" | "image" | "video" | "document"
+        text?: string
+        image?: { link: string }
+        video?: { link: string }
+        document?: { link: string; filename?: string }
+      }>
+    }>
   ): Promise<WhatsAppMessageResult> {
-    const { data } = await apiJson.post<WhatsAppMessageResult>("/v1/whatsapp/messages", {
-      to,
-      template_name: templateName,
-      language,
-      parameters,
-    })
+    const formData = new URLSearchParams()
+    formData.append("to", to)
+    formData.append("template_name", templateName)
+    formData.append("language_code", languageCode)
+    if (components) {
+      formData.append("components", JSON.stringify(components))
+    }
+    const { data } = await api.post<WhatsAppMessageResult>(
+      "/v1/whatsapp/messages/template",
+      formData
+    )
     return data
   },
 
@@ -164,12 +182,13 @@ export const whatsappService = {
   async getMessages(
     limit = 50,
     offset = 0,
-    status?: string
+    status?: string,
+    templateName?: string
   ): Promise<{ messages: WhatsAppMessage[]; pagination: Pagination }> {
     const { data } = await api.get<{ messages: WhatsAppMessage[]; pagination: Pagination }>(
       "/v1/whatsapp/messages",
       {
-        params: { limit, offset, status },
+        params: { limit, offset, status, template_name: templateName },
       }
     )
     return data
@@ -182,7 +201,19 @@ export const whatsappService = {
     templateName: string,
     language: string,
     campaignName?: string,
-    parameters?: Record<string, unknown[]>
+    components?: Array<{
+      type: "header" | "body" | "button"
+      sub_type?: string
+      index?: string
+      parameters: Array<{
+        type: "text" | "image" | "video" | "document"
+        text?: string
+        image?: { link: string }
+        video?: { link: string }
+        document?: { link: string; filename?: string }
+      }>
+    }>,
+    callbackUrl?: string
   ): Promise<WhatsAppBroadcastResult> {
     const formData = new URLSearchParams()
     formData.append("recipients", recipients.join(","))
@@ -191,8 +222,11 @@ export const whatsappService = {
     if (campaignName) {
       formData.append("campaign_name", campaignName)
     }
-    if (parameters) {
-      formData.append("components", JSON.stringify(parameters))
+    if (components) {
+      formData.append("components", JSON.stringify(components))
+    }
+    if (callbackUrl) {
+      formData.append("callback_url", callbackUrl)
     }
     const { data } = await api.post<WhatsAppBroadcastResult>(
       "/v1/whatsapp/broadcasts",
@@ -205,14 +239,18 @@ export const whatsappService = {
     template_name: string
     language_code: string
     campaign_name?: string
+    callback_url?: string
     recipients: Array<{
       phone: string
       components: Array<{
         type: "header" | "body" | "button"
+        sub_type?: string
+        index?: string
         parameters: Array<{
-          type: "text" | "image" | "document"
+          type: "text" | "image" | "video" | "document"
           text?: string
           image?: { link: string }
+          video?: { link: string }
           document?: { link: string; filename?: string }
         }>
       }>
@@ -225,14 +263,29 @@ export const whatsappService = {
     return data
   },
 
+  async createBroadcastJson(payload: {
+    recipients: string[]
+    template_name: string
+    language_code: string
+    campaign_name?: string
+    callback_url?: string
+  }): Promise<WhatsAppBroadcastResult> {
+    const { data } = await apiJson.post<WhatsAppBroadcastResult>(
+      "/v1/whatsapp/broadcasts/json",
+      payload
+    )
+    return data
+  },
+
   async getBroadcasts(
     limit = 20,
-    offset = 0
+    offset = 0,
+    status?: string
   ): Promise<{ broadcasts: WhatsAppBroadcast[]; pagination: Pagination }> {
     const { data } = await api.get<{ broadcasts: WhatsAppBroadcast[]; pagination: Pagination }>(
       "/v1/whatsapp/broadcasts",
       {
-        params: { limit, offset },
+        params: { limit, offset, status },
       }
     )
     return data
@@ -246,22 +299,27 @@ export const whatsappService = {
   async getBroadcastMessages(
     broadcastId: string,
     limit = 50,
-    offset = 0
+    offset = 0,
+    status?: string
   ): Promise<{ messages: WhatsAppBroadcastMessage[]; pagination: Pagination }> {
     const { data } = await api.get<{
       messages: WhatsAppBroadcastMessage[]
       pagination: Pagination
     }>(`/v1/whatsapp/broadcasts/${broadcastId}/messages`, {
-      params: { limit, offset },
+      params: { limit, offset, status },
     })
     return data
   },
 
   // ============ Stats ============
 
-  async getStats(days = 7): Promise<WhatsAppStats> {
+  async getStats(
+    days = 7,
+    startDate?: string,
+    endDate?: string
+  ): Promise<WhatsAppStats> {
     const { data } = await api.get<WhatsAppStats>("/v1/whatsapp/stats", {
-      params: { days },
+      params: { days, start_date: startDate, end_date: endDate },
     })
     return data
   },

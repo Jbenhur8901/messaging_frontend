@@ -30,6 +30,7 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { useOrganizationStore } from "@/stores"
+import { featureFlags } from "@/config/features"
 
 const getStoredApiKey = () => {
   if (typeof window === "undefined") return null
@@ -250,10 +251,10 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-muted-foreground mt-1">
-            Vue d&apos;ensemble de votre activité SMS
+            Vue d&apos;ensemble de votre activité
           </p>
         </div>
-        <Link href="/campaigns/new">
+        <Link href={featureFlags.SMS_ENABLED ? "/campaigns/new" : "/campaigns/whatsapp/new"}>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Nouvelle campagne
@@ -261,7 +262,8 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Stats Grid */}
+      {/* SMS Stats Grid */}
+      {featureFlags.SMS_ENABLED && (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -335,6 +337,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       <div className="space-y-4">
         <div>
@@ -413,7 +416,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Chart */}
+        {/* SMS Chart */}
+        {featureFlags.SMS_ENABLED && (
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>Activité des 14 derniers jours</CardTitle>
@@ -470,12 +474,13 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Recent Broadcasts */}
-        <Card className="lg:col-span-1">
+        <Card className={featureFlags.SMS_ENABLED ? "lg:col-span-1" : "lg:col-span-2"}>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Campagnes récentes</CardTitle>
-            <Link href="/campaigns">
+            <Link href={featureFlags.SMS_ENABLED ? "/campaigns" : "/campaigns/whatsapp"}>
               <Button variant="ghost" size="sm">
                 Voir tout
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -495,7 +500,7 @@ export default function DashboardPage() {
                     href={`/campaigns/${broadcast.broadcast_id}`}
                     className="block"
                   >
-                    <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background p-4 transition-all duration-200 hover:bg-primary/[0.02] hover:border-primary/20 hover:shadow-[var(--shadow-sm)]">
+                    <div className="flex items-center justify-between rounded-lg border border-border/40 bg-background p-4 transition-colors hover:bg-accent/50">
                       <div className="space-y-1">
                         <p className="font-medium">
                           {broadcast.campaign_name || "Sans nom"}

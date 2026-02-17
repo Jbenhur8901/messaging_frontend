@@ -610,3 +610,98 @@ export interface WhatsAppMessageResult {
   status: WhatsAppMessageStatus
   phone_number: string
 }
+
+// Scenarios types
+export type ScenarioStatus = "active" | "inactive" | "draft"
+export type ScenarioChannel = "whatsapp"
+
+export type ScenarioNodeType =
+  | "trigger_incoming"
+  | "trigger_keyword"
+  | "trigger_webhook"
+  | "trigger_event"
+  | "trigger_schedule"
+  | "message_text"
+  | "message_image"
+  | "message_audio"
+  | "message_video"
+  | "message_document"
+  | "message_buttons"
+  | "message_quick_reply"
+  | "message_template"
+  | "condition_if"
+  | "action_wait"
+  | "action_tag"
+  | "action_update_field"
+  | "action_api_call"
+  | "action_redirect_scenario"
+  | "action_assign_agent"
+  | "end"
+
+export interface ScenarioPosition {
+  x: number
+  y: number
+}
+
+export interface ScenarioNode {
+  id: string
+  type: ScenarioNodeType
+  title: string
+  description?: string
+  position: ScenarioPosition
+  config: Record<string, string | number | boolean | string[] | null | undefined>
+}
+
+export interface ScenarioEdge {
+  id: string
+  source: string
+  target: string
+  label?: string
+}
+
+export interface ScenarioFlow {
+  nodes: ScenarioNode[]
+  edges: ScenarioEdge[]
+  viewport?: {
+    zoom: number
+    panX: number
+    panY: number
+  }
+}
+
+export interface ScenarioGlobalVariable {
+  id: string
+  key: string
+  value: string
+}
+
+export interface ScenarioStats {
+  trigger_count: number
+  total_messages_sent: number
+  completion_rate: number
+  last_triggered_at?: string | null
+}
+
+export interface ScenarioVersion {
+  id: string
+  created_at: string
+  note: string
+  status: ScenarioStatus
+  flow: ScenarioFlow
+}
+
+export interface ConversationScenario {
+  id: string
+  name: string
+  description: string
+  status: ScenarioStatus
+  channel: ScenarioChannel
+  is_main?: boolean
+  created_at: string
+  updated_at: string
+  published_at?: string | null
+  flow: ScenarioFlow
+  global_variables: ScenarioGlobalVariable[]
+  stats: ScenarioStats
+  versions: ScenarioVersion[]
+}

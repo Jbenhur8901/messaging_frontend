@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { featureFlags } from "@/config/features"
 import { templatesService, handleApiError } from "@/services"
 import type { Template } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -47,6 +49,7 @@ const CATEGORIES = [
 ]
 
 export default function TemplatesPage() {
+  const router = useRouter()
   const [templates, setTemplates] = useState<Template[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -72,6 +75,12 @@ export default function TemplatesPage() {
   useEffect(() => {
     loadTemplates()
   }, [])
+
+  useEffect(() => {
+    if (!featureFlags.SMS_ENABLED) router.replace("/templates/whatsapp")
+  }, [router])
+
+  if (!featureFlags.SMS_ENABLED) return null
 
   const resetForm = () => {
     setName("")
@@ -245,7 +254,7 @@ export default function TemplatesPage() {
                     </p>
                   </div>
                   {body && extractVariables(body).length > 0 && (
-                    <div className="rounded-lg border border-border/60 bg-muted/60 p-4 space-y-2">
+                    <div className="rounded-lg border border-border/40 bg-muted/60 p-4 space-y-2">
                       <Label className="text-sm font-medium flex items-center gap-2">
                         <Hash className="h-4 w-4 text-primary" />
                         Variables détectées
@@ -315,7 +324,7 @@ export default function TemplatesPage() {
             <p className="text-muted-foreground mb-6 text-center max-w-sm">
               Créez des templates réutilisables pour accélérer la création de vos campagnes SMS
             </p>
-            <Button size="lg" onClick={() => setIsDialogOpen(true)} className="shadow-[var(--shadow-sm)]">
+            <Button size="lg" onClick={() => setIsDialogOpen(true)}>
               <Plus className="mr-2 h-5 w-5" />
               Créer mon premier template
             </Button>
@@ -329,19 +338,10 @@ export default function TemplatesPage() {
             return (
               <Card
                 key={template.id}
-                className="group relative overflow-hidden transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-primary/20"
+                className="group relative overflow-hidden transition-colors hover:border-border"
               >
-                {/* Category color bar */}
-                <div className={`absolute top-0 left-0 right-0 h-1 ${categoryInfo.color.replace('text-', 'bg-').replace(' bg-', ' ').split(' ')[0].replace('bg-', 'bg-')}`}
-                  style={{
-                    backgroundColor: categoryInfo.color.includes('blue') ? 'rgb(59 130 246 / 0.8)' :
-                                     categoryInfo.color.includes('orange') ? 'rgb(249 115 22 / 0.8)' :
-                                     categoryInfo.color.includes('amber') ? 'rgb(245 158 11 / 0.8)' :
-                                     'rgb(100 116 139 / 0.8)'
-                  }}
-                />
 
-                <CardHeader className="pb-3 pt-5">
+                <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <CardTitle className="text-base font-semibold truncate mb-2">
@@ -387,7 +387,7 @@ export default function TemplatesPage() {
                 <CardContent className="space-y-4">
                   {/* Message preview */}
                   <div className="relative">
-                    <div className="rounded-lg bg-muted/40 p-3 border border-border/60">
+                    <div className="rounded-lg bg-muted/40 p-3 border border-border/40">
                       <p className="text-sm text-foreground/80 line-clamp-3 leading-relaxed">
                         {template.body}
                       </p>
@@ -417,7 +417,7 @@ export default function TemplatesPage() {
 
                   {/* Variables */}
                   {template.variables.length > 0 && (
-                    <div className="pt-2 border-t border-border/60">
+                    <div className="pt-2 border-t border-border/40">
                       <div className="flex flex-wrap gap-1.5">
                         {template.variables.map((v) => (
                           <Badge

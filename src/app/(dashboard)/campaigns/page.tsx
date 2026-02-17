@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { featureFlags } from "@/config/features"
 import { dashboardService } from "@/services"
 import { authStorage } from "@/lib/auth-storage"
 import type { Broadcast } from "@/types"
@@ -39,8 +41,15 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
 }
 
 export default function CampaignsPage() {
+  const router = useRouter()
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    if (!featureFlags.SMS_ENABLED) router.replace("/campaigns/whatsapp")
+  }, [router])
+
+  if (!featureFlags.SMS_ENABLED) return null
 
   const loadBroadcasts = async () => {
     const token = authStorage.getItem("access_token")
