@@ -63,6 +63,7 @@ import {
   Ban,
   CheckCircle,
   Upload,
+  Download,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
@@ -293,6 +294,48 @@ export default function ContactsPage() {
     }
   }
 
+  const handleExport = () => {
+    const rows = filteredContacts.map((contact) => ({
+      prénom: contact.first_name || "",
+      nom: contact.last_name || "",
+      téléphone: contact.phone_number || "",
+      email: contact.email || "",
+      tags: contact.tags.map((t) => t.name).join(", "),
+      statut: contact.is_blocked ? "Bloqué" : contact.is_active ? "Actif" : "Inactif",
+      messages_envoyés: contact.messages_sent ?? 0,
+      créé_le: contact.created_at || "",
+    }))
+
+    if (rows.length === 0) {
+      toast.error("Aucun contact à exporter")
+      return
+    }
+
+    const headers = Object.keys(rows[0])
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) =>
+        headers
+          .map((h) => {
+            const value = String(row[h as keyof typeof row])
+            return value.includes(",") || value.includes('"') || value.includes("\n")
+              ? `"${value.replace(/"/g, '""')}"`
+              : value
+          })
+          .join(",")
+      ),
+    ].join("\n")
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `contacts_${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success(`${rows.length} contact(s) exporté(s)`)
+  }
+
   const resetFilters = () => {
     setSearchQuery("")
     setSelectedTagFilters([])
@@ -449,6 +492,10 @@ export default function ContactsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="mr-2 h-4 w-4" />
+            Exporter
+          </Button>
           <Link href="/contacts/import">
             <Button variant="outline">
               <Upload className="mr-2 h-4 w-4" />
