@@ -13,6 +13,8 @@ import {
   Building2,
   Settings,
   Megaphone,
+  Clock,
+  BarChart3,
 } from "lucide-react"
 import { featureFlags } from "@/config/features"
 
@@ -45,7 +47,20 @@ export const navigationSections: NavigationSection[] = [
     icon: Megaphone,
     items: [
       { name: "Campagnes", href: featureFlags.SMS_ENABLED ? "/campaigns" : "/campaigns/whatsapp", icon: Send },
-      { name: "WhatsApp", href: "/whatsapp/config", icon: MessageSquareMore },
+      { name: "Conversations", href: "/conversations", icon: MessageSquareMore },
+      { name: "Programm\u00e9s", href: "/scheduled", icon: Clock },
+      { name: "Analytics", href: "/analytics/whatsapp", icon: BarChart3 },
+      {
+        name: "WhatsApp",
+        href: "/whatsapp/config",
+        icon: MessageSquareMore,
+        children: [
+          { name: "Configuration", href: "/whatsapp/config" },
+          { name: "Comptes", href: "/whatsapp/accounts" },
+          { name: "Flows", href: "/whatsapp/flows" },
+          { name: "Cr\u00e9dits", href: "/whatsapp/credits" },
+        ],
+      },
       {
         name: "Templates",
         href: featureFlags.SMS_ENABLED ? "/templates" : "/templates/whatsapp",
@@ -55,7 +70,7 @@ export const navigationSections: NavigationSection[] = [
             ? [{ name: "Vue d'ensemble", href: "/templates" }]
             : []),
           { name: "WhatsApp", href: "/templates/whatsapp" },
-          { name: "Créer", href: "/templates/whatsapp/create" },
+          { name: "Cr\u00e9er", href: "/templates/whatsapp/create" },
         ],
       },
       { name: "Services", href: "/services", icon: Radio, smsOnly: true },
@@ -82,12 +97,6 @@ export const navigationSections: NavigationSection[] = [
     items: [
       { name: "Organisation", href: "/organization", icon: Building2 },
       { name: "Crédits", href: "/credits", icon: CreditCard },
-    ],
-  },
-  {
-    title: "Configuration",
-    position: "bottom",
-    items: [
       { name: "Paramètres", href: "/settings", icon: Settings },
     ],
   },

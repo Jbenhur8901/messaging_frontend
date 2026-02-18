@@ -154,6 +154,13 @@ export interface Broadcast {
   body?: string
   created_at: string
   completed_at: string | null
+  // WhatsApp-specific fields
+  channel?: "sms" | "whatsapp"
+  template_name?: string
+  delivered_count?: number
+  read_count?: number
+  delivery_rate?: number
+  read_rate?: number
 }
 
 export interface BroadcastMessage {
@@ -280,6 +287,7 @@ export interface DailyStat {
   messages_sent: number
   messages_delivered: number
   messages_failed: number
+  messages_read?: number
   delivery_rate: number
   credits_consumed: number
 }
@@ -575,13 +583,20 @@ export interface WhatsAppBroadcast {
 }
 
 export interface WhatsAppBroadcastMessage {
+  id?: string
   phone: string
+  to_phone?: string
   status: WhatsAppMessageStatus
   message_id: string | null
+  wamid?: string | null
   error: string | null
+  error_code?: string | null
+  error_message?: string | null
   sent_at: string | null
   delivered_at: string | null
   read_at: string | null
+  failed_at?: string | null
+  created_at?: string
 }
 
 export interface WhatsAppStats {
@@ -609,6 +624,263 @@ export interface WhatsAppMessageResult {
   message_id: string
   status: WhatsAppMessageStatus
   phone_number: string
+}
+
+// === Conversations Inbox ===
+export interface WhatsAppInboxConversation {
+  id: string
+  phone_number: string
+  contact_name: string | null
+  status: "open" | "closed" | "archived"
+  assigned_to?: string | null
+  unread_count: number
+  last_message_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type WhatsAppMessageDirection = "inbound" | "outbound"
+export type WhatsAppMessageType = "text" | "template" | "image" | "video" | "audio" | "document" | "location" | "contacts" | "interactive"
+
+export interface WhatsAppConversationMessage {
+  id: string
+  message_id: string
+  wamid?: string
+  direction: WhatsAppMessageDirection
+  type: WhatsAppMessageType
+  content?: string
+  phone_number: string
+  template_name?: string
+  template_language?: string
+  status: WhatsAppMessageStatus
+  error_message?: string
+  sent_at?: string
+  delivered_at?: string
+  read_at?: string
+  created_at: string
+  media_url?: string
+  media_type?: string
+  caption?: string
+  filename?: string
+  latitude?: number
+  longitude?: number
+  location_name?: string
+  location_address?: string
+}
+
+// === Freeform Messages ===
+export interface SendTextPayload {
+  to: string
+  text: string
+  preview_url?: boolean
+  reply_to_wamid?: string
+}
+
+export interface SendMediaPayload {
+  to: string
+  media_type: "image" | "video" | "audio" | "document"
+  media_url?: string
+  media_id?: string
+  caption?: string
+  filename?: string
+}
+
+export interface SendLocationPayload {
+  to: string
+  latitude: string
+  longitude: string
+  name?: string
+  address?: string
+}
+
+export interface MediaUploadResult {
+  media_id: string
+}
+
+// === Messages Programmés ===
+export type ScheduledMessageStatus = "pending" | "processing" | "sent" | "failed" | "cancelled"
+export type ScheduledMessageType = "message" | "broadcast"
+
+export interface ScheduledMessage {
+  id: string
+  scheduled_at: string
+  timezone?: string
+  message_type: "template" | "text"
+  scheduled_type?: ScheduledMessageType
+  status: ScheduledMessageStatus
+  to?: string
+  template_name?: string
+  template_language?: string
+  text_body?: string
+  recipients?: string[]
+  created_at: string
+}
+
+// === Analytics ===
+export interface TemplateAnalytics {
+  template_id: string
+  template_name: string
+  total_sent: number
+  delivered: number
+  read: number
+  failed: number
+  delivery_rate: number
+  read_rate: number
+}
+
+export interface DeliveryRatePoint {
+  date: string
+  sent: number
+  delivered: number
+  failed: number
+  delivery_rate: number
+}
+
+export interface ReadRatePoint {
+  date: string
+  delivered: number
+  read: number
+  read_rate: number
+}
+
+export interface ResponseTimeStats {
+  avg_response_time_seconds: number
+  median_response_time_seconds: number
+  p95_response_time_seconds: number
+}
+
+export interface ConversationAnalytics {
+  total_conversations: number
+  open: number
+  closed: number
+  avg_messages_per_conversation: number
+}
+
+// === Flows ===
+export type WhatsAppFlowStatus = "DRAFT" | "PUBLISHED" | "DEPRECATED" | "BLOCKED" | "THROTTLED"
+export type WhatsAppFlowCategory = "SIGN_UP" | "SIGN_IN" | "APPOINTMENT_BOOKING" | "LEAD_GENERATION" | "CONTACT_US" | "CUSTOMER_SUPPORT" | "SURVEY" | "OTHER"
+
+export interface WhatsAppFlow {
+  id: string
+  name: string
+  status: WhatsAppFlowStatus
+  categories: WhatsAppFlowCategory[]
+  created_at: string
+  updated_at: string
+}
+
+export interface WhatsAppFlowDetail extends WhatsAppFlow {
+  flow_json?: object
+  validation_errors?: string[]
+}
+
+export interface WhatsAppFlowResponse {
+  id: string
+  flow_id: string
+  phone_number: string
+  response_data: Record<string, unknown>
+  created_at: string
+}
+
+// === Comptes WABA ===
+export type WhatsAppAccountStatus = "pending" | "active" | "suspended" | "disconnected" | "verification_needed" | "restricted"
+
+export interface WhatsAppAccount {
+  id: string
+  waba_id: string
+  phone_number_id: string
+  display_phone_number: string
+  business_name: string
+  status: WhatsAppAccountStatus
+  is_default: boolean
+  quality_rating?: string
+  messaging_limit?: string
+  verified_name?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface WhatsAppAccountEvent {
+  id: string
+  event_type: string
+  details?: string
+  created_at: string
+}
+
+// === Consentement ===
+export interface ConsentStatus {
+  phone_number: string
+  opted_in: boolean
+  opted_in_at?: string
+  opted_out_at?: string
+  source?: string
+}
+
+export interface ConsentHistoryEntry {
+  id: string
+  action: "opt_in" | "opt_out"
+  source: string
+  consent_text?: string
+  ip_address?: string
+  created_at: string
+}
+
+// === Crédits WhatsApp ===
+export interface CompartmentBalance {
+  balance: number
+  reserved: number
+  available: number
+}
+
+export interface WhatsAppCreditBalance {
+  marketing: CompartmentBalance
+  utility: CompartmentBalance
+  authentication: CompartmentBalance
+  free: CompartmentBalance
+  total_balance: number
+}
+
+export interface WhatsAppCreditPackage {
+  code: string
+  name: string
+  category: "marketing" | "utility" | "authentication" | "topup"
+  messages_included: number
+  price_fcfa: number
+  description?: string
+}
+
+export interface WhatsAppCreditTransaction {
+  id: string
+  transaction_type: "purchase" | "consumption" | "refund" | "expiration"
+  compartment: string
+  amount: number
+  description: string
+  created_at: string
+}
+
+export interface WhatsAppCreditDashboard {
+  balance: WhatsAppCreditBalance
+  usage: { period_days: number; total_consumed: number; daily_breakdown: Record<string, number>; by_compartment: Record<string, number> }
+  recent_transactions: WhatsAppCreditTransaction[]
+  notifications: WhatsAppCreditNotification[]
+  expiring_soon?: { amount: number; expires_at: string }
+}
+
+export interface WhatsAppCreditNotification {
+  id: string
+  type: string
+  message: string
+  is_read: boolean
+  created_at: string
+}
+
+export interface PreSendCheck {
+  can_send: boolean
+  category: string
+  message_count: number
+  credits_required: number
+  credits_available: number
+  shortage?: number
 }
 
 // Scenarios types

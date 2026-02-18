@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { creditsService } from "@/services"
+import { creditsService, whatsappService } from "@/services"
 import { authStorage } from "@/lib/auth-storage"
-import type { CreditBalance, CreditTransaction, CreditUsage, Pagination } from "@/types"
+import type { CreditBalance, CreditTransaction, CreditUsage, Pagination, WhatsAppCreditBalance } from "@/types"
 import { formatNumber, formatDate } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
+  Wallet,
   CreditCard,
   TrendingUp,
   TrendingDown,
@@ -41,6 +42,7 @@ import {
 
 export default function CreditsPage() {
   const [balance, setBalance] = useState<CreditBalance | null>(null)
+  const [walletBalance, setWalletBalance] = useState<WhatsAppCreditBalance | null>(null)
   const [usage, setUsage] = useState<CreditUsage | null>(null)
   const [transactions, setTransactions] = useState<CreditTransaction[]>([])
   const [pagination, setPagination] = useState<Pagination | null>(null)
@@ -58,12 +60,14 @@ export default function CreditsPage() {
       }
 
       try {
-        const [balanceData, usageData] = await Promise.all([
+        const [balanceData, usageData, walletData] = await Promise.all([
           creditsService.getBalance(),
           creditsService.getUsage(30),
+          whatsappService.getWhatsAppBalance().catch(() => null),
         ])
         setBalance(balanceData)
         setUsage(usageData)
+        if (walletData) setWalletBalance(walletData)
       } catch (error) {
       } finally {
         setIsLoading(false)
@@ -128,7 +132,7 @@ export default function CreditsPage() {
         <div>
           <h1 className="text-2xl font-semibold">Crédits</h1>
           <p className="text-muted-foreground mt-1">
-            Gérez vos crédits SMS et consultez votre consommation.
+            Gérez vos crédits et consultez votre consommation.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -148,24 +152,32 @@ export default function CreditsPage() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Crédits disponibles
-            </CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">
-              {formatNumber(balance?.credit_available || 0)}
-            </div>
-            {balance?.credit_reserved && balance.credit_reserved > 0 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                {formatNumber(balance.credit_reserved)} réservés
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <Link href="/whatsapp/credits" className="block">
+          <Card className="transition-colors hover:border-border">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Wallet WhatsApp
+              </CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold">
+                {formatNumber(
+                  walletBalance
+                    ? walletBalance.marketing.available + walletBalance.utility.available + walletBalance.authentication.available + walletBalance.free.available
+                    : (balance?.whatsapp_credit_available ?? balance?.whatsapp_credit_balance ?? 0)
+                )} <span className="text-sm font-normal text-muted-foreground">FCFA</span>
+              </div>
+              {walletBalance && (
+                <div className="flex gap-2 mt-2 text-[11px] text-muted-foreground">
+                  <span className="text-violet-600">M:{formatNumber(walletBalance.marketing.available)}</span>
+                  <span className="text-blue-600">U:{formatNumber(walletBalance.utility.available)}</span>
+                  <span className="text-emerald-600">A:{formatNumber(walletBalance.authentication.available)}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">

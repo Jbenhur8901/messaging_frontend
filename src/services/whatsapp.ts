@@ -9,6 +9,31 @@ import type {
   WhatsAppStats,
   WhatsAppBroadcastResult,
   WhatsAppMessageResult,
+  WhatsAppInboxConversation,
+  WhatsAppConversationMessage,
+  SendTextPayload,
+  SendMediaPayload,
+  SendLocationPayload,
+  MediaUploadResult,
+  ScheduledMessage,
+  TemplateAnalytics,
+  DeliveryRatePoint,
+  ReadRatePoint,
+  ResponseTimeStats,
+  ConversationAnalytics,
+  WhatsAppFlow,
+  WhatsAppFlowDetail,
+  WhatsAppFlowResponse,
+  WhatsAppAccount,
+  WhatsAppAccountEvent,
+  ConsentStatus,
+  ConsentHistoryEntry,
+  WhatsAppCreditBalance,
+  WhatsAppCreditPackage,
+  WhatsAppCreditTransaction,
+  WhatsAppCreditDashboard,
+  WhatsAppCreditNotification,
+  PreSendCheck,
   Pagination,
 } from "@/types"
 
@@ -318,9 +343,627 @@ export const whatsappService = {
     startDate?: string,
     endDate?: string
   ): Promise<WhatsAppStats> {
-    const { data } = await api.get<WhatsAppStats>("/v1/whatsapp/stats", {
+    const { data } = await api.get("/v1/whatsapp/stats", {
       params: { days, start_date: startDate, end_date: endDate },
     })
+    // Handle various response shapes: direct, { stats: ... }, { data: ... }
+    const raw = (data as Record<string, unknown>)?.stats ?? (data as Record<string, unknown>)?.data ?? data
+    const toNum = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0)
+    const r = raw as Record<string, unknown>
+    return {
+      total_messages: toNum(r.total_messages ?? r.total_sent ?? r.total ?? r.messages_sent),
+      delivered: toNum(r.delivered ?? r.total_delivered ?? r.messages_delivered),
+      read: toNum(r.read ?? r.total_read ?? r.messages_read),
+      failed: toNum(r.failed ?? r.total_failed ?? r.messages_failed),
+      delivery_rate: toNum(r.delivery_rate ?? r.delivery_rate_percent),
+      read_rate: toNum(r.read_rate ?? r.read_rate_percent),
+      period_days: toNum(r.period_days ?? r.period ?? r.days) || days,
+    }
+  },
+
+  // ============ Conversations Inbox ============
+
+  async getConversations(
+    status?: string,
+    assignedTo?: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{ conversations: WhatsAppInboxConversation[]; pagination: Pagination }> {
+    const { data } = await api.get<{ conversations: WhatsAppInboxConversation[]; pagination: Pagination }>(
+      "/v1/whatsapp/conversations",
+      { params: { status, assigned_to: assignedTo, limit, offset } }
+    )
+    return data
+  },
+
+  async getConversation(conversationId: string): Promise<WhatsAppInboxConversation> {
+    const { data } = await api.get<WhatsAppInboxConversation>(`/v1/whatsapp/conversations/${conversationId}`)
+    return data
+  },
+
+  async getConversationMessages(
+    conversationId: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{ messages: WhatsAppConversationMessage[]; pagination: Pagination }> {
+    const { data } = await api.get<{ messages: WhatsAppConversationMessage[]; pagination: Pagination }>(
+      `/v1/whatsapp/conversations/${conversationId}/messages`,
+      { params: { limit, offset } }
+    )
+    return data
+  },
+
+  async updateConversation(
+    conversationId: string,
+    updates: { status?: string; assigned_to?: string }
+  ): Promise<WhatsAppInboxConversation> {
+    const formData = new URLSearchParams()
+    if (updates.status) formData.append("status", updates.status)
+    if (updates.assigned_to) formData.append("assigned_to", updates.assigned_to)
+    const { data } = await api.put<WhatsAppInboxConversation>(
+      `/v1/whatsapp/conversations/${conversationId}`,
+      formData
+    )
+    return data
+  },
+
+  async markConversationRead(conversationId: string): Promise<{ success: boolean }> {
+    const { data } = await api.post<{ success: boolean }>(
+      `/v1/whatsapp/conversations/${conversationId}/read`
+    )
+    return data
+  },
+
+  // ============ Freeform Messages ============
+
+  async sendTextMessage(payload: SendTextPayload): Promise<WhatsAppMessageResult> {
+    const formData = new URLSearchParams()
+    formData.append("to", payload.to)
+    formData.append("text", payload.text)
+    if (payload.preview_url) formData.append("preview_url", "true")
+    if (payload.reply_to_wamid) formData.append("reply_to_wamid", payload.reply_to_wamid)
+    const { data } = await api.post<WhatsAppMessageResult>("/v1/whatsapp/messages/text", formData)
+    return data
+  },
+
+  async sendMediaMessage(payload: SendMediaPayload): Promise<WhatsAppMessageResult> {
+    const formData = new URLSearchParams()
+    formData.append("to", payload.to)
+    formData.append("media_type", payload.media_type)
+    if (payload.media_url) formData.append("media_url", payload.media_url)
+    if (payload.media_id) formData.append("media_id", payload.media_id)
+    if (payload.caption) formData.append("caption", payload.caption)
+    if (payload.filename) formData.append("filename", payload.filename)
+    const { data } = await api.post<WhatsAppMessageResult>("/v1/whatsapp/messages/media", formData)
+    return data
+  },
+
+  async sendLocationMessage(payload: SendLocationPayload): Promise<WhatsAppMessageResult> {
+    const formData = new URLSearchParams()
+    formData.append("to", payload.to)
+    formData.append("latitude", payload.latitude)
+    formData.append("longitude", payload.longitude)
+    if (payload.name) formData.append("name", payload.name)
+    if (payload.address) formData.append("address", payload.address)
+    const { data } = await api.post<WhatsAppMessageResult>("/v1/whatsapp/messages/location", formData)
+    return data
+  },
+
+  async markMessageRead(wamid: string): Promise<{ success: boolean }> {
+    const { data } = await api.post<{ success: boolean }>(`/v1/whatsapp/messages/${wamid}/read`)
+    return data
+  },
+
+  async uploadMedia(file: File): Promise<MediaUploadResult> {
+    const formData = new FormData()
+    formData.append("file", file)
+    const { data } = await api.post<MediaUploadResult>("/v1/whatsapp/media/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    return data
+  },
+
+  // ============ Scheduled Messages ============
+
+  async scheduleMessage(payload: {
+    to: string
+    message_type: "template" | "text"
+    scheduled_at: string
+    timezone?: string
+    template_name?: string
+    template_language?: string
+    text_body?: string
+  }): Promise<{ success: boolean; scheduled_message: ScheduledMessage }> {
+    const formData = new URLSearchParams()
+    formData.append("to", payload.to)
+    formData.append("message_type", payload.message_type)
+    formData.append("scheduled_at", payload.scheduled_at)
+    if (payload.timezone) formData.append("timezone", payload.timezone)
+    if (payload.template_name) formData.append("template_name", payload.template_name)
+    if (payload.template_language) formData.append("template_language", payload.template_language)
+    if (payload.text_body) formData.append("text_body", payload.text_body)
+    const { data } = await api.post<{ success: boolean; scheduled_message: ScheduledMessage }>(
+      "/v1/whatsapp/messages/schedule",
+      formData
+    )
+    return data
+  },
+
+  async scheduleBroadcast(payload: {
+    recipients: string[]
+    template_name: string
+    template_language: string
+    scheduled_at: string
+    timezone?: string
+    campaign_name?: string
+  }): Promise<{ success: boolean; scheduled_message: ScheduledMessage }> {
+    const formData = new URLSearchParams()
+    formData.append("recipients", payload.recipients.join(","))
+    formData.append("template_name", payload.template_name)
+    formData.append("template_language", payload.template_language)
+    formData.append("scheduled_at", payload.scheduled_at)
+    if (payload.timezone) formData.append("timezone", payload.timezone)
+    if (payload.campaign_name) formData.append("campaign_name", payload.campaign_name)
+    const { data } = await api.post<{ success: boolean; scheduled_message: ScheduledMessage }>(
+      "/v1/whatsapp/broadcasts/schedule",
+      formData
+    )
+    return data
+  },
+
+  async getScheduledMessages(
+    status?: string,
+    scheduledType?: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{ scheduled_messages: ScheduledMessage[]; pagination: Pagination }> {
+    const { data } = await api.get<{ scheduled_messages: ScheduledMessage[]; pagination: Pagination }>(
+      "/v1/whatsapp/scheduled",
+      { params: { status, scheduled_type: scheduledType, limit, offset } }
+    )
+    return data
+  },
+
+  async getScheduledMessage(id: string): Promise<ScheduledMessage> {
+    const { data } = await api.get<ScheduledMessage>(`/v1/whatsapp/scheduled/${id}`)
+    return data
+  },
+
+  async cancelScheduledMessage(id: string): Promise<{ success: boolean }> {
+    const { data } = await api.delete<{ success: boolean }>(`/v1/whatsapp/scheduled/${id}`)
+    return data
+  },
+
+  // ============ Analytics ============
+
+  async getTemplateAnalytics(
+    startDate: string,
+    endDate: string,
+    templateId?: string
+  ): Promise<{ analytics: TemplateAnalytics[] }> {
+    const { data } = await api.get<{ analytics: TemplateAnalytics[] }>(
+      "/v1/whatsapp/analytics/templates",
+      { params: { start_date: startDate, end_date: endDate, template_id: templateId } }
+    )
+    return data
+  },
+
+  async getTemplateAnalyticsDetail(
+    templateId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<TemplateAnalytics> {
+    const { data } = await api.get<TemplateAnalytics>(
+      `/v1/whatsapp/analytics/templates/${templateId}`,
+      { params: { start_date: startDate, end_date: endDate } }
+    )
+    return data
+  },
+
+  async getDeliveryRates(
+    startDate: string,
+    endDate: string,
+    groupBy?: string
+  ): Promise<{ data: DeliveryRatePoint[] }> {
+    const { data } = await api.get<{ data: DeliveryRatePoint[] }>(
+      "/v1/whatsapp/analytics/delivery-rates",
+      { params: { start_date: startDate, end_date: endDate, group_by: groupBy } }
+    )
+    return data
+  },
+
+  async getReadRates(
+    startDate: string,
+    endDate: string,
+    groupBy?: string
+  ): Promise<{ data: ReadRatePoint[] }> {
+    const { data } = await api.get<{ data: ReadRatePoint[] }>(
+      "/v1/whatsapp/analytics/read-rates",
+      { params: { start_date: startDate, end_date: endDate, group_by: groupBy } }
+    )
+    return data
+  },
+
+  async getResponseTimes(
+    startDate: string,
+    endDate: string
+  ): Promise<ResponseTimeStats> {
+    const { data } = await api.get<ResponseTimeStats>(
+      "/v1/whatsapp/analytics/response-times",
+      { params: { start_date: startDate, end_date: endDate } }
+    )
+    return data
+  },
+
+  async getConversationAnalytics(
+    startDate: string,
+    endDate: string
+  ): Promise<ConversationAnalytics> {
+    const { data } = await api.get<ConversationAnalytics>(
+      "/v1/whatsapp/analytics/conversations",
+      { params: { start_date: startDate, end_date: endDate } }
+    )
+    return data
+  },
+
+  async exportAnalytics(
+    reportType: string,
+    startDate: string,
+    endDate: string
+  ): Promise<Blob> {
+    const { data } = await api.get<Blob>(
+      "/v1/whatsapp/analytics/export",
+      { params: { report_type: reportType, start_date: startDate, end_date: endDate }, responseType: "blob" }
+    )
+    return data
+  },
+
+  // ============ Flows ============
+
+  async syncFlows(): Promise<{ success: boolean; synced: number }> {
+    const { data } = await api.post<{ success: boolean; synced: number }>("/v1/whatsapp/flows/sync")
+    return data
+  },
+
+  async getFlows(
+    status?: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{ flows: WhatsAppFlow[]; pagination: Pagination }> {
+    const { data } = await api.get<{ flows: WhatsAppFlow[]; pagination: Pagination }>(
+      "/v1/whatsapp/flows",
+      { params: { status, limit, offset } }
+    )
+    return data
+  },
+
+  async createFlow(
+    name: string,
+    categories: string[]
+  ): Promise<{ success: boolean; flow: WhatsAppFlow }> {
+    const formData = new URLSearchParams()
+    formData.append("name", name)
+    formData.append("categories", JSON.stringify(categories))
+    const { data } = await api.post<{ success: boolean; flow: WhatsAppFlow }>(
+      "/v1/whatsapp/flows",
+      formData
+    )
+    return data
+  },
+
+  async getFlow(id: string): Promise<WhatsAppFlowDetail> {
+    const { data } = await api.get<WhatsAppFlowDetail>(`/v1/whatsapp/flows/${id}`)
+    return data
+  },
+
+  async updateFlowJson(id: string, flowJson: object): Promise<{ success: boolean }> {
+    const formData = new URLSearchParams()
+    formData.append("flow_json", JSON.stringify(flowJson))
+    const { data } = await api.put<{ success: boolean }>(`/v1/whatsapp/flows/${id}`, formData)
+    return data
+  },
+
+  async publishFlow(id: string): Promise<{ success: boolean }> {
+    const { data } = await api.post<{ success: boolean }>(`/v1/whatsapp/flows/${id}/publish`)
+    return data
+  },
+
+  async deprecateFlow(id: string): Promise<{ success: boolean }> {
+    const { data } = await api.post<{ success: boolean }>(`/v1/whatsapp/flows/${id}/deprecate`)
+    return data
+  },
+
+  async sendFlowMessage(payload: {
+    to: string
+    flow_id: string
+    flow_token: string
+    flow_cta: string
+    flow_action?: string
+  }): Promise<WhatsAppMessageResult> {
+    const formData = new URLSearchParams()
+    formData.append("to", payload.to)
+    formData.append("flow_id", payload.flow_id)
+    formData.append("flow_token", payload.flow_token)
+    formData.append("flow_cta", payload.flow_cta)
+    if (payload.flow_action) formData.append("flow_action", payload.flow_action)
+    const { data } = await api.post<WhatsAppMessageResult>("/v1/whatsapp/messages/flow", formData)
+    return data
+  },
+
+  async getFlowResponses(
+    flowId: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{ responses: WhatsAppFlowResponse[]; pagination: Pagination }> {
+    const { data } = await api.get<{ responses: WhatsAppFlowResponse[]; pagination: Pagination }>(
+      `/v1/whatsapp/flows/${flowId}/responses`,
+      { params: { limit, offset } }
+    )
+    return data
+  },
+
+  async getFlowAnalytics(
+    flowId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<Record<string, unknown>> {
+    const { data } = await api.get<Record<string, unknown>>(
+      `/v1/whatsapp/flows/${flowId}/analytics`,
+      { params: { start_date: startDate, end_date: endDate } }
+    )
+    return data
+  },
+
+  // ============ Accounts ============
+
+  async createAccount(payload: {
+    waba_id: string
+    phone_number_id: string
+    display_phone_number: string
+    business_name: string
+    access_token: string
+    is_default?: boolean
+  }): Promise<{ success: boolean; account: WhatsAppAccount }> {
+    const formData = new URLSearchParams()
+    formData.append("waba_id", payload.waba_id)
+    formData.append("phone_number_id", payload.phone_number_id)
+    formData.append("display_phone_number", payload.display_phone_number)
+    formData.append("business_name", payload.business_name)
+    formData.append("access_token", payload.access_token)
+    if (payload.is_default !== undefined) formData.append("is_default", String(payload.is_default))
+    const { data } = await api.post<{ success: boolean; account: WhatsAppAccount }>(
+      "/v1/whatsapp/accounts",
+      formData
+    )
+    return data
+  },
+
+  async getAccounts(
+    status?: string,
+    includeSummary?: boolean
+  ): Promise<{ accounts: WhatsAppAccount[] }> {
+    const { data } = await api.get<{ accounts: WhatsAppAccount[] }>(
+      "/v1/whatsapp/accounts",
+      { params: { status, include_summary: includeSummary } }
+    )
+    return data
+  },
+
+  async getAccount(id: string, includeEvents?: boolean): Promise<WhatsAppAccount> {
+    const { data } = await api.get<WhatsAppAccount>(
+      `/v1/whatsapp/accounts/${id}`,
+      { params: { include_events: includeEvents } }
+    )
+    return data
+  },
+
+  async updateAccount(
+    id: string,
+    updates: { business_name?: string; display_phone_number?: string; access_token?: string }
+  ): Promise<WhatsAppAccount> {
+    const formData = new URLSearchParams()
+    if (updates.business_name) formData.append("business_name", updates.business_name)
+    if (updates.display_phone_number) formData.append("display_phone_number", updates.display_phone_number)
+    if (updates.access_token) formData.append("access_token", updates.access_token)
+    const { data } = await api.put<WhatsAppAccount>(`/v1/whatsapp/accounts/${id}`, formData)
+    return data
+  },
+
+  async deleteAccount(id: string): Promise<{ success: boolean }> {
+    const { data } = await api.delete<{ success: boolean }>(`/v1/whatsapp/accounts/${id}`)
+    return data
+  },
+
+  async setDefaultAccount(id: string): Promise<{ success: boolean }> {
+    const { data } = await api.post<{ success: boolean }>(`/v1/whatsapp/accounts/${id}/set-default`)
+    return data
+  },
+
+  async syncAccount(id: string): Promise<{ success: boolean }> {
+    const { data } = await api.post<{ success: boolean }>(`/v1/whatsapp/accounts/${id}/sync`)
+    return data
+  },
+
+  async getAccountEvents(
+    id: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{ events: WhatsAppAccountEvent[]; pagination: Pagination }> {
+    const { data } = await api.get<{ events: WhatsAppAccountEvent[]; pagination: Pagination }>(
+      `/v1/whatsapp/accounts/${id}/events`,
+      { params: { limit, offset } }
+    )
+    return data
+  },
+
+  // ============ Consent ============
+
+  async optInContact(
+    contactId: string,
+    source: string,
+    consentText?: string,
+    ip?: string
+  ): Promise<{ success: boolean }> {
+    const formData = new URLSearchParams()
+    formData.append("source", source)
+    if (consentText) formData.append("consent_text", consentText)
+    if (ip) formData.append("ip_address", ip)
+    const { data } = await api.post<{ success: boolean }>(
+      `/v1/whatsapp/contacts/${contactId}/opt-in`,
+      formData
+    )
+    return data
+  },
+
+  async optOutContact(contactId: string, source: string): Promise<{ success: boolean }> {
+    const formData = new URLSearchParams()
+    formData.append("source", source)
+    const { data } = await api.post<{ success: boolean }>(
+      `/v1/whatsapp/contacts/${contactId}/opt-out`,
+      formData
+    )
+    return data
+  },
+
+  async getConsentStatus(contactId: string): Promise<ConsentStatus> {
+    const { data } = await api.get<ConsentStatus>(`/v1/whatsapp/contacts/${contactId}/consent`)
+    return data
+  },
+
+  async getConsentHistory(
+    contactId: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{ history: ConsentHistoryEntry[]; pagination: Pagination }> {
+    const { data } = await api.get<{ history: ConsentHistoryEntry[]; pagination: Pagination }>(
+      `/v1/whatsapp/contacts/${contactId}/consent/history`,
+      { params: { limit, offset } }
+    )
+    return data
+  },
+
+  async bulkConsent(
+    contactIds: string[],
+    optIn: boolean,
+    source: string
+  ): Promise<{ success: boolean; processed: number }> {
+    const formData = new URLSearchParams()
+    formData.append("contact_ids", contactIds.join(","))
+    formData.append("opt_in", String(optIn))
+    formData.append("source", source)
+    const { data } = await api.post<{ success: boolean; processed: number }>(
+      "/v1/whatsapp/contacts/bulk-consent",
+      formData
+    )
+    return data
+  },
+
+  // ============ WhatsApp Credits ============
+
+  async getWhatsAppBalance(): Promise<WhatsAppCreditBalance> {
+    const { data } = await api.get<WhatsAppCreditBalance>("/v1/whatsapp/credits/balance")
+    return data
+  },
+
+  async getPackages(category?: string): Promise<{ packages: WhatsAppCreditPackage[] }> {
+    const { data } = await api.get<{ packages: WhatsAppCreditPackage[] }>(
+      "/v1/whatsapp/credits/packages",
+      { params: { category } }
+    )
+    return data
+  },
+
+  async purchasePackage(
+    code: string,
+    paymentReference: string,
+    paymentMethod: string
+  ): Promise<{ success: boolean; transaction: WhatsAppCreditTransaction }> {
+    const formData = new URLSearchParams()
+    formData.append("code", code)
+    formData.append("payment_reference", paymentReference)
+    formData.append("payment_method", paymentMethod)
+    const { data } = await api.post<{ success: boolean; transaction: WhatsAppCreditTransaction }>(
+      "/v1/whatsapp/credits/purchase",
+      formData
+    )
+    return data
+  },
+
+  async topUpCredits(
+    amountFcfa: number,
+    paymentReference: string,
+    description?: string
+  ): Promise<{ success: boolean; transaction: WhatsAppCreditTransaction }> {
+    const formData = new URLSearchParams()
+    formData.append("amount_fcfa", String(amountFcfa))
+    formData.append("payment_reference", paymentReference)
+    if (description) formData.append("description", description)
+    const { data } = await api.post<{ success: boolean; transaction: WhatsAppCreditTransaction }>(
+      "/v1/whatsapp/credits/topup",
+      formData
+    )
+    return data
+  },
+
+  async getWhatsAppTransactions(
+    type?: string,
+    compartment?: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{ transactions: WhatsAppCreditTransaction[]; pagination: Pagination }> {
+    const { data } = await api.get<{ transactions: WhatsAppCreditTransaction[]; pagination: Pagination }>(
+      "/v1/whatsapp/credits/transactions",
+      { params: { type, compartment, limit, offset } }
+    )
+    return data
+  },
+
+  async getWhatsAppUsage(days = 30): Promise<{ period_days: number; total_consumed: number; daily_breakdown: Record<string, number>; by_compartment: Record<string, number> }> {
+    const { data } = await api.get<{ period_days: number; total_consumed: number; daily_breakdown: Record<string, number>; by_compartment: Record<string, number> }>(
+      "/v1/whatsapp/credits/usage",
+      { params: { days } }
+    )
+    return data
+  },
+
+  async getWhatsAppCreditsDashboard(days = 30): Promise<WhatsAppCreditDashboard> {
+    const { data } = await api.get<WhatsAppCreditDashboard>(
+      "/v1/whatsapp/credits/dashboard",
+      { params: { days } }
+    )
+    return data
+  },
+
+  async checkCredits(
+    category: string,
+    messageCount: number
+  ): Promise<PreSendCheck> {
+    const { data } = await api.get<PreSendCheck>(
+      "/v1/whatsapp/credits/check",
+      { params: { category, message_count: messageCount } }
+    )
+    return data
+  },
+
+  async getWhatsAppNotifications(
+    unreadOnly?: boolean,
+    limit = 50,
+    offset = 0
+  ): Promise<{ notifications: WhatsAppCreditNotification[]; pagination: Pagination }> {
+    const { data } = await api.get<{ notifications: WhatsAppCreditNotification[]; pagination: Pagination }>(
+      "/v1/whatsapp/credits/notifications",
+      { params: { unread_only: unreadOnly, limit, offset } }
+    )
+    return data
+  },
+
+  async markNotificationRead(id: string): Promise<{ success: boolean }> {
+    const { data } = await api.post<{ success: boolean }>(`/v1/whatsapp/credits/notifications/${id}/read`)
+    return data
+  },
+
+  async markAllNotificationsRead(): Promise<{ success: boolean }> {
+    const { data } = await api.post<{ success: boolean }>("/v1/whatsapp/credits/notifications/read-all")
     return data
   },
 }

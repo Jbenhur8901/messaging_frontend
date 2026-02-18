@@ -4,7 +4,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Separator } from "@/components/ui/separator"
 import {
   Sheet,
   SheetContent,
@@ -37,7 +36,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         className="w-64 bg-white p-0 sm:max-w-64 [&>button]:hidden"
       >
         {/* Header */}
-        <div className="flex h-14 items-center border-b border-border/40 px-4">
+        <div className="flex h-14 items-center px-4">
           <Link
             href="/dashboard"
             className="flex items-center gap-2.5"
@@ -79,7 +78,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
               return (
                 <div key={section.title || `section-${sectionIndex}`}>
                   {sectionIndex > 0 && (
-                    <Separator className="my-2 bg-border/30" />
+                    <div className="my-2" />
                   )}
 
                   {isCollapsible ? (
@@ -114,7 +113,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                       </button>
 
                       {isSectionOpen && (
-                        <div className="relative mt-0.5 ml-[17px] border-l border-border/30 pl-3">
+                        <div className="relative mt-0.5 ml-[17px] pl-3">
                           <div className="space-y-0.5">
                             {section.items.map((item) => {
                               const isActive = activeHref === item.href
@@ -179,7 +178,6 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
 
           {bottomSections.length > 0 && (
             <div className="mt-auto pt-1">
-              <Separator className="mb-2 bg-border/30" />
               {bottomSections.flatMap((s) => s.items).map((item) => {
                 const isActive = activeHref === item.href
                 return (

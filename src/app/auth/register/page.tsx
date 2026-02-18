@@ -158,6 +158,17 @@ export default function RegisterPage() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4 px-0 pb-0 pt-6">
+          <p className="text-center text-xs text-muted-foreground">
+            En creant un compte, vous acceptez nos{" "}
+            <Link
+              href="/terms"
+              className="font-medium text-primary hover:underline"
+              target="_blank"
+            >
+              Conditions Generales d&apos;Utilisation
+            </Link>
+            .
+          </p>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Créer mon compte

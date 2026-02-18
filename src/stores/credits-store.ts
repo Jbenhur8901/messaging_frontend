@@ -1,21 +1,27 @@
 import { create } from "zustand"
-import type { CreditBalance, CreditUsage } from "@/types"
+import type { CreditBalance, CreditUsage, WhatsAppCreditBalance } from "@/types"
 import { creditsService } from "@/services/credits"
+import { whatsappService } from "@/services/whatsapp"
 
 interface CreditsState {
   balance: CreditBalance | null
+  walletBalance: WhatsAppCreditBalance | null
+  walletTotal: number
   usage: CreditUsage | null
   isLoading: boolean
   error: string | null
 
   // Actions
   fetchBalance: () => Promise<void>
+  fetchWalletBalance: () => Promise<void>
   fetchUsage: (days?: number) => Promise<void>
   clearError: () => void
 }
 
 export const useCreditsStore = create<CreditsState>((set) => ({
   balance: null,
+  walletBalance: null,
+  walletTotal: 0,
   usage: null,
   isLoading: false,
   error: null,
@@ -23,13 +29,29 @@ export const useCreditsStore = create<CreditsState>((set) => ({
   fetchBalance: async () => {
     set({ isLoading: true, error: null })
     try {
-      const balance = await creditsService.getBalance()
-      set({ balance, isLoading: false })
+      const [balance, wallet] = await Promise.all([
+        creditsService.getBalance().catch(() => null),
+        whatsappService.getWhatsAppBalance().catch(() => null),
+      ])
+      const walletTotal = wallet
+        ? wallet.marketing.available + wallet.utility.available + wallet.authentication.available + wallet.free.available
+        : 0
+      set({ balance, walletBalance: wallet, walletTotal, isLoading: false })
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Erreur de chargement",
         isLoading: false,
       })
+    }
+  },
+
+  fetchWalletBalance: async () => {
+    try {
+      const wallet = await whatsappService.getWhatsAppBalance()
+      const walletTotal = wallet.marketing.available + wallet.utility.available + wallet.authentication.available + wallet.free.available
+      set({ walletBalance: wallet, walletTotal })
+    } catch {
+      // silent
     }
   },
 

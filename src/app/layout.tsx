@@ -1,7 +1,14 @@
 import type { Metadata } from "next"
 import { headers } from "next/headers"
+import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers"
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "Flow - SMS Campaign Management",
@@ -23,7 +30,7 @@ export default async function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <head />
-      <body>
+      <body className={`${inter.variable} font-sans`}>
         <Providers nonce={nonce}>{children}</Providers>
       </body>
     </html>

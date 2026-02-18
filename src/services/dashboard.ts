@@ -1,6 +1,8 @@
 import { api } from "./api"
 import type { DashboardOverview, DailyStat, Broadcast } from "@/types"
 
+export type DashboardChannel = "sms" | "whatsapp" | undefined
+
 const toNumber = (value: unknown) => {
   if (typeof value === "number") return value
   if (typeof value === "string") {
@@ -46,13 +48,16 @@ const normalizeDailyStats = (data: unknown): DailyStat[] => {
   if (!Array.isArray(stats)) return []
   return stats.map((stat) => {
     let messagesSent = toNumber(
-      stat?.messages_sent ?? stat?.sent ?? stat?.sent_count ?? stat?.messages ?? stat?.total_sent
+      stat?.messages_sent ?? stat?.whatsapp_messages_sent ?? stat?.sent ?? stat?.sent_count ?? stat?.messages ?? stat?.total_sent
     )
     const messagesDelivered = toNumber(
-      stat?.messages_delivered ?? stat?.delivered ?? stat?.delivered_count ?? stat?.total_delivered
+      stat?.messages_delivered ?? stat?.whatsapp_messages_delivered ?? stat?.delivered ?? stat?.delivered_count ?? stat?.total_delivered
     )
     const messagesFailed = toNumber(
-      stat?.messages_failed ?? stat?.failed ?? stat?.failed_count ?? stat?.total_failed
+      stat?.messages_failed ?? stat?.whatsapp_messages_failed ?? stat?.failed ?? stat?.failed_count ?? stat?.total_failed
+    )
+    const messagesRead = toNumber(
+      stat?.messages_read ?? stat?.whatsapp_messages_read ?? stat?.read ?? stat?.read_count ?? stat?.total_read
     )
     const deliveryRate = toNumber(
       stat?.delivery_rate ??
@@ -68,6 +73,7 @@ const normalizeDailyStats = (data: unknown): DailyStat[] => {
       messages_sent: messagesSent,
       messages_delivered: messagesDelivered,
       messages_failed: messagesFailed,
+      messages_read: messagesRead,
       delivery_rate: deliveryRate || (messagesSent > 0 ? (messagesDelivered / messagesSent) * 100 : 0),
       credits_consumed: toNumber(stat?.credits_consumed ?? stat?.credits ?? stat?.credits_used),
     }
@@ -75,8 +81,10 @@ const normalizeDailyStats = (data: unknown): DailyStat[] => {
 }
 
 export const dashboardService = {
-  async getOverview(): Promise<DashboardOverview> {
-    const { data } = await api.get("/v1/dashboard/overview")
+  async getOverview(channel?: DashboardChannel): Promise<DashboardOverview> {
+    const { data } = await api.get("/v1/dashboard/overview", {
+      params: { ...(channel && { channel }) },
+    })
     const overview = unwrapDashboardPayload(data)
     const normalized = {
       credits: {
@@ -172,17 +180,29 @@ export const dashboardService = {
     return normalized
   },
 
-  async getDailyStats(days = 30): Promise<{ stats: DailyStat[]; period_days: number }> {
+  async getDailyStats(days = 30, channel?: DashboardChannel): Promise<{
+    stats: DailyStat[]
+    period_days: number
+    whatsapp_totals?: {
+      messages_sent: number
+      messages_delivered: number
+      messages_read: number
+      messages_failed: number
+      delivery_rate: number
+      read_rate: number
+    }
+  }> {
     const { data } = await api.get("/v1/dashboard/daily-stats", {
-      params: { days },
+      params: { days, ...(channel && { channel }) },
     })
     const stats = normalizeDailyStats(data)
     const periodDays =
       (data as any)?.period_days ?? (data as any)?.data?.period_days ?? (data as any)?.result?.period_days ?? days
-    return { stats, period_days: periodDays }
+    const waTotals = (data as any)?.whatsapp_totals
+    return { stats, period_days: periodDays, ...(waTotals && { whatsapp_totals: waTotals }) }
   },
 
-  async getDeliveryBreakdown(days = 7): Promise<{
+  async getDeliveryBreakdown(days = 7, channel?: DashboardChannel): Promise<{
     delivered: number
     failed: number
     pending: number
@@ -190,41 +210,42 @@ export const dashboardService = {
     delivery_rate: number
   }> {
     const { data } = await api.get("/v1/dashboard/delivery-breakdown", {
-      params: { days },
+      params: { days, ...(channel && { channel }) },
     })
     return data
   },
 
-  async getRecentBroadcasts(limit = 10): Promise<{ broadcasts: Broadcast[] }> {
+  async getRecentBroadcasts(limit = 10, channel?: DashboardChannel): Promise<{ broadcasts: Broadcast[] }> {
     const { data } = await api.get("/v1/dashboard/recent-broadcasts", {
-      params: { limit },
+      params: { limit, ...(channel && { channel }) },
     })
-    const broadcasts = (data.broadcasts || []).map((b: Broadcast & { id?: string }) => ({
+    const raw = data.broadcasts || data.whatsapp_broadcasts || data.sms_broadcasts || []
+    const broadcasts = raw.map((b: Broadcast & { id?: string }) => ({
       ...b,
       broadcast_id: b.broadcast_id || b.id,
     }))
     return { broadcasts }
   },
 
-  async getHourlyDistribution(days = 7): Promise<{
+  async getHourlyDistribution(days = 7, channel?: DashboardChannel): Promise<{
     distribution: Array<{ hour: number; count: number }>
   }> {
     const { data } = await api.get("/v1/dashboard/hourly-distribution", {
-      params: { days },
+      params: { days, ...(channel && { channel }) },
     })
     return data
   },
 
-  async getErrorBreakdown(days = 30): Promise<{
+  async getErrorBreakdown(days = 30, channel?: DashboardChannel): Promise<{
     errors: Array<{ error_code: string; count: number; description: string }>
   }> {
     const { data } = await api.get("/v1/dashboard/error-breakdown", {
-      params: { days },
+      params: { days, ...(channel && { channel }) },
     })
     return data
   },
 
-  async getCreditPackages(): Promise<{
+  async getCreditPackages(channel?: DashboardChannel): Promise<{
     packages: Array<{
       id: string
       name: string
@@ -234,7 +255,9 @@ export const dashboardService = {
       bonus_percent?: number
     }>
   }> {
-    const { data } = await api.get("/v1/dashboard/credit-packages")
+    const { data } = await api.get("/v1/dashboard/credit-packages", {
+      params: { ...(channel && { channel }) },
+    })
     return data
   },
 }

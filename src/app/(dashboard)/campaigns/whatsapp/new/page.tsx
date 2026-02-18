@@ -6,30 +6,44 @@ import Link from "next/link"
 import { whatsappService, contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
 import type { WhatsAppTemplate, Contact, Tag, CustomField } from "@/types"
 import { uploadMediaToSupabase } from "@/lib/supabase"
-import { WhatsAppTemplateSelector } from "@/components/whatsapp/whatsapp-template-selector"
-import { WhatsAppTemplateCard } from "@/components/whatsapp/whatsapp-template-card"
 import { useOrganizationStore } from "@/stores"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { toast } from "sonner"
-import { ArrowLeft, Loader2, Send, Users, Tags as TagsIcon, FileText, AlertTriangle, Settings, Sparkles, Image, Video, File, X } from "lucide-react"
+import {
+  ArrowLeft,
+  Loader2,
+  Users,
+  AlertTriangle,
+  Settings,
+  Sparkles,
+  ChevronRight,
+  LayoutTemplate,
+  Sliders,
+  Check,
+  Tags as TagsIcon,
+} from "lucide-react"
+import type { PreSendCheck, WhatsAppCreditBalance } from "@/types"
+import { useDebounce } from "@/hooks"
 
-type RecipientMode = "contacts" | "tags" | "manual"
+import { TemplateBrowserDialog } from "@/components/whatsapp/campaign/template-browser-dialog"
+import { RecipientSheet } from "@/components/whatsapp/campaign/recipient-sheet"
+import { PersonalizationDialog } from "@/components/whatsapp/campaign/personalization-dialog"
+import { CampaignSummary } from "@/components/whatsapp/campaign/campaign-summary"
+import { HeaderMediaUpload } from "@/components/whatsapp/campaign/header-media-upload"
+
+type RecipientMode = "contacts" | "tags"
 type SendMode = "standard" | "personalized"
+
+const RATE_PER_CATEGORY: Record<string, number> = {
+  MARKETING: 18,
+  UTILITY: 6,
+  AUTHENTICATION: 6,
+}
 
 export default function NewWhatsAppCampaignPage() {
   const router = useRouter()
@@ -47,16 +61,24 @@ export default function NewWhatsAppCampaignPage() {
   // Form state
   const [campaignName, setCampaignName] = useState("")
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("")
-  const [recipientMode, setRecipientMode] = useState<RecipientMode>("contacts")
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>("tags")
   const [sendMode, setSendMode] = useState<SendMode>("standard")
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
-  const [manualNumbers, setManualNumbers] = useState("")
   const [variableMapping, setVariableMapping] = useState<Record<string, string>>({})
   const [headerMediaUrl, setHeaderMediaUrl] = useState("")
   const [headerFile, setHeaderFile] = useState<File | null>(null)
   const [headerUploading, setHeaderUploading] = useState(false)
-  const [headerDragActive, setHeaderDragActive] = useState(false)
+
+  // Dialog/Sheet state
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
+  const [recipientSheetOpen, setRecipientSheetOpen] = useState(false)
+  const [personalizationDialogOpen, setPersonalizationDialogOpen] = useState(false)
+
+  // Credit estimation
+  const [creditCheck, setCreditCheck] = useState<PreSendCheck | null>(null)
+  const [walletBalance, setWalletBalance] = useState<WhatsAppCreditBalance | null>(null)
+  const [creditCheckLoading, setCreditCheckLoading] = useState(false)
 
   const MAX_CONTACTS = Number.MAX_SAFE_INTEGER
   const CONTACTS_PAGE_SIZE = 100
@@ -70,8 +92,13 @@ export default function NewWhatsAppCampaignPage() {
   const [tagContactsLoadedCount, setTagContactsLoadedCount] = useState(0)
   const [tagContactsTotalCount, setTagContactsTotalCount] = useState<number | null>(null)
   const [tagContactsLimitReached, setTagContactsLimitReached] = useState(false)
+  const [recipientsBootstrapDone, setRecipientsBootstrapDone] = useState(false)
 
   useEffect(() => {
+    setRecipientsBootstrapDone(false)
+    setContacts([])
+    setSelectedContactIds([])
+
     if (!currentOrganization?.id) {
       setIsConfigured(false)
       setIsLoading(false)
@@ -190,12 +217,6 @@ export default function NewWhatsAppCampaignPage() {
   const headerMediaFormat = headerComponent?.format
   const needsHeaderMedia = headerMediaFormat === "IMAGE" || headerMediaFormat === "VIDEO" || headerMediaFormat === "DOCUMENT"
 
-  const acceptedMimeTypes: Record<string, string> = {
-    IMAGE: "image/jpeg,image/png,image/webp",
-    VIDEO: "video/mp4,video/3gpp",
-    DOCUMENT: "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  }
-
   const handleHeaderFile = useCallback(async (file: File) => {
     setHeaderFile(file)
     setHeaderUploading(true)
@@ -212,29 +233,6 @@ export default function NewWhatsAppCampaignPage() {
     }
   }, [])
 
-  const handleHeaderDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setHeaderDragActive(true)
-    } else if (e.type === "dragleave") {
-      setHeaderDragActive(false)
-    }
-  }, [])
-
-  const handleHeaderDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setHeaderDragActive(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) handleHeaderFile(file)
-  }, [handleHeaderFile])
-
-  const handleHeaderInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) handleHeaderFile(file)
-  }, [handleHeaderFile])
-
   const removeHeaderFile = useCallback(() => {
     setHeaderFile(null)
     setHeaderMediaUrl("")
@@ -246,48 +244,46 @@ export default function NewWhatsAppCampaignPage() {
   )
 
   useEffect(() => {
-    if (!isConfigured) return
-    if (recipientMode === "contacts" && contacts.length === 0 && !contactsLoading) {
-      fetchAllContacts()
-        .then((result) => setContacts(result.contacts))
-        .catch((error) => {
-          setContactsLoading(false)
-        })
-    }
-  }, [recipientMode, isConfigured, contacts.length, contactsLoading])
+    if (!isConfigured || recipientsBootstrapDone || contactsLoading) return
+    fetchAllContacts()
+      .then((result) => {
+        setContacts(result.contacts)
+        setSelectedContactIds(result.contacts.map((c) => c.id))
+      })
+      .catch(() => {
+        setContactsLoading(false)
+      })
+      .finally(() => {
+        setRecipientsBootstrapDone(true)
+      })
+  }, [isConfigured, recipientsBootstrapDone, contactsLoading])
 
+  // Fetch tag contacts whenever tags change (any send mode)
   useEffect(() => {
     if (!isConfigured) return
-    if (sendMode !== "personalized") return
-    if (recipientMode === "contacts") {
-      if (contacts.length === 0 && !contactsLoading) {
-        fetchAllContacts()
-          .then((result) => setContacts(result.contacts))
-          .catch((error) => {
-            setContactsLoading(false)
-          })
-      }
+    if (recipientMode !== "tags") return
+    if (selectedTagIds.length === 0) {
+      setTagContacts([])
+      setTagContactsKey(null)
       return
     }
-    if (recipientMode === "tags" && selectedTagIds.length > 0 && selectedTagKey !== tagContactsKey && !tagContactsLoading) {
+    if (selectedTagKey !== tagContactsKey && !tagContactsLoading) {
       setTagContactsKey(selectedTagKey)
       fetchContactsByTags(selectedTagIds)
         .then((result) => setTagContacts(result.contacts))
-        .catch((error) => {
+        .catch(() => {
           setTagContactsLoading(false)
         })
     }
   }, [
-    sendMode,
     recipientMode,
     selectedTagIds.length,
     selectedTagKey,
     tagContactsKey,
     tagContactsLoading,
     isConfigured,
-    contacts.length,
-    contactsLoading,
   ])
+
   const getContactCustomFields = (contact: Contact): Record<string, unknown> => {
     const fields = contact.custom_fields as unknown
     if (fields && typeof fields === "object" && "custom_fields" in fields) {
@@ -325,28 +321,6 @@ export default function NewWhatsAppCampaignPage() {
       .sort((a, b) => a.localeCompare(b))
       .map((key) => ({ value: `custom:${key}`, label: key }))
   }, [contacts, tagContacts, sendMode, recipientMode, globalCustomFields])
-
-  const customFieldsByTag = useMemo(() => {
-    if (recipientMode !== "tags" || selectedTagIds.length === 0) return []
-    const results = selectedTagIds
-      .map((tagId) => {
-        const tag = tags.find((t) => t.id === tagId)
-        const keys = new Set<string>()
-        tagContacts
-          .filter((c) => c.tags.some((t) => t.id === tagId))
-          .forEach((contact) => {
-            const fields = getContactCustomFields(contact)
-            Object.keys(fields).forEach((key) => keys.add(key))
-          })
-        return {
-          tagId,
-          tagName: tag?.name || tagId,
-          fields: Array.from(keys).sort((a, b) => a.localeCompare(b)),
-        }
-      })
-      .sort((a, b) => a.tagName.localeCompare(b.tagName))
-    return results
-  }, [recipientMode, selectedTagIds, tags, tagContacts])
 
   const templateVariables = useMemo(() => {
     if (!selectedTemplate) return []
@@ -400,16 +374,8 @@ export default function NewWhatsAppCampaignPage() {
     return [...headerBodyVars, ...buttonVars]
   }, [selectedTemplate])
 
-  // Parse manual numbers
-  const parseManualNumbers = (): string[] => {
-    return manualNumbers
-      .split(/[\n,;]+/)
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0)
-  }
-
-  // Get recipient count
-  const getRecipientCount = (): number => {
+  // === Credit Estimation ===
+  const recipientCount = useMemo(() => {
     switch (recipientMode) {
       case "contacts":
         return selectedContactIds.length
@@ -417,12 +383,56 @@ export default function NewWhatsAppCampaignPage() {
         return tags
           .filter((t) => selectedTagIds.includes(t.id))
           .reduce((sum, t) => sum + t.contact_count, 0)
-      case "manual":
-        return parseManualNumbers().length
       default:
         return 0
     }
-  }
+  }, [recipientMode, selectedContactIds.length, selectedTagIds, tags])
+
+  const templateCategory = selectedTemplate?.category || null
+
+  const costEstimation = useMemo(() => {
+    if (!templateCategory || recipientCount === 0) return null
+    const rate = RATE_PER_CATEGORY[templateCategory] || 0
+    const totalCost = recipientCount * rate
+    return { rate, totalCost, recipientCount, category: templateCategory }
+  }, [templateCategory, recipientCount])
+
+  const debouncedRecipientCount = useDebounce(recipientCount, 500)
+  const debouncedTemplateCategory = useDebounce(templateCategory, 300)
+
+  useEffect(() => {
+    if (!isConfigured) return
+    whatsappService.getWhatsAppBalance()
+      .then(setWalletBalance)
+      .catch(() => {})
+  }, [isConfigured])
+
+  useEffect(() => {
+    if (!debouncedTemplateCategory || debouncedRecipientCount === 0) {
+      setCreditCheck(null)
+      return
+    }
+    const categoryMap: Record<string, string> = {
+      MARKETING: "marketing",
+      UTILITY: "utility",
+      AUTHENTICATION: "auth",
+    }
+    const cat = categoryMap[debouncedTemplateCategory]
+    if (!cat) return
+
+    setCreditCheckLoading(true)
+    whatsappService.checkCredits(cat, debouncedRecipientCount)
+      .then((result) => setCreditCheck({
+        can_send: result.can_send ?? false,
+        category: result.category ?? cat,
+        message_count: result.message_count ?? debouncedRecipientCount,
+        credits_required: result.credits_required ?? 0,
+        credits_available: result.credits_available ?? 0,
+        shortage: result.shortage,
+      }))
+      .catch(() => setCreditCheck(null))
+      .finally(() => setCreditCheckLoading(false))
+  }, [debouncedTemplateCategory, debouncedRecipientCount])
 
   const getRecipientContacts = (): Contact[] => {
     if (recipientMode === "contacts") {
@@ -456,18 +466,13 @@ export default function NewWhatsAppCampaignPage() {
     return ""
   }
 
-  // Get recipients
   const getRecipients = (): string[] => {
-    switch (recipientMode) {
-      case "contacts":
-        return contacts
-          .filter((c) => selectedContactIds.includes(c.id))
-          .map((c) => c.phone_number)
-      case "manual":
-        return parseManualNumbers()
-      default:
-        return []
+    if (recipientMode === "contacts") {
+      return contacts
+        .filter((c) => selectedContactIds.includes(c.id))
+        .map((c) => c.phone_number)
     }
+    return []
   }
 
   const buildHeaderMediaComponent = (): {
@@ -494,12 +499,16 @@ export default function NewWhatsAppCampaignPage() {
   }
 
   const handleSend = async () => {
+    if (!campaignName.trim()) {
+      toast.error("Veuillez saisir un nom de campagne")
+      return
+    }
+
     if (!selectedTemplate) {
       toast.error("Veuillez sélectionner un template")
       return
     }
 
-    const recipientCount = getRecipientCount()
     if (recipientCount === 0) {
       toast.error("Veuillez sélectionner au moins un destinataire")
       return
@@ -513,11 +522,6 @@ export default function NewWhatsAppCampaignPage() {
     setIsSending(true)
     try {
       if (sendMode === "personalized") {
-        if (recipientMode === "manual") {
-          toast.error("Le mode manuel n'est pas disponible en envoi personnalisé")
-          setIsSending(false)
-          return
-        }
         if (recipientMode === "contacts" && contactsLoading) {
           toast.error("Chargement des contacts en cours, veuillez patienter")
           setIsSending(false)
@@ -542,7 +546,28 @@ export default function NewWhatsAppCampaignPage() {
           return
         }
 
-        const recipientContacts = getRecipientContacts()
+        let recipientContacts = getRecipientContacts()
+
+        if (recipientContacts.length === 0 && recipientMode === "contacts" && selectedContactIds.length > 0) {
+          try {
+            const allContactsResult = await fetchAllContacts()
+            setContacts(allContactsResult.contacts)
+            recipientContacts = allContactsResult.contacts.filter((c) => selectedContactIds.includes(c.id))
+          } catch {
+            // Ignore here, a clear error is shown below if contacts remain unavailable.
+          }
+        }
+
+        if (recipientContacts.length === 0 && recipientMode === "tags" && selectedTagIds.length > 0) {
+          try {
+            const tagResult = await fetchContactsByTags(selectedTagIds)
+            setTagContacts(tagResult.contacts)
+            recipientContacts = tagResult.contacts
+          } catch {
+            // Ignore here, a clear error is shown below if contacts remain unavailable.
+          }
+        }
+
         if (recipientContacts.length === 0 && recipientCount > 0) {
           toast.error("Aucun contact chargé pour les destinataires sélectionnés")
           setIsSending(false)
@@ -569,7 +594,6 @@ export default function NewWhatsAppCampaignPage() {
 
         const recipients = recipientContacts.map((contact) => {
           const headerBodyComponents = ["header", "body"].flatMap((componentType) => {
-            // If header needs media, skip text-variable header — we use the media component instead
             if (componentType === "header" && headerMediaComp) return []
             const variables = templateVariables.filter((v) => v.componentType === componentType)
             if (variables.length === 0) return []
@@ -611,7 +635,7 @@ export default function NewWhatsAppCampaignPage() {
         const result = await whatsappService.createPersonalizedBroadcast({
           template_name: selectedTemplate.name,
           language_code: selectedTemplate.language,
-          campaign_name: campaignName || undefined,
+          campaign_name: campaignName.trim(),
           recipients,
         })
 
@@ -647,7 +671,7 @@ export default function NewWhatsAppCampaignPage() {
           recipients,
           selectedTemplate.name,
           selectedTemplate.language,
-          campaignName || undefined,
+          campaignName.trim(),
           broadcastComponents as typeof broadcastComponents
         )
 
@@ -666,60 +690,74 @@ export default function NewWhatsAppCampaignPage() {
     }
   }
 
-  const toggleContact = (contactId: string) => {
-    setSelectedContactIds((prev) =>
-      prev.includes(contactId)
-        ? prev.filter((id) => id !== contactId)
-        : [...prev, contactId]
-    )
-  }
-
   const toggleTag = (tagId: string) => {
     setSelectedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
     )
   }
 
+  const canSend =
+    !isSending &&
+    !tagContactsLoading &&
+    !contactsLoading &&
+    !!campaignName.trim() &&
+    !!selectedTemplate &&
+    recipientCount > 0 &&
+    (creditCheck === null || creditCheck.can_send)
+
+  const recipientsBootstrapping = !recipientsBootstrapDone && contactsLoading
+
+  // === Render ===
+
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Skeleton className="h-96" />
-          <Skeleton className="h-96" />
+      <div className="space-y-5">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-8 w-8 rounded-lg" />
+          <Skeleton className="h-6 w-52" />
+        </div>
+        <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+          <div className="space-y-4">
+            <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-32 rounded-xl" />
+            <Skeleton className="h-16 rounded-xl" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-64 rounded-xl" />
+            <Skeleton className="h-48 rounded-xl" />
+          </div>
         </div>
       </div>
     )
   }
 
-  // Not configured state
   if (isConfigured === false) {
     return (
-      <div className="space-y-8">
-        <div className="flex items-center gap-4">
+      <div className="space-y-5">
+        <div className="flex items-center gap-3">
           <Link href="/campaigns/whatsapp">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-semibold">Nouvelle campagne WhatsApp</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-xl font-semibold tracking-tight">Nouvelle campagne WhatsApp</h1>
+            <p className="text-[13px] text-muted-foreground mt-0.5">
               Créez une campagne WhatsApp avec un template approuvé.
             </p>
           </div>
         </div>
 
-        <Card>
+        <Card className="border-transparent">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <p className="text-lg font-medium">WhatsApp non configuré</p>
-            <p className="text-muted-foreground mb-4 text-center max-w-md">
+            <AlertTriangle className="h-10 w-10 text-muted-foreground/40 mb-3" />
+            <p className="text-[15px] font-medium">WhatsApp non configuré</p>
+            <p className="text-[13px] text-muted-foreground mb-4 text-center max-w-md">
               Configurez vos credentials WhatsApp Business API pour créer des campagnes
             </p>
             <Link href="/whatsapp/config">
-              <Button>
-                <Settings className="mr-2 h-4 w-4" />
+              <Button size="sm" className="h-8 gap-1.5 text-[13px] rounded-lg">
+                <Settings className="h-3.5 w-3.5" />
                 Configurer WhatsApp
               </Button>
             </Link>
@@ -730,520 +768,296 @@ export default function NewWhatsAppCampaignPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center gap-4">
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
         <Link href="/campaigns/whatsapp">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-semibold">Nouvelle campagne WhatsApp</h1>
-          <p className="text-muted-foreground mt-1">
-            Créez une campagne WhatsApp avec un template approuvé.
+          <h1 className="text-xl font-semibold tracking-tight">Nouvelle campagne WhatsApp</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">
+            Choisissez un template, sélectionnez vos destinataires et envoyez.
           </p>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Left Column - Form */}
-        <div className="space-y-6">
-          {/* Campaign Name */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Détails de la campagne</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Mode d'envoi</Label>
-                <div className="flex flex-wrap gap-2">
+      <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+        {/* Left Column - Compact Form */}
+        <div className="space-y-4">
+          {/* 1. Campaign Name (required) */}
+          <Card className="border-transparent">
+            <CardContent className="p-4 space-y-2">
+              <Label htmlFor="campaignName" className="text-[13px] font-medium">
+                Nom de la campagne <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="campaignName"
+                placeholder="Ex: Promo Février 2026"
+                value={campaignName}
+                onChange={(e) => setCampaignName(e.target.value)}
+                className="h-9 text-[13px]"
+              />
+            </CardContent>
+          </Card>
+
+          {/* 2. Template Trigger */}
+          <Card
+            className="border-transparent cursor-pointer transition-colors hover:bg-muted/30"
+            onClick={() => setTemplateDialogOpen(true)}
+          >
+            <CardContent className="p-4">
+              {selectedTemplate ? (
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <LayoutTemplate className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium truncate">{selectedTemplate.name}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[11px] text-muted-foreground">{selectedTemplate.language}</span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-[11px] text-muted-foreground capitalize">{selectedTemplate.category.toLowerCase()}</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-muted/60 flex items-center justify-center shrink-0">
+                    <LayoutTemplate className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium">Choisir un template</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {templates.length} template{templates.length > 1 ? "s" : ""} approuvé{templates.length > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 3. Header Media (conditional) */}
+          {selectedTemplate && needsHeaderMedia && (
+            <HeaderMediaUpload
+              headerMediaFormat={headerMediaFormat!}
+              headerFile={headerFile}
+              headerMediaUrl={headerMediaUrl}
+              headerUploading={headerUploading}
+              onFileSelected={handleHeaderFile}
+              onRemove={removeHeaderFile}
+            />
+          )}
+
+          {/* 4. Recipients */}
+          <Card className="border-transparent relative">
+            {(tagContactsLoading || contactsLoading) && (
+              <div className="absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-xl">
+                <div className="h-full w-1/3 bg-primary animate-[shimmer_1.5s_ease-in-out_infinite] rounded-full" style={{ animation: "shimmer 1.5s ease-in-out infinite" }} />
+                <style>{`@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }`}</style>
+              </div>
+            )}
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-[14px] font-semibold tracking-tight">Destinataires</h2>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {recipientsBootstrapping && `Chargement des destinataires... ${contactsLoadedCount}${contactsTotalCount !== null ? ` / ${contactsTotalCount}` : ""}`}
+                    {!recipientsBootstrapping && tagContactsLoading && `Chargement des contacts... ${tagContactsLoadedCount}${tagContactsTotalCount !== null ? ` / ${tagContactsTotalCount}` : ""}`}
+                    {!recipientsBootstrapping && !tagContactsLoading && recipientMode === "tags" && `~${recipientCount} destinataire(s) estimé(s)`}
+                    {!recipientsBootstrapping && contactsLoading && recipientMode === "contacts" && `Chargement... ${contactsLoadedCount}${contactsTotalCount !== null ? ` / ${contactsTotalCount}` : ""}`}
+                    {!recipientsBootstrapping && !contactsLoading && recipientMode === "contacts" && `${selectedContactIds.length} contact(s) sélectionné(s)`}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant={recipientMode === "tags" ? "default" : "ghost"}
+                    className="h-7 gap-1.5 text-[11px] rounded-lg"
+                    onClick={() => setRecipientMode("tags")}
+                    disabled={recipientsBootstrapping || tagContactsLoading || contactsLoading}
+                  >
+                    <TagsIcon className="h-3.5 w-3.5" />
+                    Tags
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={recipientMode === "contacts" ? "default" : "ghost"}
+                    className="h-7 gap-1.5 text-[11px] rounded-lg"
+                    onClick={() => {
+                      setRecipientMode("contacts")
+                      setRecipientSheetOpen(true)
+                    }}
+                    disabled={recipientsBootstrapping || tagContactsLoading || contactsLoading}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    Contacts
+                  </Button>
+                </div>
+              </div>
+
+              {/* Tags — modern pill selector */}
+              {recipientMode === "tags" && (
+                <div className={`flex flex-wrap gap-2 ${tagContactsLoading || contactsLoading || recipientsBootstrapping ? "opacity-50 pointer-events-none" : ""}`}>
+                  {tags.map((tag) => {
+                    const isSelected = selectedTagIds.includes(tag.id)
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        disabled={recipientsBootstrapping || tagContactsLoading || contactsLoading}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-all ${
+                          isSelected
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3" />}
+                        {tag.name}
+                        <span className={`text-[10px] ${isSelected ? "opacity-75" : "opacity-50"}`}>
+                          {tag.contact_count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                  {tags.length === 0 && (
+                    <p className="text-[12px] text-muted-foreground">Aucun tag disponible</p>
+                  )}
+                </div>
+              )}
+
+              {/* Contacts summary (click to open sheet) */}
+              {recipientMode === "contacts" && (
+                <button
+                  type="button"
+                  className="w-full rounded-xl bg-muted/40 px-4 py-3 flex items-center justify-between transition-colors hover:bg-muted/60 disabled:opacity-50 disabled:pointer-events-none"
+                  onClick={() => setRecipientSheetOpen(true)}
+                  disabled={contactsLoading}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-[13px] font-medium">Tous les contacts</span>
+                  </div>
+                  <span className="text-[12px] text-muted-foreground">
+                    {contactsLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      `${selectedContactIds.length} sélectionné(s)`
+                    )}
+                  </span>
+                </button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 5. Send Mode toggle + Personalization trigger */}
+          <Card className="border-transparent">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[14px] font-semibold tracking-tight">Mode d&apos;envoi</h2>
+                <div className="flex gap-1.5">
                   <Button
                     type="button"
+                    size="sm"
                     variant={sendMode === "standard" ? "default" : "outline"}
+                    className="h-7 text-[11px] rounded-lg"
                     onClick={() => setSendMode("standard")}
                   >
                     Standard
                   </Button>
                   <Button
                     type="button"
+                    size="sm"
                     variant={sendMode === "personalized" ? "default" : "outline"}
-                    onClick={() => {
-                      setSendMode("personalized")
-                      if (recipientMode === "manual") {
-                        setRecipientMode("contacts")
-                      }
-                    }}
+                    className="h-7 text-[11px] rounded-lg gap-1"
+                    onClick={() => setSendMode("personalized")}
                   >
-                    <Sparkles className="mr-2 h-4 w-4" />
+                    <Sparkles className="h-3 w-3" />
                     Personnalisé
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {sendMode === "personalized"
-                    ? "Chaque destinataire reçoit des paramètres personnalisés (nom, contrat, etc.)."
-                    : "Le même contenu est envoyé à tous les destinataires."}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="campaignName">Nom de la campagne (optionnel)</Label>
-                <Input
-                  id="campaignName"
-                  placeholder="Ex: Promotion Janvier 2024"
-                  value={campaignName}
-                  onChange={(e) => setCampaignName(e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Template Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Template WhatsApp</CardTitle>
-              <CardDescription>
-                Sélectionnez un template approuvé par Meta
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <WhatsAppTemplateSelector
-                templates={templates}
-                selectedTemplateId={selectedTemplateId}
-                onSelect={(template) => setSelectedTemplateId(template?.id || "")}
-              />
-              {templates.length === 0 && (
-                <div className="text-center py-4 text-sm text-muted-foreground">
-                  Aucun template approuvé disponible.{" "}
-                  <Link href="/templates/whatsapp" className="text-primary hover:underline">
-                    Synchroniser les templates
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Header Media */}
-          {selectedTemplate && needsHeaderMedia && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {headerMediaFormat === "IMAGE" && <Image className="h-4 w-4" />}
-                  {headerMediaFormat === "VIDEO" && <Video className="h-4 w-4" />}
-                  {headerMediaFormat === "DOCUMENT" && <File className="h-4 w-4" />}
-                  Header du template
-                </CardTitle>
-                <CardDescription>
-                  Ce template nécessite {headerMediaFormat === "IMAGE" ? "une image" : headerMediaFormat === "VIDEO" ? "une vidéo" : "un document"} en header.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {headerFile && headerMediaUrl ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 rounded-md border border-border/40 p-3">
-                      {headerMediaFormat === "IMAGE" && <Image className="h-5 w-5 shrink-0 text-muted-foreground" />}
-                      {headerMediaFormat === "VIDEO" && <Video className="h-5 w-5 shrink-0 text-muted-foreground" />}
-                      {headerMediaFormat === "DOCUMENT" && <File className="h-5 w-5 shrink-0 text-muted-foreground" />}
-                      <span className="flex-1 truncate text-sm">{headerFile.name}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={removeHeaderFile}>
-                        <X className="h-3.5 w-3.5" />
-                        <span className="sr-only">Supprimer</span>
-                      </Button>
-                    </div>
-                    {headerMediaFormat === "IMAGE" && (
-                      <div className="rounded-md border border-border/40 overflow-hidden">
-                        <img
-                          src={headerMediaUrl}
-                          alt="Aperçu header"
-                          className="max-h-48 w-full object-contain bg-muted/30"
-                        />
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    className={`relative rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-                      headerDragActive
-                        ? "border-primary bg-primary/5"
-                        : "border-border/40 bg-muted/30"
-                    }`}
-                    onDragEnter={handleHeaderDrag}
-                    onDragLeave={handleHeaderDrag}
-                    onDragOver={handleHeaderDrag}
-                    onDrop={handleHeaderDrop}
-                  >
-                    {headerUploading ? (
-                      <div className="flex flex-col items-center gap-2 py-2">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Upload en cours…</p>
-                      </div>
-                    ) : (
-                      <>
-                        {headerMediaFormat === "IMAGE" && <Image className="mx-auto h-8 w-8 text-muted-foreground mb-2" />}
-                        {headerMediaFormat === "VIDEO" && <Video className="mx-auto h-8 w-8 text-muted-foreground mb-2" />}
-                        {headerMediaFormat === "DOCUMENT" && <File className="mx-auto h-8 w-8 text-muted-foreground mb-2" />}
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Glissez-déposez votre fichier ici, ou
-                        </p>
-                        <label htmlFor="header-media-upload">
-                          <Button variant="outline" size="sm" asChild>
-                            <span>Parcourir</span>
-                          </Button>
-                          <input
-                            id="header-media-upload"
-                            type="file"
-                            accept={acceptedMimeTypes[headerMediaFormat || "IMAGE"]}
-                            onChange={handleHeaderInputChange}
-                            className="hidden"
-                          />
-                        </label>
-                      </>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recipients */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Destinataires</CardTitle>
-              <CardDescription>
-                Sélectionnez les destinataires de votre campagne
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={recipientMode === "contacts" ? "default" : "outline"}
-                  onClick={() => setRecipientMode("contacts")}
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Contacts
-                </Button>
-                <Button
-                  type="button"
-                  variant={recipientMode === "tags" ? "default" : "outline"}
-                  onClick={() => setRecipientMode("tags")}
-                >
-                  <TagsIcon className="mr-2 h-4 w-4" />
-                  Tags
-                </Button>
-                <Button
-                  type="button"
-                  variant={recipientMode === "manual" ? "default" : "outline"}
-                  onClick={() => setRecipientMode("manual")}
-                  disabled={sendMode === "personalized"}
-                  title={sendMode === "personalized" ? "Non disponible en mode personnalisé" : undefined}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Manuel
-                </Button>
               </div>
 
-              {recipientMode === "contacts" && (
-                <ScrollArea className="h-64 rounded-md border">
-                  <div className="space-y-2 p-4">
-                    {contactsLoading && (
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Chargement des contacts… {contactsLoadedCount}
-                        {contactsTotalCount !== null ? ` / ${contactsTotalCount}` : ""}
-                      </p>
-                    )}
-                    {!contactsLoading && contacts.length > 0 && (
-                      <div className="flex items-center space-x-2 pb-2">
-                        <Checkbox
-                          id="select-all-contacts-wa"
-                          checked={
-                            contacts.length > 0 &&
-                            selectedContactIds.length === contacts.length
-                          }
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedContactIds(contacts.map((c) => c.id))
-                            } else {
-                              setSelectedContactIds([])
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor="select-all-contacts-wa"
-                          className="text-sm cursor-pointer"
-                        >
-                          Tout sélectionner ({contacts.length})
-                        </label>
-                      </div>
-                    )}
-                    {contacts.map((contact) => (
-                      <div
-                        key={contact.id}
-                        className="flex items-center space-x-2 rounded-md px-2 py-1 hover:bg-muted/60"
-                      >
-                        <Checkbox
-                          id={`contact-wa-${contact.id}`}
-                          checked={selectedContactIds.includes(contact.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedContactIds([...selectedContactIds, contact.id])
-                            } else {
-                              setSelectedContactIds(
-                                selectedContactIds.filter((id) => id !== contact.id)
-                              )
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor={`contact-wa-${contact.id}`}
-                          className="flex-1 text-sm cursor-pointer"
-                        >
-                          {contact.first_name || contact.last_name
-                            ? `${contact.first_name || ""} ${contact.last_name || ""}`.trim()
-                            : contact.phone_number}{" "}
-                          ({contact.phone_number})
-                        </label>
-                      </div>
-                    ))}
-                    {contacts.length === 0 && !contactsLoading && (
-                      <p className="text-center text-muted-foreground py-4">
-                        Aucun contact
-                      </p>
-                    )}
-                  </div>
-                </ScrollArea>
-              )}
-              {recipientMode === "contacts" && (
-                <p className="text-sm text-muted-foreground">
-                  {selectedContactIds.length} contact(s) sélectionné(s)
-                </p>
-              )}
-
-              {recipientMode === "tags" && (
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => (
-                    <Badge
-                      key={tag.id}
-                      variant={selectedTagIds.includes(tag.id) ? "default" : "outline"}
-                      className="cursor-pointer transition-colors"
-                      onClick={() => toggleTag(tag.id)}
-                    >
-                      {tag.name} ({tag.contact_count})
+              {sendMode === "personalized" && selectedTemplate && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-8 text-[12px] rounded-lg gap-1.5"
+                  onClick={() => setPersonalizationDialogOpen(true)}
+                >
+                  <Sliders className="h-3.5 w-3.5" />
+                  Configurer les variables
+                  {templateVariables.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] ml-1 h-4 px-1.5">
+                      {templateVariables.filter((v) => !!variableMapping[v.key]).length}/{templateVariables.length}
                     </Badge>
-                  ))}
-                  {tags.length === 0 && (
-                    <p className="text-muted-foreground">Aucun tag</p>
                   )}
-                </div>
-              )}
-              {recipientMode === "tags" && (
-                <>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    ~{getRecipientCount()} destinataire(s) estimé(s)
-                  </p>
-                  {sendMode === "personalized" && tagContactsLoading && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Chargement des contacts du/des tag(s)… {tagContactsLoadedCount}
-                      {tagContactsTotalCount !== null ? ` / ${tagContactsTotalCount}` : ""}
-                    </p>
-                  )}
-                </>
-              )}
-
-              {recipientMode === "manual" && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="manualNumbers">Numéros de téléphone</Label>
-                    <Textarea
-                      id="manualNumbers"
-                      placeholder="+33612345678&#10;+33698765432&#10;..."
-                      className="min-h-[120px] font-mono text-sm"
-                      value={manualNumbers}
-                      onChange={(e) => setManualNumbers(e.target.value)}
-                      disabled={sendMode === "personalized"}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {sendMode === "personalized"
-                        ? "Le mode manuel est désactivé pour l'envoi personnalisé."
-                        : "Un numéro par ligne, avec indicatif pays (ex: +33)"}
-                    </p>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {parseManualNumbers().length} numéro(s) détecté(s)
-                  </p>
-                </>
+                </Button>
               )}
             </CardContent>
           </Card>
-
-          {sendMode === "personalized" && selectedTemplate && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Personnalisation des variables</CardTitle>
-                <CardDescription>
-                  Associez chaque variable du template à un champ de contact.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {templateVariables.length === 0 ? (
-                  <div className="rounded-lg border border-border/40 bg-muted/60 p-4 text-sm text-muted-foreground">
-                    Ce template ne contient pas de variables ({"{{1}}, {{2}}, ..."}).
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {templateVariables.map((variable) => (
-                      <div key={variable.key} className="grid gap-2 sm:grid-cols-[160px_1fr] sm:items-center">
-                        <div className="text-sm font-medium">
-                          {variable.componentType.toUpperCase()} · {"{{"}{variable.index}{"}}"}
-                        </div>
-                        <div className="space-y-2">
-                          <Select
-                            value={variableMapping[variable.key] || ""}
-                            onValueChange={(value) => {
-                              setVariableMapping((prev) => ({ ...prev, [variable.key]: value }))
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choisir un champ" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__system_group__" disabled>
-                                Infos contact (système)
-                              </SelectItem>
-                              {systemVariableOptions.map((field) => (
-                                <SelectItem key={field.value} value={field.value}>
-                                  {field.label}
-                                </SelectItem>
-                              ))}
-                              <SelectItem value="__custom_group__" disabled>
-                                Champs personnalisés globaux
-                              </SelectItem>
-                              {customVariableOptions.length === 0 ? (
-                                <SelectItem value="__no_custom__" disabled>
-                                  Aucun champ personnalisé global
-                                </SelectItem>
-                              ) : (
-                                customVariableOptions.map((field) => (
-                                  <SelectItem key={field.value} value={field.value}>
-                                    {field.label}
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {recipientMode === "tags" && selectedTagIds.length > 0 && (
-                  <div className="rounded-lg border border-border/40 bg-muted/60 p-4 text-xs text-muted-foreground">
-                    <div className="font-medium text-foreground mb-2">
-                      Champs personnalisés par tag
-                    </div>
-                    <div className="mb-2 text-[11px]">
-                      Cette section affiche les champs déjà renseignés sur les contacts du tag.
-                      Le dropdown ci-dessus propose les champs globaux disponibles.
-                    </div>
-                    {customFieldsByTag.length === 0 ? (
-                      <div>Aucun champ personnalisé détecté.</div>
-                    ) : (
-                      <div className="space-y-2">
-                        {customFieldsByTag.map((entry) => (
-                          <div key={entry.tagId}>
-                            <div className="font-medium">{entry.tagName}</div>
-                            {entry.fields.length === 0 ? (
-                              <div className="text-muted-foreground">Aucun champ personnalisé</div>
-                            ) : (
-                              <div className="flex flex-wrap gap-1">
-                                {entry.fields.map((field) => (
-                                  <Badge key={field} variant="outline" className="text-[10px]">
-                                    {field}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="rounded-lg border border-border/40 bg-card p-4 text-xs text-muted-foreground">
-                  Limites: 10 000 destinataires par requête · 80 messages/seconde.
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
-        {/* Right Column - Preview & Summary */}
-        <div className="space-y-6">
-          {/* Template Preview */}
-          {selectedTemplate && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Aperçu du template</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <WhatsAppTemplateCard template={selectedTemplate} />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Résumé</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Template</span>
-                <span className="font-medium">
-                  {selectedTemplate?.name || "Non sélectionné"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Mode d'envoi</span>
-                <Badge variant={sendMode === "personalized" ? "default" : "secondary"}>
-                  {sendMode === "personalized" ? "Personnalisé" : "Standard"}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Langue</span>
-                <span className="font-medium">
-                  {selectedTemplate?.language || "-"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Destinataires</span>
-                <span className="font-medium">{getRecipientCount()}</span>
-              </div>
-              {(contactsLimitReached || tagContactsLimitReached) && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                  Limite 10&nbsp;000 : l’envoi est restreint aux 10&nbsp;000 premiers destinataires chargés.
-                </div>
-              )}
-
-              <div className="border-t border-border/40 pt-4">
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handleSend}
-                  disabled={isSending || !selectedTemplate || getRecipientCount() === 0}
-                >
-                  {isSending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="mr-2 h-4 w-4" />
-                  )}
-                  Envoyer la campagne
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Right Column - Sticky Summary */}
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <CampaignSummary
+            selectedTemplate={selectedTemplate}
+            campaignName={campaignName}
+            sendMode={sendMode}
+            recipientCount={recipientCount}
+            costEstimation={costEstimation}
+            creditCheck={creditCheck}
+            creditCheckLoading={creditCheckLoading}
+            contactsLimitReached={contactsLimitReached}
+            tagContactsLimitReached={tagContactsLimitReached}
+            isSending={isSending}
+            canSend={canSend}
+            onSend={handleSend}
+            onRechargeWallet={() => router.push("/whatsapp/credits")}
+          />
         </div>
       </div>
+
+      {/* Dialogs & Sheet */}
+      <TemplateBrowserDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+        templates={templates}
+        selectedTemplateId={selectedTemplateId}
+        onSelect={(template) => setSelectedTemplateId(template.id)}
+      />
+
+      <RecipientSheet
+        open={recipientSheetOpen}
+        onOpenChange={setRecipientSheetOpen}
+        contacts={contacts}
+        contactsLoading={contactsLoading}
+        contactsLoadedCount={contactsLoadedCount}
+        contactsTotalCount={contactsTotalCount}
+        selectedContactIds={selectedContactIds}
+        onToggleContact={(id) => {
+          setSelectedContactIds((prev) =>
+            prev.includes(id) ? prev.filter((cid) => cid !== id) : [...prev, id]
+          )
+        }}
+        onSelectAllContacts={() => setSelectedContactIds(contacts.map((c) => c.id))}
+        onDeselectAllContacts={() => setSelectedContactIds([])}
+      />
+
+      <PersonalizationDialog
+        open={personalizationDialogOpen}
+        onOpenChange={setPersonalizationDialogOpen}
+        templateVariables={templateVariables}
+        variableMapping={variableMapping}
+        onVariableMappingChange={setVariableMapping}
+        systemVariableOptions={systemVariableOptions}
+        customVariableOptions={customVariableOptions}
+      />
     </div>
   )
 }

@@ -35,3 +35,18 @@ export function formatPhoneNumber(phone: string) {
   }
   return phone
 }
+
+export function formatRelativeTime(date: string | Date): string {
+  const now = new Date()
+  const d = new Date(date)
+  const diffMs = now.getTime() - d.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMin < 1) return "A l'instant"
+  if (diffMin < 60) return `il y a ${diffMin} min`
+  if (diffHours < 24) return `il y a ${diffHours}h`
+  if (diffDays < 7) return `il y a ${diffDays}j`
+  return formatDate(d)
+}

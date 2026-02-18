@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation"
 import { useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
 import {
   Tooltip,
   TooltipContent,
@@ -13,7 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useAuthStore } from "@/stores"
-import { ChevronDown, PanelLeftClose } from "lucide-react"
+import { ChevronDown, LogOut, PanelLeftClose } from "lucide-react"
 import {
   getActiveHref,
   getFilteredNavigationSections,
@@ -26,7 +25,7 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
-  const { user } = useAuthStore()
+  const { user, logout } = useAuthStore()
   const sections = getFilteredNavigationSections()
   const activeHref = getActiveHref(pathname, sections)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
@@ -49,9 +48,9 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           collapsed ? "lg:w-[60px]" : "lg:w-56"
         )}
       >
-        <div className="flex h-full flex-col border-r border-border/40 bg-white">
+        <div className="flex h-full flex-col" style={{ background: "#f9fafb" }}>
           {/* ── Header ── */}
-          <div className="flex h-14 shrink-0 items-center border-b border-border/40 px-3">
+          <div className="flex h-14 shrink-0 items-center px-3">
             {collapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -108,7 +107,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                 return (
                   <div key={section.title || `section-${sectionIndex}`}>
                     {sectionIndex > 0 && (
-                      <Separator className="my-2 bg-border/30" />
+                      <div className="my-2" />
                     )}
 
                     {isCollapsible ? (
@@ -144,7 +143,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                         </button>
 
                         {isSectionOpen && (
-                          <div className="relative mt-0.5 ml-[17px] border-l border-border/30 pl-3">
+                          <div className="relative mt-0.5 ml-[17px] pl-3">
                             <div className="space-y-0.5">
                               {section.items.map((item) => {
                                 const isActive = activeHref === item.href
@@ -292,7 +291,6 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             {/* ── Bottom (Paramètres) ── */}
             {bottomSections.length > 0 && (
               <div className="mt-auto pt-1">
-                <Separator className="mb-2 bg-border/30" />
                 {bottomSections.flatMap((s) => s.items).map((item) => {
                   const isActive = activeHref === item.href
 
@@ -346,41 +344,62 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           </nav>
 
           {/* ── User profile ── */}
-          <div className="shrink-0 border-t border-border/40 p-2">
+          <div className="shrink-0 p-2">
             {collapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center justify-center py-1">
-                    <Avatar className="h-7 w-7">
-                      <AvatarFallback className="bg-accent text-[11px] font-medium text-muted-foreground">
-                        {userInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  {user
-                    ? `${user.first_name} ${user.last_name}`
-                    : "Profil"}
-                </TooltipContent>
-              </Tooltip>
+              <div className="space-y-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-center py-1">
+                      <Avatar className="h-7 w-7">
+                        <AvatarFallback className="bg-accent text-[11px] font-medium text-muted-foreground">
+                          {userInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {user
+                      ? `${user.first_name} ${user.last_name}`
+                      : "Profil"}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={logout}
+                      className="flex h-9 w-full items-center justify-center rounded-md transition-colors hover:bg-red-50"
+                      style={{ color: "#ef4444" }}
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Se déconnecter</TooltipContent>
+                </Tooltip>
+              </div>
             ) : (
-              <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
-                <Avatar className="h-7 w-7 shrink-0">
-                  <AvatarFallback className="bg-accent text-[11px] font-medium text-muted-foreground">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium leading-tight">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
+                  <Avatar className="h-3.5 w-3.5 shrink-0">
+                    <AvatarFallback className="bg-accent text-[7px] font-medium text-muted-foreground">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <p className="truncate text-[12px] font-medium leading-tight min-w-0 flex-1">
                     {user
                       ? `${user.first_name} ${user.last_name}`
                       : "User"}
                   </p>
-                  <p className="truncate text-[11px] leading-tight text-muted-foreground">
-                    {user?.email || "email@example.com"}
-                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12px] font-medium transition-colors hover:bg-red-50"
+                  style={{ color: "#ef4444" }}
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Se déconnecter
+                </button>
               </div>
             )}
           </div>

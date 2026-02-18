@@ -6,8 +6,8 @@ import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
-import type { Contact, Tag, CustomField } from "@/types"
+import { contactsService, tagsService, customFieldsService, whatsappService, handleApiError } from "@/services"
+import type { Contact, Tag, CustomField, ConsentStatus, ConsentHistoryEntry } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,8 +21,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft, CheckCircle, XCircle } from "lucide-react"
 
 const contactSchema = z.object({
   phone_number: z.string().min(1, "Numéro de téléphone requis"),
@@ -80,6 +87,12 @@ export default function EditContactPage() {
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [contact, setContact] = useState<Contact | null>(null)
+  const [consentStatus, setConsentStatus] = useState<ConsentStatus | null>(null)
+  const [consentHistory, setConsentHistory] = useState<ConsentHistoryEntry[]>([])
+  const [isConsentLoading, setIsConsentLoading] = useState(false)
+  const [consentDialogOpen, setConsentDialogOpen] = useState(false)
+  const [consentSource, setConsentSource] = useState("manual")
+  const [isConsentSubmitting, setIsConsentSubmitting] = useState(false)
 
   const {
     register,
@@ -126,8 +139,47 @@ export default function EditContactPage() {
 
     if (contactId) {
       loadData()
+      loadConsent()
     }
   }, [contactId, setValue])
+
+  const loadConsent = async () => {
+    if (!contactId) return
+    setIsConsentLoading(true)
+    try {
+      const [status, history] = await Promise.all([
+        whatsappService.getConsentStatus(contactId),
+        whatsappService.getConsentHistory(contactId),
+      ])
+      setConsentStatus(status)
+      setConsentHistory(history.history || [])
+    } catch {
+      // Consent may not be available for all contacts
+    } finally {
+      setIsConsentLoading(false)
+    }
+  }
+
+  const handleConsentToggle = async () => {
+    if (!contactId) return
+    setIsConsentSubmitting(true)
+    try {
+      if (consentStatus?.opted_in) {
+        await whatsappService.optOutContact(contactId, consentSource)
+        toast.success("Contact opt-out effectu\u00e9")
+      } else {
+        await whatsappService.optInContact(contactId, consentSource)
+        toast.success("Contact opt-in effectu\u00e9")
+      }
+      setConsentDialogOpen(false)
+      loadConsent()
+    } catch (error) {
+      const apiError = handleApiError(error)
+      toast.error(apiError.message)
+    } finally {
+      setIsConsentSubmitting(false)
+    }
+  }
 
   const onSubmit = async (data: ContactForm) => {
     if (!contactId) return
@@ -277,6 +329,100 @@ export default function EditContactPage() {
                   </p>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Consentement WhatsApp */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Consentement WhatsApp</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isConsentLoading ? (
+                <Skeleton className="h-8 w-full" />
+              ) : consentStatus ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {consentStatus.opted_in ? (
+                        <Badge className="bg-green-500">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Opt-in
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive">
+                          <XCircle className="h-3 w-3 mr-1" />
+                          Opt-out
+                        </Badge>
+                      )}
+                      {consentStatus.opted_in && consentStatus.opted_in_at && (
+                        <span className="text-xs text-muted-foreground">
+                          depuis le {new Date(consentStatus.opted_in_at).toLocaleDateString("fr-FR")}
+                        </span>
+                      )}
+                      {!consentStatus.opted_in && consentStatus.opted_out_at && (
+                        <span className="text-xs text-muted-foreground">
+                          depuis le {new Date(consentStatus.opted_out_at).toLocaleDateString("fr-FR")}
+                        </span>
+                      )}
+                    </div>
+                    <Dialog open={consentDialogOpen} onOpenChange={setConsentDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          {consentStatus.opted_in ? "Opt-out" : "Opt-in"}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                          <DialogTitle>
+                            {consentStatus.opted_in ? "Retirer le consentement" : "Donner le consentement"}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Source</Label>
+                            <Select value={consentSource} onValueChange={setConsentSource}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="manual">Manuel</SelectItem>
+                                <SelectItem value="sms">SMS</SelectItem>
+                                <SelectItem value="web">Web</SelectItem>
+                                <SelectItem value="api">API</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button onClick={handleConsentToggle} disabled={isConsentSubmitting} className="w-full">
+                            {isConsentSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Confirmer
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+
+                  {consentHistory.length > 0 && (
+                    <div className="border-t pt-3 space-y-2">
+                      <h4 className="text-xs font-medium text-muted-foreground">Historique</h4>
+                      {consentHistory.map((entry) => (
+                        <div key={entry.id} className="flex items-start gap-2 text-xs">
+                          <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${entry.action === "opt_in" ? "bg-green-500" : "bg-red-500"}`} />
+                          <div>
+                            <span className="font-medium">{entry.action === "opt_in" ? "Opt-in" : "Opt-out"}</span>
+                            <span className="text-muted-foreground ml-1">via {entry.source}</span>
+                            <div className="text-muted-foreground">
+                              {new Date(entry.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Aucune donn&eacute;e de consentement disponible
+                </p>
+              )}
             </CardContent>
           </Card>
 
