@@ -5,10 +5,6 @@ import { useConversationsStore } from "@/stores"
 import { usePolling } from "@/hooks"
 import { ConversationList } from "@/components/conversations/conversation-list"
 import { ConversationThread } from "@/components/conversations/conversation-thread"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { RefreshCw, MessageSquareMore } from "lucide-react"
 
 export default function ConversationsPage() {
   const {
@@ -90,64 +86,10 @@ export default function ConversationsPage() {
   }, [selectedConversationId, markAsRead])
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <MessageSquareMore className="h-5 w-5" />
-            Conversations
-          </h1>
-          <p className="text-[13px] text-muted-foreground mt-0.5">
-            Suivez vos conversations WhatsApp en temps réel
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-[12px] rounded-lg gap-1.5"
-          onClick={() => fetchConversations()}
-          disabled={isLoading}
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-          Actualiser
-        </Button>
-      </div>
-
-      {/* Content */}
-      <Card className="border-transparent overflow-hidden h-[calc(100vh-12rem)]">
-        {/* Desktop: side by side */}
-        <div className="hidden lg:flex h-full">
-          <div className="w-[360px] border-r border-border/40 shrink-0">
-            <ConversationList
-              conversations={conversations}
-              selectedConversationId={selectedConversationId}
-              searchQuery={searchQuery}
-              isLoading={isLoading}
-              conversationStatus={conversationStatus}
-              onSelect={selectConversation}
-              onSearchChange={setSearchQuery}
-              onStatusChange={setConversationStatus}
-            />
-          </div>
-          <div className="flex-1">
-            <ConversationThread
-              messages={selectedMessages}
-              conversation={selectedConversation}
-              isLoading={isLoadingThread}
-              isSending={isSending}
-              onSendText={handleSendText}
-              onSendMedia={handleSendMedia}
-              onClose={handleClose}
-              onArchive={handleArchive}
-              onReopen={handleReopen}
-              onMarkRead={handleMarkRead}
-            />
-          </div>
-        </div>
-
-        {/* Mobile: list + sheet */}
-        <div className="lg:hidden h-full">
+    <div className="h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden -my-4">
+      {/* Desktop: side by side */}
+      <div className="hidden lg:flex flex-1 min-h-0">
+        <div className="w-[360px] border-r border-border/40 shrink-0">
           <ConversationList
             conversations={conversations}
             selectedConversationId={selectedConversationId}
@@ -158,33 +100,52 @@ export default function ConversationsPage() {
             onSearchChange={setSearchQuery}
             onStatusChange={setConversationStatus}
           />
-
-          <Sheet
-            open={!!selectedConversationId}
-            onOpenChange={(open) => {
-              if (!open) clearSelection()
-            }}
-          >
-            <SheetContent side="right" className="w-full sm:max-w-full p-0">
-              {selectedConversation && (
-                <ConversationThread
-                  messages={selectedMessages}
-                  conversation={selectedConversation}
-                  isLoading={isLoadingThread}
-                  isSending={isSending}
-                  onBack={handleBack}
-                  onSendText={handleSendText}
-                  onSendMedia={handleSendMedia}
-                  onClose={handleClose}
-                  onArchive={handleArchive}
-                  onReopen={handleReopen}
-                  onMarkRead={handleMarkRead}
-                />
-              )}
-            </SheetContent>
-          </Sheet>
         </div>
-      </Card>
+        <div className="flex-1">
+          <ConversationThread
+            messages={selectedMessages}
+            conversation={selectedConversation}
+            isLoading={isLoadingThread}
+            isSending={isSending}
+            onSendText={handleSendText}
+            onSendMedia={handleSendMedia}
+            onClose={handleClose}
+            onArchive={handleArchive}
+            onReopen={handleReopen}
+            onMarkRead={handleMarkRead}
+          />
+        </div>
+      </div>
+
+      {/* Mobile: show list OR thread */}
+      <div className="lg:hidden flex-1 min-h-0">
+        {selectedConversationId ? (
+          <ConversationThread
+            messages={selectedMessages}
+            conversation={selectedConversation}
+            isLoading={isLoadingThread}
+            isSending={isSending}
+            onBack={handleBack}
+            onSendText={handleSendText}
+            onSendMedia={handleSendMedia}
+            onClose={handleClose}
+            onArchive={handleArchive}
+            onReopen={handleReopen}
+            onMarkRead={handleMarkRead}
+          />
+        ) : (
+          <ConversationList
+            conversations={conversations}
+            selectedConversationId={selectedConversationId}
+            searchQuery={searchQuery}
+            isLoading={isLoading}
+            conversationStatus={conversationStatus}
+            onSelect={selectConversation}
+            onSearchChange={setSearchQuery}
+            onStatusChange={setConversationStatus}
+          />
+        )}
+      </div>
     </div>
   )
 }

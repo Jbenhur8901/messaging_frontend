@@ -8,7 +8,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
 import type { Tag, CustomField } from "@/types"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -135,204 +134,202 @@ export default function NewContactPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center gap-4">
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
         <Link href="/contacts">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+            <ArrowLeft className="h-3.5 w-3.5" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-semibold">Nouveau contact</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl font-semibold tracking-tight">Nouveau contact</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">
             Ajoutez un nouveau contact à votre liste.
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid gap-6 max-w-2xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informations</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone_number">Numéro de téléphone *</Label>
-                <Input
-                  id="phone_number"
-                  placeholder="+33612345678"
-                  {...register("phone_number")}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Format attendu: international (ex. +33612345678). Si vous saisissez uniquement
-                  des chiffres, le + sera ajouté automatiquement.
+        <div className="grid gap-5 max-w-2xl">
+          {/* Informations */}
+          <div className="space-y-4">
+            <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Informations</h2>
+            <div className="space-y-1.5">
+              <Label htmlFor="phone_number" className="text-[13px]">Numéro de téléphone *</Label>
+              <Input
+                id="phone_number"
+                placeholder="+33612345678"
+                className="h-9 text-[13px] rounded-lg"
+                {...register("phone_number")}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Format attendu: international (ex. +33612345678). Si vous saisissez uniquement
+                des chiffres, le + sera ajouté automatiquement.
+              </p>
+              {errors.phone_number && (
+                <p className="text-[12px] text-destructive">
+                  {errors.phone_number.message}
                 </p>
-                {errors.phone_number && (
-                  <p className="text-sm text-destructive">
-                    {errors.phone_number.message}
-                  </p>
-                )}
-              </div>
+              )}
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">Prénom</Label>
-                  <Input
-                    id="first_name"
-                    placeholder="Jean"
-                    {...register("first_name")}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">Nom</Label>
-                  <Input
-                    id="last_name"
-                    placeholder="Dupont"
-                    {...register("last_name")}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="first_name" className="text-[13px]">Prénom</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="jean.dupont@exemple.com"
-                  {...register("email")}
+                  id="first_name"
+                  placeholder="Jean"
+                  className="h-9 text-[13px] rounded-lg"
+                  {...register("first_name")}
                 />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
-                )}
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Tags</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <Badge
-                    key={tag.id}
-                    variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                    className="cursor-pointer transition-colors"
-                    style={{
-                      backgroundColor: selectedTags.includes(tag.id)
-                        ? tag.color
-                        : undefined,
-                      borderColor: tag.color,
-                    }}
-                    onClick={() => {
-                      if (selectedTags.includes(tag.id)) {
-                        setSelectedTags(selectedTags.filter((id) => id !== tag.id))
-                      } else {
-                        setSelectedTags([...selectedTags, tag.id])
-                      }
-                    }}
-                  >
-                    {tag.name}
-                  </Badge>
-                ))}
-                {tags.length === 0 && (
-                  <p className="text-muted-foreground text-sm">
-                    Aucun tag disponible.{" "}
-                    <Link href="/contacts/tags" className="text-primary hover:underline">
-                      Créer un tag
-                    </Link>
-                  </p>
-                )}
+              <div className="space-y-1.5">
+                <Label htmlFor="last_name" className="text-[13px]">Nom</Label>
+                <Input
+                  id="last_name"
+                  placeholder="Dupont"
+                  className="h-9 text-[13px] rounded-lg"
+                  {...register("last_name")}
+                />
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-[13px]">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="jean.dupont@exemple.com"
+                className="h-9 text-[13px] rounded-lg"
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className="text-[12px] text-destructive">{errors.email.message}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="space-y-3">
+            <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Tags</h2>
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <Badge
+                  key={tag.id}
+                  variant={selectedTags.includes(tag.id) ? "default" : "outline"}
+                  className="cursor-pointer text-[10px] h-6 transition-colors duration-200"
+                  style={{
+                    backgroundColor: selectedTags.includes(tag.id)
+                      ? tag.color
+                      : undefined,
+                    borderColor: tag.color,
+                    color: selectedTags.includes(tag.id) ? "#fff" : tag.color,
+                  }}
+                  onClick={() => {
+                    if (selectedTags.includes(tag.id)) {
+                      setSelectedTags(selectedTags.filter((id) => id !== tag.id))
+                    } else {
+                      setSelectedTags([...selectedTags, tag.id])
+                    }
+                  }}
+                >
+                  {tag.name}
+                </Badge>
+              ))}
+              {tags.length === 0 && (
+                <p className="text-[13px] text-muted-foreground">
+                  Aucun tag disponible.{" "}
+                  <Link href="/contacts/tags" className="text-primary hover:underline">
+                    Créer un tag
+                  </Link>
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Custom fields */}
           {customFields.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Champs personnalisés</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {customFields.map((field) => (
-                  <div key={field.id} className="space-y-2">
-                    <Label>{field.label}</Label>
-                    {field.field_type === "boolean" ? (
-                      <Select
-                        value={customFieldValues[field.field_key] ?? ""}
-                        onValueChange={(value) =>
-                          setCustomFieldValues((prev) => ({ ...prev, [field.field_key]: value }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="true">Oui</SelectItem>
-                          <SelectItem value="false">Non</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : field.field_type === "select" && field.options && field.options.length > 0 ? (
-                      <Select
-                        value={customFieldValues[field.field_key] ?? ""}
-                        onValueChange={(value) =>
-                          setCustomFieldValues((prev) => ({ ...prev, [field.field_key]: value }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={field.placeholder || "Sélectionner"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {field.options.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input
-                        type={
-                          field.field_type === "number"
-                            ? "number"
-                            : field.field_type === "date"
-                            ? "date"
-                            : field.field_type === "email"
-                            ? "email"
-                            : field.field_type === "url"
-                            ? "url"
-                            : "text"
-                        }
-                        placeholder={
-                          field.placeholder ||
-                          (field.field_type === "multiselect"
-                            ? "Valeur1, Valeur2"
-                            : undefined)
-                        }
-                        value={customFieldValues[field.field_key] ?? ""}
-                        onChange={(event) =>
-                          setCustomFieldValues((prev) => ({
-                            ...prev,
-                            [field.field_key]: event.target.value,
-                          }))
-                        }
-                      />
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Champs personnalisés</h2>
+              {customFields.map((field) => (
+                <div key={field.id} className="space-y-1.5">
+                  <Label className="text-[13px]">{field.label}</Label>
+                  {field.field_type === "boolean" ? (
+                    <Select
+                      value={customFieldValues[field.field_key] ?? ""}
+                      onValueChange={(value) =>
+                        setCustomFieldValues((prev) => ({ ...prev, [field.field_key]: value }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 text-[13px] rounded-lg">
+                        <SelectValue placeholder="Sélectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true" className="text-[13px]">Oui</SelectItem>
+                        <SelectItem value="false" className="text-[13px]">Non</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : field.field_type === "select" && field.options && field.options.length > 0 ? (
+                    <Select
+                      value={customFieldValues[field.field_key] ?? ""}
+                      onValueChange={(value) =>
+                        setCustomFieldValues((prev) => ({ ...prev, [field.field_key]: value }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 text-[13px] rounded-lg">
+                        <SelectValue placeholder={field.placeholder || "Sélectionner"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {field.options.map((option) => (
+                          <SelectItem key={option} value={option} className="text-[13px]">
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      className="h-9 text-[13px] rounded-lg"
+                      type={
+                        field.field_type === "number"
+                          ? "number"
+                          : field.field_type === "date"
+                          ? "date"
+                          : field.field_type === "email"
+                          ? "email"
+                          : field.field_type === "url"
+                          ? "url"
+                          : "text"
+                      }
+                      placeholder={
+                        field.placeholder ||
+                        (field.field_type === "multiselect"
+                          ? "Valeur1, Valeur2"
+                          : undefined)
+                      }
+                      value={customFieldValues[field.field_key] ?? ""}
+                      onChange={(event) =>
+                        setCustomFieldValues((prev) => ({
+                          ...prev,
+                          [field.field_key]: event.target.value,
+                        }))
+                      }
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           )}
 
-          <div className="flex gap-4">
+          <div className="flex gap-2 pt-2">
             <Link href="/contacts">
-              <Button variant="outline" type="button">
+              <Button variant="outline" type="button" className="h-8 text-[13px] rounded-lg">
                 Annuler
               </Button>
             </Link>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isLoading} className="h-8 text-[13px] rounded-lg gap-1.5">
+              {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Créer le contact
             </Button>
           </div>

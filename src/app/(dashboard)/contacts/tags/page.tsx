@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation"
 import { tagsService, customFieldsService, handleApiError } from "@/services"
 import type { CustomField, Tag } from "@/types"
 import { formatNumber } from "@/lib/utils"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -68,6 +67,11 @@ import {
   Settings,
 } from "lucide-react"
 
+const stagger = (i: number) => ({
+  opacity: 0,
+  animation: `fadeIn 0.45s ease-out ${i * 0.06}s forwards`,
+})
+
 const COLORS = [
   "#ef4444", "#f97316", "#f59e0b", "#eab308",
   "#84cc16", "#22c55e", "#10b981", "#14b8a6",
@@ -76,15 +80,15 @@ const COLORS = [
 ]
 
 const FIELD_TYPES: { value: CustomField["field_type"]; label: string; icon: ReactNode }[] = [
-  { value: "text", label: "Texte", icon: <Type className="h-4 w-4" /> },
-  { value: "number", label: "Nombre", icon: <Hash className="h-4 w-4" /> },
-  { value: "date", label: "Date", icon: <Calendar className="h-4 w-4" /> },
-  { value: "boolean", label: "Oui/Non", icon: <ToggleLeft className="h-4 w-4" /> },
-  { value: "select", label: "Liste déroulante", icon: <List className="h-4 w-4" /> },
-  { value: "multiselect", label: "Sélection multiple", icon: <List className="h-4 w-4" /> },
-  { value: "email", label: "Email", icon: <Mail className="h-4 w-4" /> },
-  { value: "url", label: "URL", icon: <LinkIcon className="h-4 w-4" /> },
-  { value: "phone", label: "Téléphone", icon: <Phone className="h-4 w-4" /> },
+  { value: "text", label: "Texte", icon: <Type className="h-3.5 w-3.5" /> },
+  { value: "number", label: "Nombre", icon: <Hash className="h-3.5 w-3.5" /> },
+  { value: "date", label: "Date", icon: <Calendar className="h-3.5 w-3.5" /> },
+  { value: "boolean", label: "Oui/Non", icon: <ToggleLeft className="h-3.5 w-3.5" /> },
+  { value: "select", label: "Liste déroulante", icon: <List className="h-3.5 w-3.5" /> },
+  { value: "multiselect", label: "Sélection multiple", icon: <List className="h-3.5 w-3.5" /> },
+  { value: "email", label: "Email", icon: <Mail className="h-3.5 w-3.5" /> },
+  { value: "url", label: "URL", icon: <LinkIcon className="h-3.5 w-3.5" /> },
+  { value: "phone", label: "Téléphone", icon: <Phone className="h-3.5 w-3.5" /> },
 ]
 
 const FALLBACK_SYSTEM_FIELDS: Array<{
@@ -394,23 +398,23 @@ export default function TagsPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Paramétrage</h1>
-          <p className="text-muted-foreground mt-1">
-            Gérez les tags et les champs de contact globaux.
-          </p>
-        </div>
+    <div className="space-y-5">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">Paramétrage</h1>
+        <p className="text-[13px] text-muted-foreground mt-0.5">
+          Gérez les tags et les champs de contact globaux.
+        </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="tags">Tags</TabsTrigger>
-          <TabsTrigger value="fields">Champs</TabsTrigger>
+        <TabsList className="h-9">
+          <TabsTrigger value="tags" className="text-[13px] px-4">Tags</TabsTrigger>
+          <TabsTrigger value="fields" className="text-[13px] px-4">Champs</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="tags" className="space-y-6">
+        {/* ── Tags tab ── */}
+        <TabsContent value="tags" className="space-y-5 mt-5">
           <div className="flex justify-end">
             <Dialog
               open={isTagDialogOpen}
@@ -420,33 +424,34 @@ export default function TagsPage() {
               }}
             >
               <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
+                <Button className="h-8 text-[13px] rounded-lg gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
                   Nouveau tag
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editingTag ? "Modifier le tag" : "Nouveau tag"}</DialogTitle>
+                  <DialogTitle className="text-[15px]">{editingTag ? "Modifier le tag" : "Nouveau tag"}</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="tag-name">Nom</Label>
+                <div className="space-y-4 py-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tag-name" className="text-[13px]">Nom</Label>
                     <Input
                       id="tag-name"
                       placeholder="Ex: VIP"
                       value={tagName}
                       onChange={(event) => setTagName(event.target.value)}
+                      className="h-9 text-[13px] rounded-lg"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Couleur</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px]">Couleur</Label>
                     <div className="flex flex-wrap gap-2">
                       {COLORS.map((currentColor) => (
                         <button
                           key={currentColor}
                           type="button"
-                          className={`h-8 w-8 rounded-full transition-transform ${
+                          className={`h-7 w-7 rounded-full transition-transform ${
                             tagColor === currentColor ? "ring-2 ring-offset-2 ring-primary scale-110" : ""
                           }`}
                           style={{ backgroundColor: currentColor }}
@@ -455,19 +460,20 @@ export default function TagsPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tag-description">Description (optionnel)</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tag-description" className="text-[13px]">Description (optionnel)</Label>
                     <Input
                       id="tag-description"
                       placeholder="Description du tag"
                       value={tagDescription}
                       onChange={(event) => setTagDescription(event.target.value)}
+                      className="h-9 text-[13px] rounded-lg"
                     />
                   </div>
-                  <div className="pt-2">
-                    <Label>Aperçu</Label>
-                    <div className="mt-2">
-                      <Badge style={{ backgroundColor: tagColor }}>
+                  <div className="pt-1">
+                    <Label className="text-[13px]">Aperçu</Label>
+                    <div className="mt-1.5">
+                      <Badge className="text-[10px]" style={{ backgroundColor: tagColor }}>
                         {tagName || "Tag"}
                       </Badge>
                     </div>
@@ -476,6 +482,7 @@ export default function TagsPage() {
                 <DialogFooter>
                   <Button
                     variant="outline"
+                    className="h-8 text-[13px] rounded-lg"
                     onClick={() => {
                       setIsTagDialogOpen(false)
                       resetTagForm()
@@ -483,8 +490,8 @@ export default function TagsPage() {
                   >
                     Annuler
                   </Button>
-                  <Button onClick={handleSaveTag} disabled={isSavingTag}>
-                    {isSavingTag && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Button className="h-8 text-[13px] rounded-lg" onClick={handleSaveTag} disabled={isSavingTag}>
+                    {isSavingTag && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                     {editingTag ? "Enregistrer" : "Créer"}
                   </Button>
                 </DialogFooter>
@@ -493,91 +500,188 @@ export default function TagsPage() {
           </div>
 
           {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-1">
               {[...Array(6)].map((_, index) => (
-                <Card key={index}>
-                  <CardHeader>
-                    <Skeleton className="h-6 w-24" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-4 w-32" />
-                  </CardContent>
-                </Card>
+                <Skeleton key={index} className="h-14 w-full rounded-xl" />
               ))}
             </div>
           ) : tags.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <Tags className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-lg font-medium">Aucun tag</p>
-                <p className="text-muted-foreground mb-4">Créez des tags pour organiser vos contacts</p>
-                <Button onClick={() => setIsTagDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nouveau tag
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="flex flex-col items-center justify-center py-16">
+              <Tags className="h-10 w-10 text-muted-foreground/50 mb-3" />
+              <p className="text-[13px] font-medium">Aucun tag</p>
+              <p className="text-[13px] text-muted-foreground mb-4">Créez des tags pour organiser vos contacts</p>
+              <Button className="h-8 text-[13px] rounded-lg gap-1.5" onClick={() => setIsTagDialogOpen(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                Nouveau tag
+              </Button>
+            </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {tags.map((tag) => (
-                <Card key={tag.id}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <Badge style={{ backgroundColor: tag.color }}>{tag.name}</Badge>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEditTagDialog(tag)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteTagId(tag.id)}>
-                        <Trash className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-semibold">
-                      {formatNumber(typeof tag.contact_count === "number" ? tag.contact_count : 0)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">contacts</p>
-                    {tag.description && <p className="text-sm text-muted-foreground mt-2">{tag.description}</p>}
-                  </CardContent>
-                </Card>
+            <div className="space-y-1">
+              {tags.map((tag, i) => (
+                <div
+                  key={tag.id}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-accent/50 transition-colors duration-200"
+                  style={stagger(i)}
+                >
+                  {/* Badge */}
+                  <Badge className="text-[10px] h-5 shrink-0" style={{ backgroundColor: tag.color }}>
+                    {tag.name}
+                  </Badge>
+
+                  {/* Count */}
+                  <span className="text-[13px] font-medium shrink-0">
+                    {formatNumber(typeof tag.contact_count === "number" ? tag.contact_count : 0)}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground shrink-0">contacts</span>
+
+                  {/* Description */}
+                  {tag.description && (
+                    <span className="text-[11px] text-muted-foreground truncate hidden sm:block">
+                      — {tag.description}
+                    </span>
+                  )}
+
+                  {/* Spacer */}
+                  <div className="flex-1" />
+
+                  {/* Actions */}
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditTagDialog(tag)}>
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteTagId(tag.id)}>
+                      <Trash className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </TabsContent>
 
-        <TabsContent value="fields" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                <CardTitle>Champs système</CardTitle>
+        {/* ── Fields tab ── */}
+        <TabsContent value="fields" className="space-y-5 mt-5">
+          {/* System fields */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+              <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Champs système</h2>
+            </div>
+            <p className="text-[11px] text-muted-foreground px-1">
+              Champs standards fournis par le backend.
+            </p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-[13px]">Libellé</TableHead>
+                  <TableHead className="text-[13px]">Clé</TableHead>
+                  <TableHead className="text-[13px]">Type</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {systemFields.map((field) => {
+                  const typeInfo = getFieldTypeInfo(field.field_type)
+                  return (
+                    <TableRow key={field.id}>
+                      <TableCell className="text-[13px] font-medium">{field.label}</TableCell>
+                      <TableCell>
+                        <code className="text-[11px] bg-muted px-2 py-0.5 rounded">{field.field_key}</code>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5 text-[13px]">
+                          {typeInfo.icon}
+                          <span>{typeInfo.label}</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Custom fields */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <div>
+                <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Champs personnalisés</h2>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Champs créés ici, partagés globalement pour tous les contacts.
+                </p>
               </div>
-              <CardDescription>
-                Champs standards fournis par le backend.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              <Button className="h-8 text-[13px] rounded-lg gap-1.5" onClick={() => setShowCreateFieldDialog(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                Nouveau champ
+              </Button>
+            </div>
+
+            {isLoading ? (
+              <div className="space-y-1">
+                {[...Array(4)].map((_, index) => (
+                  <Skeleton key={index} className="h-12 w-full rounded-xl" />
+                ))}
+              </div>
+            ) : customFields.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <p className="text-[13px] font-medium mb-1">Aucun champ personnalisé</p>
+                <p className="text-[11px] text-muted-foreground mb-4">
+                  Créez des champs pour stocker des informations additionnelles.
+                </p>
+                <Button className="h-8 text-[13px] rounded-lg gap-1.5" onClick={() => setShowCreateFieldDialog(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Créer un champ
+                </Button>
+              </div>
+            ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Libellé</TableHead>
-                    <TableHead>Clé</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead className="text-[13px]">Libellé</TableHead>
+                    <TableHead className="text-[13px]">Clé</TableHead>
+                    <TableHead className="text-[13px]">Type</TableHead>
+                    <TableHead className="text-[13px]">Requis</TableHead>
+                    <TableHead className="text-[13px]">Actif</TableHead>
+                    <TableHead className="text-right text-[13px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {systemFields.map((field) => {
+                  {customFields.map((field) => {
                     const typeInfo = getFieldTypeInfo(field.field_type)
                     return (
                       <TableRow key={field.id}>
-                        <TableCell className="font-medium">{field.label}</TableCell>
+                        <TableCell className="text-[13px] font-medium">{field.label}</TableCell>
                         <TableCell>
-                          <code className="text-xs bg-muted px-2 py-1 rounded">{field.field_key}</code>
+                          <code className="text-[11px] bg-muted px-2 py-0.5 rounded">{field.field_key}</code>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 text-[13px]">
                             {typeInfo.icon}
                             <span>{typeInfo.label}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-[13px]">{field.is_required ? <Badge variant="secondary" className="text-[10px] h-5">Oui</Badge> : "Non"}</TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={field.is_active}
+                            onCheckedChange={() => handleToggleFieldActive(field)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditFieldDialog(field)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => {
+                                setSelectedField(field)
+                                setShowDeleteFieldDialog(true)
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -585,115 +689,25 @@ export default function TagsPage() {
                   })}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Champs personnalisés</CardTitle>
-                <CardDescription>
-                  Champs créés ici, partagés globalement pour tous les contacts.
-                </CardDescription>
-              </div>
-              <Button onClick={() => setShowCreateFieldDialog(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouveau champ
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="space-y-3">
-                  {[...Array(4)].map((_, index) => (
-                    <Skeleton key={index} className="h-12 w-full" />
-                  ))}
-                </div>
-              ) : customFields.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="font-medium mb-2">Aucun champ personnalisé</p>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Créez des champs pour stocker des informations additionnelles.
-                  </p>
-                  <Button onClick={() => setShowCreateFieldDialog(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Créer un champ
-                  </Button>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Libellé</TableHead>
-                      <TableHead>Clé</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Requis</TableHead>
-                      <TableHead>Actif</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {customFields.map((field) => {
-                      const typeInfo = getFieldTypeInfo(field.field_type)
-                      return (
-                        <TableRow key={field.id}>
-                          <TableCell className="font-medium">{field.label}</TableCell>
-                          <TableCell>
-                            <code className="text-xs bg-muted px-2 py-1 rounded">{field.field_key}</code>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {typeInfo.icon}
-                              <span>{typeInfo.label}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>{field.is_required ? <Badge variant="secondary">Oui</Badge> : "Non"}</TableCell>
-                          <TableCell>
-                            <Switch
-                              checked={field.is_active}
-                              onCheckedChange={() => handleToggleFieldActive(field)}
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="icon" onClick={() => openEditFieldDialog(field)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  setSelectedField(field)
-                                  setShowDeleteFieldDialog(true)
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
+      {/* Delete tag dialog */}
       <AlertDialog open={!!deleteTagId} onOpenChange={() => setDeleteTagId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le tag ?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-[15px]">Supprimer le tag ?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px]">
               Cette action est irréversible. Le tag sera retiré de tous les contacts associés.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel className="h-8 text-[13px] rounded-lg">Annuler</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteTag}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="h-8 text-[13px] rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Supprimer
             </AlertDialogAction>
@@ -701,39 +715,41 @@ export default function TagsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Create field dialog */}
       <Dialog open={showCreateFieldDialog} onOpenChange={setShowCreateFieldDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nouveau champ personnalisé</DialogTitle>
-            <DialogDescription>Définissez un nouveau champ pour vos contacts</DialogDescription>
+            <DialogTitle className="text-[15px]">Nouveau champ personnalisé</DialogTitle>
+            <DialogDescription className="text-[13px]">Définissez un nouveau champ pour vos contacts</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="field-label">Libellé *</Label>
+          <div className="space-y-4 py-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="field-label" className="text-[13px]">Libellé *</Label>
               <Input
                 id="field-label"
                 placeholder="Ex: Entreprise"
                 value={fieldLabel}
                 onChange={(event) => setFieldLabel(event.target.value)}
+                className="h-9 text-[13px] rounded-lg"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Clé technique</Label>
-              <Input value={normalizeFieldKey(fieldLabel) || "auto"} disabled />
-              <p className="text-xs text-muted-foreground">
+            <div className="space-y-1.5">
+              <Label className="text-[13px]">Clé technique</Label>
+              <Input value={normalizeFieldKey(fieldLabel) || "auto"} disabled className="h-9 text-[13px] rounded-lg" />
+              <p className="text-[11px] text-muted-foreground">
                 Utilisée dans les templates : {"{{"}custom.{normalizeFieldKey(fieldLabel) || "company"}{"}}"}
               </p>
             </div>
-            <div className="space-y-2">
-              <Label>Type de champ</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[13px]">Type de champ</Label>
               <Select value={fieldType} onValueChange={(value) => setFieldType(value as CustomField["field_type"])}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9 text-[13px] rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {FIELD_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      <div className="flex items-center gap-2">
+                    <SelectItem key={type.value} value={type.value} className="text-[13px]">
+                      <div className="flex items-center gap-1.5">
                         {type.icon}
                         <span>{type.label}</span>
                       </div>
@@ -743,34 +759,36 @@ export default function TagsPage() {
               </Select>
             </div>
             {(fieldType === "select" || fieldType === "multiselect") && (
-              <div className="space-y-2">
-                <Label htmlFor="field-options">Options (une par ligne)</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="field-options" className="text-[13px]">Options (une par ligne)</Label>
                 <textarea
                   id="field-options"
-                  className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full min-h-[80px] rounded-lg border border-input bg-background px-3 py-2 text-[13px]"
                   placeholder={"Option 1\nOption 2\nOption 3"}
                   value={options}
                   onChange={(event) => setOptions(event.target.value)}
                 />
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="field-placeholder">Placeholder</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="field-placeholder" className="text-[13px]">Placeholder</Label>
               <Input
                 id="field-placeholder"
                 placeholder="Texte d'aide..."
                 value={placeholder}
                 onChange={(event) => setPlaceholder(event.target.value)}
+                className="h-9 text-[13px] rounded-lg"
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="field-required">Champ requis</Label>
+              <Label htmlFor="field-required" className="text-[13px]">Champ requis</Label>
               <Switch id="field-required" checked={isRequired} onCheckedChange={setIsRequired} />
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
+              className="h-8 text-[13px] rounded-lg"
               onClick={() => {
                 setShowCreateFieldDialog(false)
                 resetFieldForm()
@@ -778,64 +796,68 @@ export default function TagsPage() {
             >
               Annuler
             </Button>
-            <Button onClick={handleCreateField} disabled={isSavingField}>
-              {isSavingField && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button className="h-8 text-[13px] rounded-lg" onClick={handleCreateField} disabled={isSavingField}>
+              {isSavingField && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Créer
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Edit field dialog */}
       <Dialog open={showEditFieldDialog} onOpenChange={setShowEditFieldDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Modifier le champ</DialogTitle>
-            <DialogDescription>Modifiez les propriétés du champ personnalisé</DialogDescription>
+            <DialogTitle className="text-[15px]">Modifier le champ</DialogTitle>
+            <DialogDescription className="text-[13px]">Modifiez les propriétés du champ personnalisé</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-field-label">Libellé *</Label>
+          <div className="space-y-4 py-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-field-label" className="text-[13px]">Libellé *</Label>
               <Input
                 id="edit-field-label"
                 value={fieldLabel}
                 onChange={(event) => setFieldLabel(event.target.value)}
+                className="h-9 text-[13px] rounded-lg"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Clé technique</Label>
-              <Input value={fieldKey} disabled />
+            <div className="space-y-1.5">
+              <Label className="text-[13px]">Clé technique</Label>
+              <Input value={fieldKey} disabled className="h-9 text-[13px] rounded-lg" />
             </div>
-            <div className="space-y-2">
-              <Label>Type de champ</Label>
-              <Input value={getFieldTypeInfo(fieldType).label} disabled />
+            <div className="space-y-1.5">
+              <Label className="text-[13px]">Type de champ</Label>
+              <Input value={getFieldTypeInfo(fieldType).label} disabled className="h-9 text-[13px] rounded-lg" />
             </div>
             {(fieldType === "select" || fieldType === "multiselect") && (
-              <div className="space-y-2">
-                <Label htmlFor="edit-field-options">Options (une par ligne)</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-field-options" className="text-[13px]">Options (une par ligne)</Label>
                 <textarea
                   id="edit-field-options"
-                  className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full min-h-[80px] rounded-lg border border-input bg-background px-3 py-2 text-[13px]"
                   value={options}
                   onChange={(event) => setOptions(event.target.value)}
                 />
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="edit-field-placeholder">Placeholder</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-field-placeholder" className="text-[13px]">Placeholder</Label>
               <Input
                 id="edit-field-placeholder"
                 value={placeholder}
                 onChange={(event) => setPlaceholder(event.target.value)}
+                className="h-9 text-[13px] rounded-lg"
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="edit-field-required">Champ requis</Label>
+              <Label htmlFor="edit-field-required" className="text-[13px]">Champ requis</Label>
               <Switch id="edit-field-required" checked={isRequired} onCheckedChange={setIsRequired} />
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
+              className="h-8 text-[13px] rounded-lg"
               onClick={() => {
                 setShowEditFieldDialog(false)
                 resetFieldForm()
@@ -843,24 +865,26 @@ export default function TagsPage() {
             >
               Annuler
             </Button>
-            <Button onClick={handleEditField} disabled={isSavingField}>
-              {isSavingField && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button className="h-8 text-[13px] rounded-lg" onClick={handleEditField} disabled={isSavingField}>
+              {isSavingField && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Enregistrer
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Delete field dialog */}
       <AlertDialog open={showDeleteFieldDialog} onOpenChange={setShowDeleteFieldDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer ce champ ?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-[15px]">Supprimer ce champ ?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px]">
               Cette action est irréversible. Les données de ce champ seront perdues pour tous les contacts.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
+              className="h-8 text-[13px] rounded-lg"
               onClick={() => {
                 setShowDeleteFieldDialog(false)
                 resetFieldForm()
@@ -870,7 +894,7 @@ export default function TagsPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteField}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="h-8 text-[13px] rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Supprimer
             </AlertDialogAction>

@@ -25,7 +25,6 @@ import type {
   WhatsAppFlowDetail,
   WhatsAppFlowResponse,
   WhatsAppAccount,
-  WhatsAppAccountEvent,
   ConsentStatus,
   ConsentHistoryEntry,
   WhatsAppCreditBalance,
@@ -52,17 +51,23 @@ export const whatsappService = {
   async setConfig(
     organizationId: string,
     config: {
-      access_token: string
-      phone_number_id: string
-      business_account_id: string
-      enabled: boolean
+      phone_number_id?: string
+      business_account_id?: string
+      enabled?: boolean
+      ai_enabled?: boolean
+      ai_instructions?: string
+      ai_model?: string
+      ai_timeline?: string
     }
   ): Promise<{ success: boolean; message: string }> {
     const formData = new URLSearchParams()
-    formData.append("access_token", config.access_token)
-    formData.append("phone_number_id", config.phone_number_id)
-    formData.append("business_account_id", config.business_account_id)
-    formData.append("enabled", String(config.enabled))
+    if (config.phone_number_id) formData.append("phone_number_id", config.phone_number_id)
+    if (config.business_account_id) formData.append("business_account_id", config.business_account_id)
+    if (config.enabled !== undefined) formData.append("enabled", String(config.enabled))
+    if (config.ai_enabled !== undefined) formData.append("ai_enabled", String(config.ai_enabled))
+    if (config.ai_instructions !== undefined) formData.append("ai_instructions", config.ai_instructions)
+    if (config.ai_model !== undefined) formData.append("ai_model", config.ai_model)
+    if (config.ai_timeline !== undefined) formData.append("ai_timeline", config.ai_timeline)
 
     const { data } = await api.put<{ success: boolean; message: string }>(
       `/v1/organizations/${organizationId}/whatsapp`,
@@ -716,28 +721,6 @@ export const whatsappService = {
 
   // ============ Accounts ============
 
-  async createAccount(payload: {
-    waba_id: string
-    phone_number_id: string
-    display_phone_number: string
-    business_name: string
-    access_token: string
-    is_default?: boolean
-  }): Promise<{ success: boolean; account: WhatsAppAccount }> {
-    const formData = new URLSearchParams()
-    formData.append("waba_id", payload.waba_id)
-    formData.append("phone_number_id", payload.phone_number_id)
-    formData.append("display_phone_number", payload.display_phone_number)
-    formData.append("business_name", payload.business_name)
-    formData.append("access_token", payload.access_token)
-    if (payload.is_default !== undefined) formData.append("is_default", String(payload.is_default))
-    const { data } = await api.post<{ success: boolean; account: WhatsAppAccount }>(
-      "/v1/whatsapp/accounts",
-      formData
-    )
-    return data
-  },
-
   async getAccounts(
     status?: string,
     includeSummary?: boolean
@@ -746,26 +729,6 @@ export const whatsappService = {
       "/v1/whatsapp/accounts",
       { params: { status, include_summary: includeSummary } }
     )
-    return data
-  },
-
-  async getAccount(id: string, includeEvents?: boolean): Promise<WhatsAppAccount> {
-    const { data } = await api.get<WhatsAppAccount>(
-      `/v1/whatsapp/accounts/${id}`,
-      { params: { include_events: includeEvents } }
-    )
-    return data
-  },
-
-  async updateAccount(
-    id: string,
-    updates: { business_name?: string; display_phone_number?: string; access_token?: string }
-  ): Promise<WhatsAppAccount> {
-    const formData = new URLSearchParams()
-    if (updates.business_name) formData.append("business_name", updates.business_name)
-    if (updates.display_phone_number) formData.append("display_phone_number", updates.display_phone_number)
-    if (updates.access_token) formData.append("access_token", updates.access_token)
-    const { data } = await api.put<WhatsAppAccount>(`/v1/whatsapp/accounts/${id}`, formData)
     return data
   },
 
@@ -781,18 +744,6 @@ export const whatsappService = {
 
   async syncAccount(id: string): Promise<{ success: boolean }> {
     const { data } = await api.post<{ success: boolean }>(`/v1/whatsapp/accounts/${id}/sync`)
-    return data
-  },
-
-  async getAccountEvents(
-    id: string,
-    limit = 50,
-    offset = 0
-  ): Promise<{ events: WhatsAppAccountEvent[]; pagination: Pagination }> {
-    const { data } = await api.get<{ events: WhatsAppAccountEvent[]; pagination: Pagination }>(
-      `/v1/whatsapp/accounts/${id}/events`,
-      { params: { limit, offset } }
-    )
     return data
   },
 

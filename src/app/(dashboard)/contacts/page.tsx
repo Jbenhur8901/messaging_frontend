@@ -6,10 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { contactsService, tagsService, handleApiError } from "@/services"
 import type { Contact, Tag, Pagination } from "@/types"
 import { formatNumber, formatPhoneNumber } from "@/lib/utils"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -28,14 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +58,19 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  Check,
+  X,
+  RotateCcw,
+  Filter,
+  ArrowUpDown,
 } from "lucide-react"
+
+const stagger = (i: number) => ({
+  opacity: 0,
+  animation: `fadeIn 0.45s ease-out ${i * 0.06}s forwards`,
+})
+
+type TagFilterMode = "include" | "exclude"
 
 export default function ContactsPage() {
   const router = useRouter()
@@ -77,7 +81,7 @@ export default function ContactsPage() {
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([])
+  const [tagFilters, setTagFilters] = useState<Map<string, TagFilterMode>>(new Map())
   const [tagMatch, setTagMatch] = useState<"all" | "any">("all")
   const [statusFilter, setStatusFilter] = useState<"active" | "blocked" | "all">("all")
   const [sourceFilter, setSourceFilter] = useState<"" | "api" | "csv" | "manual">("")
@@ -96,6 +100,30 @@ export default function ContactsPage() {
   const [bulkTagsMode, setBulkTagsMode] = useState<"add" | "remove">("add")
   const [bulkTagIds, setBulkTagIds] = useState<string[]>([])
   const limit = 100
+
+  const includedTags = useMemo(
+    () => [...tagFilters.entries()].filter(([, mode]) => mode === "include").map(([id]) => id),
+    [tagFilters]
+  )
+  const excludedTags = useMemo(
+    () => [...tagFilters.entries()].filter(([, mode]) => mode === "exclude").map(([id]) => id),
+    [tagFilters]
+  )
+
+  const cycleTagFilter = (tagId: string) => {
+    setTagFilters((prev) => {
+      const next = new Map(prev)
+      const current = next.get(tagId)
+      if (!current) {
+        next.set(tagId, "include")
+      } else if (current === "include") {
+        next.set(tagId, "exclude")
+      } else {
+        next.delete(tagId)
+      }
+      return next
+    })
+  }
 
   const loadAllContacts = async () => {
     setIsLoading(true)
@@ -151,7 +179,11 @@ export default function ContactsPage() {
     const offsetParam = searchParams.get("offset")
 
     if (q) setSearchQuery(q)
-    if (tagIds.length > 0) setSelectedTagFilters(tagIds)
+    if (tagIds.length > 0) {
+      const map = new Map<string, TagFilterMode>()
+      tagIds.forEach((id) => map.set(id, "include"))
+      setTagFilters(map)
+    }
     if (tagMatchParam === "all" || tagMatchParam === "any") setTagMatch(tagMatchParam)
     if (
       statusParam === "active" ||
@@ -193,7 +225,7 @@ export default function ContactsPage() {
     setPage(1)
   }, [
     searchQuery,
-    selectedTagFilters,
+    tagFilters,
     tagMatch,
     statusFilter,
     sourceFilter,
@@ -338,7 +370,7 @@ export default function ContactsPage() {
 
   const resetFilters = () => {
     setSearchQuery("")
-    setSelectedTagFilters([])
+    setTagFilters(new Map())
     setTagMatch("all")
     setStatusFilter("all")
     setSourceFilter("")
@@ -353,8 +385,8 @@ export default function ContactsPage() {
     if (!isInitialized.current) return
     const params = new URLSearchParams()
     if (searchQuery) params.set("q", searchQuery)
-    if (selectedTagFilters.length > 0) params.set("tag_ids", selectedTagFilters.join(","))
-    if (selectedTagFilters.length > 0) params.set("tag_match", tagMatch)
+    if (includedTags.length > 0) params.set("tag_ids", includedTags.join(","))
+    if (includedTags.length > 0) params.set("tag_match", tagMatch)
     if (statusFilter) params.set("status", statusFilter)
     if (sourceFilter) params.set("source", sourceFilter)
     if (createdAfter) params.set("created_after", createdAfter)
@@ -367,7 +399,7 @@ export default function ContactsPage() {
     router.replace(query ? `/contacts?${query}` : "/contacts")
   }, [
     searchQuery,
-    selectedTagFilters,
+    includedTags,
     tagMatch,
     statusFilter,
     sourceFilter,
@@ -381,7 +413,7 @@ export default function ContactsPage() {
 
   const hasActiveFilters =
     searchQuery.trim().length > 0 ||
-    selectedTagFilters.length > 0 ||
+    tagFilters.size > 0 ||
     statusFilter !== "all" ||
     sourceFilter !== "" ||
     createdAfter !== "" ||
@@ -408,13 +440,20 @@ export default function ContactsPage() {
       })
     }
 
-    if (selectedTagFilters.length > 0) {
+    if (includedTags.length > 0) {
       list = list.filter((contact) => {
         const contactTagIds = contact.tags.map((tag) => tag.id)
         if (tagMatch === "all") {
-          return selectedTagFilters.every((id) => contactTagIds.includes(id))
+          return includedTags.every((id) => contactTagIds.includes(id))
         }
-        return selectedTagFilters.some((id) => contactTagIds.includes(id))
+        return includedTags.some((id) => contactTagIds.includes(id))
+      })
+    }
+
+    if (excludedTags.length > 0) {
+      list = list.filter((contact) => {
+        const contactTagIds = contact.tags.map((tag) => tag.id)
+        return !excludedTags.some((id) => contactTagIds.includes(id))
       })
     }
 
@@ -465,7 +504,8 @@ export default function ContactsPage() {
   }, [
     contacts,
     searchQuery,
-    selectedTagFilters,
+    includedTags,
+    excludedTags,
     tagMatch,
     statusFilter,
     sourceFilter,
@@ -482,172 +522,239 @@ export default function ContactsPage() {
     return filteredContacts.slice(start, start + limit)
   }, [filteredContacts, page])
 
+  const getInitials = (contact: Contact) => {
+    const first = contact.first_name?.[0] || ""
+    const last = contact.last_name?.[0] || ""
+    return (first + last).toUpperCase() || "?"
+  }
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Contacts</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl font-semibold tracking-tight">Contacts</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">
             Gérez vos contacts et leurs informations.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
+        <div className="flex flex-wrap gap-1.5">
+          <Button variant="outline" onClick={handleExport} className="h-8 text-[13px] rounded-lg gap-1.5">
+            <Download className="h-3.5 w-3.5" />
             Exporter
           </Button>
           <Link href="/contacts/import">
-            <Button variant="outline">
-              <Upload className="mr-2 h-4 w-4" />
+            <Button variant="outline" className="h-8 text-[13px] rounded-lg gap-1.5">
+              <Upload className="h-3.5 w-3.5" />
               Importer
             </Button>
           </Link>
           <Link href="/contacts/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
+            <Button className="h-8 text-[13px] rounded-lg gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
               Nouveau contact
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher par nom, email ou numéro..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <Badge
-                key={tag.id}
-                variant={selectedTagFilters.includes(tag.id) ? "default" : "outline"}
-                className="cursor-pointer"
-                style={{
-                  backgroundColor: selectedTagFilters.includes(tag.id) ? tag.color : undefined,
-                  borderColor: tag.color,
-                }}
-                onClick={() => {
-                  if (selectedTagFilters.includes(tag.id)) {
-                    setSelectedTagFilters(selectedTagFilters.filter((id) => id !== tag.id))
-                  } else {
-                    setSelectedTagFilters([...selectedTagFilters, tag.id])
-                  }
-                }}
-              >
-                {tag.name}
-              </Badge>
-            ))}
-          </div>
-        )}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1">
-            <Label>Statut</Label>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Tous" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="active">Actif</SelectItem>
-                <SelectItem value="blocked">Bloqué</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Source</Label>
-            <Select value={sourceFilter || "all"} onValueChange={(value) => setSourceFilter(value === "all" ? "" : (value as typeof sourceFilter))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Toutes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes</SelectItem>
-                <SelectItem value="api">API</SelectItem>
-                <SelectItem value="csv">CSV</SelectItem>
-                <SelectItem value="manual">Manuel</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Tags (match)</Label>
-            <Select value={tagMatch} onValueChange={(value) => setTagMatch(value as typeof tagMatch)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="any">Au moins un</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Trier par</Label>
-            <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="created_at">Date de création</SelectItem>
-                <SelectItem value="first_name">Prénom</SelectItem>
-                <SelectItem value="last_name">Nom</SelectItem>
-                <SelectItem value="phone_number">Téléphone</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Ordre</Label>
-            <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as typeof sortOrder)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="desc">Décroissant</SelectItem>
-                <SelectItem value="asc">Croissant</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Créé après</Label>
-            <Input
-              type="date"
-              value={createdAfter}
-              onChange={(e) => setCreatedAfter(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Créé avant</Label>
-            <Input
-              type="date"
-              value={createdBefore}
-              onChange={(e) => setCreatedBefore(e.target.value)}
-            />
-          </div>
-          <div className="flex items-end">
-            <Button variant="ghost" onClick={resetFilters}>
-              Réinitialiser
-            </Button>
-          </div>
-        </div>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Rechercher par nom, email ou numéro..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-9 text-[13px] pl-9 rounded-lg"
+        />
       </div>
 
+      {/* Tag filters with 3 states */}
+      {tags.length > 0 && (
+        <div className="space-y-2">
+          {(includedTags.length > 0 || excludedTags.length > 0) && (
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              {includedTags.length > 0 && (
+                <span>{includedTags.length} inclus</span>
+              )}
+              {includedTags.length > 0 && excludedTags.length > 0 && <span>·</span>}
+              {excludedTags.length > 0 && (
+                <span>{excludedTags.length} exclu{excludedTags.length > 1 ? "s" : ""}</span>
+              )}
+              <button
+                onClick={() => setTagFilters(new Map())}
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Réinitialiser
+              </button>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map((tag) => {
+              const mode = tagFilters.get(tag.id)
+              return (
+                <Badge
+                  key={tag.id}
+                  variant={mode ? "default" : "outline"}
+                  className="cursor-pointer text-[10px] h-6 gap-1 transition-all duration-200 select-none"
+                  style={
+                    mode === "include"
+                      ? { backgroundColor: tag.color, color: "#fff", borderColor: tag.color }
+                      : mode === "exclude"
+                        ? { backgroundColor: "hsl(var(--destructive))", color: "#fff", borderColor: "hsl(var(--destructive))", textDecoration: "line-through" }
+                        : { borderColor: tag.color, color: tag.color }
+                  }
+                  onClick={() => cycleTagFilter(tag.id)}
+                >
+                  {mode === "include" && <Check className="h-2.5 w-2.5" />}
+                  {mode === "exclude" && <X className="h-2.5 w-2.5" />}
+                  {tag.name}
+                </Badge>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Filters bar */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {/* ── Filter group ── */}
+        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+          <SelectTrigger
+            className={`h-8 w-auto min-w-0 gap-1.5 rounded-lg border px-2.5 text-[12px] transition-colors ${
+              statusFilter !== "all"
+                ? "border-primary/40 bg-primary/5 text-primary"
+                : "border-border"
+            }`}
+          >
+            <Filter className="h-3 w-3 shrink-0 opacity-50" />
+            <span className="text-muted-foreground">Statut:</span>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-[12px]">Tous</SelectItem>
+            <SelectItem value="active" className="text-[12px]">Actif</SelectItem>
+            <SelectItem value="blocked" className="text-[12px]">Bloqué</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={sourceFilter || "all"} onValueChange={(value) => setSourceFilter(value === "all" ? "" : (value as typeof sourceFilter))}>
+          <SelectTrigger
+            className={`h-8 w-auto min-w-0 gap-1.5 rounded-lg border px-2.5 text-[12px] transition-colors ${
+              sourceFilter !== ""
+                ? "border-primary/40 bg-primary/5 text-primary"
+                : "border-border"
+            }`}
+          >
+            <Filter className="h-3 w-3 shrink-0 opacity-50" />
+            <span className="text-muted-foreground">Source:</span>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-[12px]">Toutes</SelectItem>
+            <SelectItem value="api" className="text-[12px]">API</SelectItem>
+            <SelectItem value="csv" className="text-[12px]">CSV</SelectItem>
+            <SelectItem value="manual" className="text-[12px]">Manuel</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {(includedTags.length > 0 || excludedTags.length > 0) && (
+          <Select value={tagMatch} onValueChange={(value) => setTagMatch(value as typeof tagMatch)}>
+            <SelectTrigger
+              className="h-8 w-auto min-w-0 gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-2.5 text-[12px] text-primary transition-colors"
+            >
+              <Filter className="h-3 w-3 shrink-0 opacity-50" />
+              <span className="text-primary/60">Tags:</span>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-[12px]">Tous</SelectItem>
+              <SelectItem value="any" className="text-[12px]">Au moins un</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Separator */}
+        <div className="mx-1 h-4 w-px bg-border/60" />
+
+        {/* ── Sort group ── */}
+        <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
+          <SelectTrigger
+            className={`h-8 w-auto min-w-0 gap-1.5 rounded-lg border px-2.5 text-[12px] transition-colors ${
+              sortBy !== "created_at"
+                ? "border-primary/40 bg-primary/5 text-primary"
+                : "border-border"
+            }`}
+          >
+            <ArrowUpDown className="h-3 w-3 shrink-0 opacity-50" />
+            <span className="text-muted-foreground">Tri:</span>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="created_at" className="text-[12px]">Date création</SelectItem>
+            <SelectItem value="first_name" className="text-[12px]">Prénom</SelectItem>
+            <SelectItem value="last_name" className="text-[12px]">Nom</SelectItem>
+            <SelectItem value="phone_number" className="text-[12px]">Téléphone</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Button
+          variant="outline"
+          className={`h-8 w-8 p-0 rounded-lg transition-colors ${
+            sortOrder !== "desc"
+              ? "border-primary/40 bg-primary/5 text-primary"
+              : ""
+          }`}
+          onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+          title={sortOrder === "asc" ? "Croissant" : "Décroissant"}
+        >
+          <ArrowUpDown className={`h-3.5 w-3.5 transition-transform ${sortOrder === "asc" ? "rotate-180" : ""}`} />
+        </Button>
+
+        {/* Separator */}
+        <div className="mx-1 h-4 w-px bg-border/60" />
+
+        {/* ── Date group ── */}
+        <DatePicker
+          value={createdAfter}
+          onChange={setCreatedAfter}
+          label="Après:"
+          placeholder="Date début"
+        />
+        <DatePicker
+          value={createdBefore}
+          onChange={setCreatedBefore}
+          label="Avant:"
+          placeholder="Date fin"
+        />
+
+        {/* ── Reset ── */}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            onClick={resetFilters}
+            className="h-8 text-[12px] rounded-lg gap-1 text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Réinitialiser
+          </Button>
+        )}
+      </div>
+
+      {/* Bulk actions bar */}
       {selectedContacts.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/40 bg-card px-3 py-2">
-          <p className="text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/40 bg-card px-3 py-2">
+          <p className="text-[13px] text-muted-foreground">
             {selectedContacts.length} contact(s) sélectionné(s)
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSelectedContacts([])}>
+          <div className="flex flex-wrap gap-1.5">
+            <Button variant="outline" className="h-7 text-[12px] rounded-lg" onClick={() => setSelectedContacts([])}>
               Désélectionner
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              className="h-7 text-[12px] rounded-lg"
               onClick={() => {
                 setBulkTagsMode("add")
                 setBulkTagIds([])
@@ -658,7 +765,7 @@ export default function ContactsPage() {
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              className="h-7 text-[12px] rounded-lg"
               onClick={() => {
                 setBulkTagsMode("remove")
                 setBulkTagIds([])
@@ -667,198 +774,198 @@ export default function ContactsPage() {
             >
               Retirer tags
             </Button>
-            <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+            <Button variant="destructive" className="h-7 text-[12px] rounded-lg" onClick={() => setBulkDeleteOpen(true)}>
               Supprimer
             </Button>
           </div>
         </div>
       )}
 
-      {/* Contacts Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-6 space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : filteredContacts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <p className="text-lg font-medium">Aucun contact</p>
-              <p className="text-muted-foreground mb-4">
-                {hasActiveFilters
-                  ? "Aucun contact ne correspond à votre recherche"
-                  : "Commencez par ajouter des contacts"}
-              </p>
-              {!hasActiveFilters && (
-                <Link href="/contacts/new">
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nouveau contact
-                  </Button>
-                </Link>
-              )}
-            </div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={
-                          pagedContacts.length > 0 &&
-                          selectedContacts.length === pagedContacts.length
-                        }
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Téléphone</TableHead>
-                    <TableHead>Tags</TableHead>
-                    <TableHead className="text-right">Messages</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pagedContacts.map((contact) => (
-                    <TableRow key={contact.id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedContacts.includes(contact.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedContacts([...selectedContacts, contact.id])
-                            } else {
-                              setSelectedContacts(
-                                selectedContacts.filter((id) => id !== contact.id)
-                              )
-                            }
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">
-                            {contact.first_name || contact.last_name
-                              ? `${contact.first_name || ""} ${contact.last_name || ""}`
-                              : "—"}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {contact.email || "—"}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono">
-                        {formatPhoneNumber(contact.phone_number)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {contact.tags.slice(0, 2).map((tag) => (
-                            <Badge
-                              key={tag.id}
-                              variant="outline"
-                              style={{ borderColor: tag.color, color: tag.color }}
-                            >
-                              {tag.name}
-                            </Badge>
-                          ))}
-                          {contact.tags.length > 2 && (
-                            <Badge variant="secondary">
-                              +{contact.tags.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatNumber(contact.messages_sent)}
-                      </TableCell>
-                      <TableCell>
-                        {contact.is_blocked ? (
-                          <Badge variant="destructive">Bloqué</Badge>
-                        ) : contact.is_active ? (
-                          <Badge variant="success">Actif</Badge>
-                        ) : (
-                          <Badge variant="secondary">Inactif</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/contacts/${contact.id}`}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Modifier
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleBlock(contact.id, contact.is_blocked)}
-                            >
-                              {contact.is_blocked ? (
-                                <>
-                                  <CheckCircle className="mr-2 h-4 w-4" />
-                                  Débloquer
-                                </>
-                              ) : (
-                                <>
-                                  <Ban className="mr-2 h-4 w-4" />
-                                  Bloquer
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => setDeleteContactId(contact.id)}
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Supprimer
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between border-t px-4 py-3">
-                  <p className="text-sm text-muted-foreground">
-                    Page {page} sur {totalPages} ({filteredContacts.length} contacts)
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={page === totalPages}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
+      {/* Contact list */}
+      {isLoading ? (
+        <div className="space-y-1">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : filteredContacts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16">
+          <Users className="h-10 w-10 text-muted-foreground/50 mb-3" />
+          <p className="text-[13px] font-medium">Aucun contact</p>
+          <p className="text-[13px] text-muted-foreground mb-4">
+            {hasActiveFilters
+              ? "Aucun contact ne correspond à votre recherche"
+              : "Commencez par ajouter des contacts"}
+          </p>
+          {!hasActiveFilters && (
+            <Link href="/contacts/new">
+              <Button className="h-8 text-[13px] rounded-lg gap-1.5">
+                <Plus className="h-3.5 w-3.5" />
+                Nouveau contact
+              </Button>
+            </Link>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      ) : (
+        <>
+          {/* Select all row */}
+          <div className="flex items-center gap-3 px-4 py-1">
+            <Checkbox
+              checked={
+                pagedContacts.length > 0 &&
+                selectedContacts.length === pagedContacts.length
+              }
+              onCheckedChange={toggleSelectAll}
+            />
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
+              {pagedContacts.length} contact{pagedContacts.length > 1 ? "s" : ""}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            {pagedContacts.map((contact, i) => (
+              <div
+                key={contact.id}
+                className="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-accent/50 transition-colors duration-200"
+                style={stagger(i)}
+              >
+                {/* Checkbox */}
+                <Checkbox
+                  checked={selectedContacts.includes(contact.id)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedContacts([...selectedContacts, contact.id])
+                    } else {
+                      setSelectedContacts(
+                        selectedContacts.filter((id) => id !== contact.id)
+                      )
+                    }
+                  }}
+                />
+
+                {/* Avatar */}
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-medium">
+                  {getInitials(contact)}
+                </div>
+
+                {/* Name + email */}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium truncate">
+                    {contact.first_name || contact.last_name
+                      ? `${contact.first_name || ""} ${contact.last_name || ""}`.trim()
+                      : "—"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {contact.email || "—"}
+                  </p>
+                </div>
+
+                {/* Phone */}
+                <span className="hidden sm:block text-[11px] font-mono text-muted-foreground shrink-0">
+                  {formatPhoneNumber(contact.phone_number)}
+                </span>
+
+                {/* Tags */}
+                <div className="hidden md:flex flex-wrap gap-1 shrink-0 max-w-[200px]">
+                  {contact.tags.slice(0, 2).map((tag) => (
+                    <Badge
+                      key={tag.id}
+                      variant="outline"
+                      className="text-[10px] h-5"
+                      style={{ borderColor: tag.color, color: tag.color }}
+                    >
+                      {tag.name}
+                    </Badge>
+                  ))}
+                  {contact.tags.length > 2 && (
+                    <Badge variant="secondary" className="text-[10px] h-5">
+                      +{contact.tags.length - 2}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Status */}
+                <div className="hidden lg:block shrink-0">
+                  {contact.is_blocked ? (
+                    <Badge variant="destructive" className="text-[10px] h-5">Bloqué</Badge>
+                  ) : contact.is_active ? (
+                    <Badge variant="success" className="text-[10px] h-5">Actif</Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] h-5">Inactif</Badge>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild className="text-[13px]">
+                      <Link href={`/contacts/${contact.id}`}>
+                        <Edit className="mr-2 h-3.5 w-3.5" />
+                        Modifier
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-[13px]"
+                      onClick={() => handleBlock(contact.id, contact.is_blocked)}
+                    >
+                      {contact.is_blocked ? (
+                        <>
+                          <CheckCircle className="mr-2 h-3.5 w-3.5" />
+                          Débloquer
+                        </>
+                      ) : (
+                        <>
+                          <Ban className="mr-2 h-3.5 w-3.5" />
+                          Bloquer
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive text-[13px]"
+                      onClick={() => setDeleteContactId(contact.id)}
+                    >
+                      <Trash className="mr-2 h-3.5 w-3.5" />
+                      Supprimer
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-2">
+              <p className="text-[12px] text-muted-foreground">
+                Page {page} sur {totalPages} ({filteredContacts.length} contacts)
+              </p>
+              <div className="flex gap-1.5">
+                <Button
+                  variant="outline"
+                  className="h-7 w-7 p-0 rounded-lg"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-7 w-7 p-0 rounded-lg"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog
@@ -867,17 +974,17 @@ export default function ContactsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le contact ?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-[15px]">Supprimer le contact ?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px]">
               Cette action est irréversible. Le contact sera définitivement
               supprimé.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel className="h-8 text-[13px] rounded-lg">Annuler</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="h-8 text-[13px] rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Supprimer
             </AlertDialogAction>
@@ -897,24 +1004,26 @@ export default function ContactsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer des contacts</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[15px]">Supprimer des contacts</DialogTitle>
+            <DialogDescription className="text-[13px]">
               Cette action est irréversible et supprimera définitivement {selectedContacts.length} contact(s).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
             <div className="space-y-1">
-              <Label>Raison (optionnel)</Label>
+              <Label className="text-[13px]">Raison (optionnel)</Label>
               <Input
                 placeholder="Ex: Nettoyage RGPD"
                 value={bulkDeleteReason}
                 onChange={(e) => setBulkDeleteReason(e.target.value)}
+                className="h-9 text-[13px] rounded-lg"
               />
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
+              className="h-8 text-[13px] rounded-lg"
               onClick={() => {
                 setBulkDeleteOpen(false)
                 setBulkDeleteReason("")
@@ -922,7 +1031,7 @@ export default function ContactsPage() {
             >
               Annuler
             </Button>
-            <Button variant="destructive" onClick={handleBulkDelete}>
+            <Button variant="destructive" className="h-8 text-[13px] rounded-lg" onClick={handleBulkDelete}>
               Supprimer
             </Button>
           </DialogFooter>
@@ -941,21 +1050,21 @@ export default function ContactsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-[15px]">
               {bulkTagsMode === "add" ? "Ajouter des tags" : "Retirer des tags"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-[13px]">
               Sélectionnez les tags à {bulkTagsMode === "add" ? "ajouter" : "retirer"}.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-64 space-y-2 overflow-auto rounded-md border p-3">
+          <div className="max-h-64 space-y-2 overflow-auto rounded-lg border p-3">
             {tags.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun tag disponible.</p>
+              <p className="text-[13px] text-muted-foreground">Aucun tag disponible.</p>
             ) : (
               tags.map((tag) => (
                 <label
                   key={tag.id}
-                  className="flex items-center gap-2 text-sm"
+                  className="flex items-center gap-2 text-[13px]"
                 >
                   <Checkbox
                     checked={bulkTagIds.includes(tag.id)}
@@ -967,9 +1076,7 @@ export default function ContactsPage() {
                       }
                     }}
                   />
-                  <span
-                    className="inline-flex items-center gap-2"
-                  >
+                  <span className="inline-flex items-center gap-2">
                     <span
                       className="h-2 w-2 rounded-full"
                       style={{ backgroundColor: tag.color }}
@@ -983,6 +1090,7 @@ export default function ContactsPage() {
           <DialogFooter>
             <Button
               variant="outline"
+              className="h-8 text-[13px] rounded-lg"
               onClick={() => {
                 setBulkTagsOpen(false)
                 setBulkTagIds([])
@@ -991,6 +1099,7 @@ export default function ContactsPage() {
               Annuler
             </Button>
             <Button
+              className="h-8 text-[13px] rounded-lg"
               onClick={handleBulkTags}
               disabled={bulkTagIds.length === 0 || selectedContacts.length === 0}
             >

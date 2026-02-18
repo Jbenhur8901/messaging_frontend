@@ -4,20 +4,11 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useOrganizationStore, useAuthStore } from "@/stores"
 import type { OrganizationRole } from "@/types"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -52,7 +43,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import {
   ArrowLeft,
-  Users,
   UserPlus,
   MoreHorizontal,
   Mail,
@@ -61,6 +51,11 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { formatDate } from "@/lib/utils"
+
+const stagger = (i: number) => ({
+  opacity: 0,
+  animation: `fadeIn 0.45s ease-out ${i * 0.06}s forwards`,
+})
 
 const roleLabels: Record<OrganizationRole, string> = {
   owner: "Propriétaire",
@@ -160,225 +155,211 @@ export default function MembersPage() {
 
   if (isLoading && members.length === 0) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="space-y-5">
+        <Skeleton className="h-7 w-48 rounded-xl" />
+        <div className="space-y-1">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-xl" />
+          ))}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
           <Link href="/organization">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+              <ArrowLeft className="h-3.5 w-3.5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-semibold">Membres</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-xl font-semibold tracking-tight">Membres</h1>
+            <p className="text-[13px] text-muted-foreground mt-0.5">
               Gérez les membres de {currentOrganization?.name}.
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {canManageMembers && (
+        {canManageMembers && (
           <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
+              <Button className="h-8 text-[13px] rounded-lg gap-1.5">
+                <UserPlus className="h-3.5 w-3.5" />
                 Inviter un membre
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Inviter un membre</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-[15px]">Inviter un membre</DialogTitle>
+                <DialogDescription className="text-[13px]">
                   Envoyez une invitation par email pour rejoindre l&apos;organisation.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+              <div className="space-y-4 py-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-[13px]">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="nom@exemple.com"
+                    className="h-9 text-[13px] rounded-lg"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Rôle</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="role" className="text-[13px]">Rôle</Label>
                   <Select
                     value={inviteRole}
                     onValueChange={(value) => setInviteRole(value as OrganizationRole)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 text-[13px] rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">Administrateur</SelectItem>
-                      <SelectItem value="member">Membre</SelectItem>
-                      <SelectItem value="viewer">Lecteur</SelectItem>
+                      <SelectItem value="admin" className="text-[13px]">Administrateur</SelectItem>
+                      <SelectItem value="member" className="text-[13px]">Membre</SelectItem>
+                      <SelectItem value="viewer" className="text-[13px]">Lecteur</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsInviteOpen(false)}>
+                <Button variant="outline" onClick={() => setIsInviteOpen(false)} className="h-8 text-[13px] rounded-lg">
                   Annuler
                 </Button>
-                <Button onClick={handleInvite} disabled={isInviting}>
+                <Button onClick={handleInvite} disabled={isInviting} className="h-8 text-[13px] rounded-lg">
                   {isInviting ? "Envoi..." : "Envoyer l'invitation"}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Members List */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            <CardTitle>Membres de l&apos;équipe</CardTitle>
-          </div>
-          <CardDescription>
-            {members.length} membre{members.length > 1 ? "s" : ""}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Membre</TableHead>
-                <TableHead>Rôle</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Date</TableHead>
-                {canManageMembers && <TableHead className="w-12"></TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map((member) => {
-                const isCurrentUser = member.user_id === user?.id
-                const isOwner = member.role === "owner"
-                const canModify = canManageMembers && !isCurrentUser && !isOwner
+      {/* Count */}
+      <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+        {members.length} membre{members.length > 1 ? "s" : ""}
+      </p>
 
-                return (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">
-                          {member.first_name && member.last_name
-                            ? `${member.first_name} ${member.last_name}`
-                            : member.email}
-                          {isCurrentUser && (
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              (vous)
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {member.email}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {canModify ? (
-                        <Select
-                          value={member.role}
-                          onValueChange={(value) =>
-                            handleRoleChange(member.id, value as OrganizationRole)
-                          }
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Administrateur</SelectItem>
-                            <SelectItem value="member">Membre</SelectItem>
-                            <SelectItem value="viewer">Lecteur</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant={roleBadgeVariants[member.role]}>
-                          {roleLabels[member.role]}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={member.status === "accepted" ? "success" : "secondary"}
-                      >
-                        {member.status === "accepted" ? "Actif" : "En attente"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatDate(member.joined_at || member.invited_at || "")}
-                      </div>
-                    </TableCell>
-                    {canManageMembers && (
-                      <TableCell>
-                        {canModify && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => setMemberToRemove(member.id)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Supprimer
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Members List */}
+      <div className="space-y-1">
+        {members.map((member, i) => {
+          const isCurrentUser = member.user_id === user?.id
+          const isOwner = member.role === "owner"
+          const canModify = canManageMembers && !isCurrentUser && !isOwner
+
+          return (
+            <div
+              key={member.id}
+              className="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-accent/50 transition-colors duration-200"
+              style={stagger(i)}
+            >
+              {/* Avatar initials */}
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-medium">
+                {(member.first_name?.[0] || member.email[0] || "?").toUpperCase()}
+              </div>
+
+              {/* Name + email */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[13px] font-medium truncate">
+                    {member.first_name && member.last_name
+                      ? `${member.first_name} ${member.last_name}`
+                      : member.email}
+                  </p>
+                  {isCurrentUser && (
+                    <span className="text-[10px] text-muted-foreground">(vous)</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Mail className="h-2.5 w-2.5" />
+                  {member.email}
+                </div>
+              </div>
+
+              {/* Role */}
+              <div className="hidden sm:block shrink-0">
+                {canModify ? (
+                  <Select
+                    value={member.role}
+                    onValueChange={(value) =>
+                      handleRoleChange(member.id, value as OrganizationRole)
+                    }
+                  >
+                    <SelectTrigger className="h-7 w-[130px] text-[12px] rounded-lg">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin" className="text-[12px]">Administrateur</SelectItem>
+                      <SelectItem value="member" className="text-[12px]">Membre</SelectItem>
+                      <SelectItem value="viewer" className="text-[12px]">Lecteur</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Badge variant={roleBadgeVariants[member.role]} className="text-[10px] h-5">
+                    {roleLabels[member.role]}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Status */}
+              <Badge
+                variant={member.status === "accepted" ? "success" : "secondary"}
+                className="hidden md:inline-flex text-[10px] h-5 shrink-0"
+              >
+                {member.status === "accepted" ? "Actif" : "En attente"}
+              </Badge>
+
+              {/* Date */}
+              <div className="hidden lg:flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
+                <Clock className="h-2.5 w-2.5" />
+                {formatDate(member.joined_at || member.invited_at || "")}
+              </div>
+
+              {/* Actions */}
+              {canManageMembers && canModify && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      className="text-destructive text-[13px]"
+                      onClick={() => setMemberToRemove(member.id)}
+                    >
+                      <Trash2 className="mr-2 h-3.5 w-3.5" />
+                      Supprimer
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          )
+        })}
+      </div>
 
       {/* Remove Confirmation Dialog */}
       <AlertDialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer ce membre ?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-[15px]">Supprimer ce membre ?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px]">
               Cette action est irréversible. Le membre perdra l&apos;accès à
               l&apos;organisation.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel className="h-8 text-[13px] rounded-lg">Annuler</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemove}
               disabled={isRemoving}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="h-8 text-[13px] rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isRemoving ? "Suppression..." : "Supprimer"}
             </AlertDialogAction>

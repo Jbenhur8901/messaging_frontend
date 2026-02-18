@@ -38,13 +38,15 @@ export function MFARecommendationDialog() {
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <ShieldCheck className="h-6 w-6 text-muted-foreground" />
-            <DialogTitle className="text-xl">
+          <div className="mb-2 flex flex-col items-center gap-2 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <ShieldCheck className="h-5 w-5 text-primary animate-shield-pulse" />
+            </div>
+            <DialogTitle className="text-[15px]">
               Sécurisez votre compte
             </DialogTitle>
           </div>
-          <DialogDescription className="text-base">
+          <DialogDescription className="text-[13px] text-center">
             Nous vous recommandons d&apos;activer l&apos;authentification à double facteur (2FA)
             pour protéger votre compte contre les accès non autorisés.
           </DialogDescription>
@@ -56,7 +58,7 @@ export function MFARecommendationDialog() {
               <Shield className="h-4 w-4" />
               Pourquoi activer le 2FA ?
             </h4>
-            <ul className="text-sm text-muted-foreground space-y-2">
+            <ul className="text-[11px] text-muted-foreground space-y-2">
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
                 Protection supplémentaire même si votre mot de passe est compromis
@@ -74,10 +76,10 @@ export function MFARecommendationDialog() {
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={handleClose} className="h-8 text-[13px] rounded-lg w-full sm:w-auto">
             Plus tard
           </Button>
-          <Button onClick={handleSetupNow} className="w-full sm:w-auto">
+          <Button onClick={handleSetupNow} className="h-8 text-[13px] rounded-lg w-full sm:w-auto">
             <ShieldCheck className="mr-2 h-4 w-4" />
             Configurer maintenant
           </Button>

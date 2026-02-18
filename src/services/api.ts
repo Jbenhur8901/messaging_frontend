@@ -78,6 +78,18 @@ api.interceptors.response.use(
       _retry?: boolean
     }
 
+    // 403 on organization endpoint → stale org in localStorage, clear it
+    if (
+      error.response?.status === 403 &&
+      originalRequest.url?.includes("/organizations/")
+    ) {
+      try {
+        localStorage.removeItem("organization-storage")
+      } catch {
+        // Ignore storage errors
+      }
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
 
@@ -207,7 +219,7 @@ export const handleApiError = (error: unknown): APIError => {
         case 402:
           return { type: "credits", message: "Crédits insuffisants", status }
         case 403:
-          return { type: "forbidden", message: "Accès refusé", status }
+          return { type: "forbidden", message: detailMessage || "Accès refusé", status }
         case 404:
           return { type: "notFound", message: "Ressource non trouvée", status }
         case 409:

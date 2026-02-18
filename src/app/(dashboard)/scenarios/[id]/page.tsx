@@ -10,7 +10,6 @@ import type {
   ScenarioNodeType,
 } from "@/types"
 import { formatDate, formatNumber } from "@/lib/utils"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -24,23 +23,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import {
-  AlignJustify,
   Bot,
-  ChevronDown,
-  ChevronUp,
   CheckCircle2,
-  Code2,
   Copy,
   Ellipsis,
   Eye,
   FileText,
   GitBranch,
-  GripVertical,
-  HelpCircle,
   ImageIcon,
   Link,
   Loader2,
-
   MapPin,
   MessageSquare,
   Play,
@@ -48,14 +40,11 @@ import {
   Search,
   Send,
   Globe,
-
   Save,
   Tag,
   Trash2,
   Upload,
-  Variable,
   Video,
-  WandSparkles,
   X,
   Zap,
   ZoomIn,
@@ -103,8 +92,6 @@ const NODE_TYPES: Array<{ value: ScenarioNodeType; label: string; group: string 
   { value: "trigger_incoming", label: "Déclencheur: message entrant", group: "Déclencheurs" },
   { value: "trigger_keyword", label: "Déclencheur: mot-clé", group: "Déclencheurs" },
   { value: "trigger_webhook", label: "Déclencheur: webhook", group: "Déclencheurs" },
-  { value: "trigger_event", label: "Déclencheur: événement", group: "Déclencheurs" },
-  { value: "trigger_schedule", label: "Déclencheur: planifié", group: "Déclencheurs" },
   { value: "message_text", label: "Message texte", group: "Messages" },
   { value: "message_image", label: "Message image", group: "Messages" },
   { value: "message_audio", label: "Message audio", group: "Messages" },
@@ -114,12 +101,9 @@ const NODE_TYPES: Array<{ value: ScenarioNodeType; label: string; group: string 
   { value: "message_quick_reply", label: "Message réponses rapides", group: "Messages" },
   { value: "message_template", label: "Message template WhatsApp", group: "Messages" },
   { value: "condition_if", label: "Condition IF/ELSE", group: "Logique" },
-  { value: "action_wait", label: "Action: délai", group: "Actions" },
   { value: "action_tag", label: "Action: attribuer tag", group: "Actions" },
   { value: "action_update_field", label: "Action: mise à jour champ", group: "Actions" },
   { value: "action_api_call", label: "Action: appel API", group: "Actions" },
-  { value: "action_redirect_scenario", label: "Action: redirection scénario", group: "Actions" },
-  { value: "action_assign_agent", label: "Action: assigner agent", group: "Actions" },
   { value: "end", label: "Fin", group: "Actions" },
 ]
 
@@ -191,13 +175,6 @@ const getNodePreviewText = (node: ScenarioNode) => {
   if (t === "trigger_incoming") return "Se déclenche à chaque message entrant"
   if (t === "trigger_keyword") return node.config.keyword ? `Mot-clé: ${node.config.keyword}` : "Mot-clé non configuré"
   if (t === "trigger_webhook") return node.config.endpoint ? `Webhook: ${node.config.endpoint}` : "Webhook"
-  if (t === "trigger_event") return node.config.event ? `Événement: ${node.config.event}` : "Événement non configuré"
-  if (t === "trigger_schedule") return node.config.cron ? `Cron: ${node.config.cron}` : "Planification non configurée"
-  if (t === "action_wait") {
-    const delay = node.config.delayMinutes
-    const unit = node.config.delayUnit || "minutes"
-    return delay ? `Attendre ${delay} ${unit}` : "Délai non configuré"
-  }
   if (t === "action_tag") {
     const action = node.config.tag_action === "remove" ? "Retirer" : "Ajouter"
     return node.config.tag ? `${action} tag: ${node.config.tag}` : "Tag non configuré"
@@ -207,8 +184,6 @@ const getNodePreviewText = (node: ScenarioNode) => {
     const method = node.config.method || "GET"
     return node.config.url ? `${method} ${node.config.url}` : "Appel API non configuré"
   }
-  if (t === "action_redirect_scenario") return node.config.targetScenarioId ? `→ Scénario ${node.config.targetScenarioId}` : "Redirection non configurée"
-  if (t === "action_assign_agent") return node.config.queue ? `File: ${node.config.queue}` : "Agent non configuré"
   if (t === "end") return "Ce noeud termine le flux"
   if (t === "condition_if") return ""
   // Messages
@@ -258,44 +233,21 @@ const CREATION_OPTIONS = [
     globeShadow: "shadow-emerald-400/30",
   },
   {
-    id: "question",
-    label: "Question",
-    icon: HelpCircle,
-    type: "message_text" as ScenarioNodeType,
-    title: "Question",
-    config: { content: "", is_question: true },
+    id: "action",
+    label: "Agent IA",
+    icon: Bot,
+    type: "action_api_call" as ScenarioNodeType,
+    title: "Agent IA",
+    config: {
+      ai_enabled: true,
+      ai_instructions: "",
+      ai_msg: "{{message}}",
+      ai_model: "gpt-4o",
+      ai_session_id: "",
+      ai_timeline: "3600",
+    },
     globeBg: "bg-violet-500",
     globeShadow: "shadow-violet-400/30",
-  },
-  {
-    id: "action",
-    label: "Action",
-    icon: WandSparkles,
-    type: "action_wait" as ScenarioNodeType,
-    title: "Action",
-    config: {},
-    globeBg: "bg-amber-500",
-    globeShadow: "shadow-amber-400/30",
-  },
-  {
-    id: "condition",
-    label: "Condition",
-    icon: GitBranch,
-    type: "condition_if" as ScenarioNodeType,
-    title: "Condition",
-    config: { expression: "" },
-    globeBg: "bg-blue-500",
-    globeShadow: "shadow-blue-400/30",
-  },
-  {
-    id: "goto",
-    label: "Aller à",
-    icon: Send,
-    type: "action_redirect_scenario" as ScenarioNodeType,
-    title: "Aller à",
-    config: {},
-    globeBg: "bg-rose-500",
-    globeShadow: "shadow-rose-400/30",
   },
 ]
 
@@ -309,15 +261,6 @@ const SECONDARY_TRIGGER_ICONS = [
   { type: "trigger_incoming" as ScenarioNodeType, icon: Play, label: "Début" },
 ]
 
-const parseJsonArray = (val: string | number | boolean | string[] | null | undefined): Array<{ key: string; value: string; testValue?: string }> => {
-  if (typeof val !== "string" || !val.trim()) return []
-  try {
-    const parsed = JSON.parse(val)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
 
 const getNodeFamily = (type: ScenarioNodeType) => {
   if (type.startsWith("trigger_")) return "trigger" as const
@@ -327,9 +270,6 @@ const getNodeFamily = (type: ScenarioNodeType) => {
 }
 
 const TRIGGER_TYPE_OPTIONS = NODE_TYPES.filter((item) => item.group === "Déclencheurs")
-const MESSAGE_TYPE_OPTIONS = NODE_TYPES.filter((item) => item.group === "Messages")
-const ACTION_TYPE_OPTIONS = NODE_TYPES.filter((item) => item.group === "Actions")
-const LOGIC_TYPE_OPTIONS = NODE_TYPES.filter((item) => item.group === "Logique")
 
 const MESSAGE_COMPONENT_OPTIONS = [
   { id: "text", label: "Texte", icon: MessageSquare },
@@ -364,9 +304,7 @@ const EMOJI_OPTIONS = [
 const NEXT_STEP_OPTIONS = [
   { id: "open_website", label: "Ouvrir un site web", icon: Globe, tone: "bg-blue-100" },
   { id: "send_message", label: "Envoyer un message", icon: Send, tone: "bg-lime-100" },
-  { id: "question", label: "Question", icon: HelpCircle, tone: "bg-orange-100" },
-  { id: "action", label: "Action", icon: WandSparkles, tone: "bg-fuchsia-100" },
-  { id: "condition", label: "Condition", icon: GitBranch, tone: "bg-yellow-100" },
+  { id: "action", label: "Agent IA", icon: Bot, tone: "bg-violet-100" },
   { id: "goto", label: "Aller à", icon: Ellipsis, tone: "bg-slate-100" },
 ]
 
@@ -436,7 +374,6 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
   const [draggingMessageCardIndex, setDraggingMessageCardIndex] = useState<number | null>(null)
   const [dragOverMessageCardIndex, setDragOverMessageCardIndex] = useState<number | null>(null)
   const [floatingActionNodeId, setFloatingActionNodeId] = useState<string | null>(null)
-  const [apiCallTab, setApiCallTab] = useState<"params" | "headers" | "body" | "auth" | "response">("params")
   const connectionDroppedOnInputRef = useRef(false)
 
   const floatingActionNode = useMemo(() => {
@@ -449,9 +386,6 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
     return findNode(scenario, selectedNodeId) ?? null
   }, [scenario, selectedNodeId])
 
-  useEffect(() => {
-    setApiCallTab("params")
-  }, [floatingActionNodeId])
 
   const loadScenario = useCallback(async () => {
     setIsLoading(true)
@@ -1084,10 +1018,8 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
     if (!targetNodeId && messageButtonDraft.nextStepId && messageButtonDraft.nextStepId !== "open_website") {
       const mapStepToNodeType = (stepId: string): { type: ScenarioNodeType; title: string } => {
         if (stepId === "send_message") return { type: "message_text", title: "Envoyer un message" }
-        if (stepId === "question") return { type: "message_text", title: "Question" }
-        if (stepId === "action") return { type: "action_wait", title: "Action" }
-        if (stepId === "condition") return { type: "condition_if", title: "Condition" }
-        return { type: "action_redirect_scenario", title: "Aller à" }
+        if (stepId === "action") return { type: "action_api_call", title: "Agent IA" }
+        return { type: "end", title: "Fin" }
       }
       const mapped = mapStepToNodeType(messageButtonDraft.nextStepId)
       targetNodeId = addNode(mapped.type, undefined, mapped.title) ?? null
@@ -1204,46 +1136,47 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
           onMouseDown={handleCanvasMouseDown}
           onWheel={handleCanvasWheel}
         >
-          <div className="absolute left-4 top-4 z-30 inline-flex items-center gap-3 rounded-xl border border-border/70 bg-card/95 px-3 py-2.5 shadow-lg backdrop-blur">
-            <Button onClick={publishScenario} size="sm">
-              <Upload className="mr-2 h-4 w-4" />
+          <div className="absolute left-4 top-4 z-30 inline-flex items-center gap-2 rounded-xl border border-border/40 bg-card/95 px-2.5 py-2 shadow-lg backdrop-blur">
+            <Button onClick={publishScenario} size="sm" className="h-8 gap-1.5 text-[13px] rounded-lg">
+              <Upload className="h-3.5 w-3.5" />
               Publier
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Ellipsis className="h-4 w-4" />
+                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
+                  <Ellipsis className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem onClick={() => setShowScenarioOverlay((prev) => !prev)}>
-                  <Eye className="mr-2 h-4 w-4" />
+                  <Eye className="mr-2 h-3.5 w-3.5" />
                   Visualiser
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={runPreview}>
-                  <Bot className="mr-2 h-4 w-4" />
+                  <Bot className="mr-2 h-3.5 w-3.5" />
                   Tester le flow
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={saveVersion}>
-                  <Save className="mr-2 h-4 w-4" />
+                  <Save className="mr-2 h-3.5 w-3.5" />
                   Sauvegarder version
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <div className="mx-1 h-6 w-px bg-border" />
-            <Button variant="outline" size="icon" onClick={() => setZoomValue(zoom - 0.1)}>
-              <ZoomOut className="h-4 w-4" />
+            <div className="mx-0.5 h-5 w-px bg-border/60" />
+            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setZoomValue(zoom - 0.1)}>
+              <ZoomOut className="h-3.5 w-3.5" />
             </Button>
-            <span className="w-12 text-center text-sm text-muted-foreground">
+            <span className="w-10 text-center text-[12px] text-muted-foreground">
               {Math.round(zoom * 100)}%
             </span>
-            <Button variant="outline" size="icon" onClick={() => setZoomValue(zoom + 0.1)}>
-              <ZoomIn className="h-4 w-4" />
+            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setZoomValue(zoom + 0.1)}>
+              <ZoomIn className="h-3.5 w-3.5" />
             </Button>
-            <div className="mx-1 h-6 w-px bg-border" />
+            <div className="mx-0.5 h-5 w-px bg-border/60" />
             <Button
               variant="outline"
               size="sm"
+              className="h-8 gap-1.5 text-[13px] rounded-lg"
               onClick={() => {
                 const lastNode = scenario.flow.nodes[scenario.flow.nodes.length - 1]
                 const posX = lastNode ? lastNode.position.x + 300 : 400
@@ -1257,7 +1190,7 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                 })
               }}
             >
-              <Plus className="mr-1.5 h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
               Ajouter
             </Button>
           </div>
@@ -1564,37 +1497,37 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
 
           {createNodeMenu && (
             <div
-              className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+              className="absolute inset-0 z-40 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
               onClick={() => setCreateNodeMenu(null)}
             >
               <div
-                className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl"
+                className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="mb-8 flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-gray-900">Ajouter une étape</h3>
+                <div className="mb-5 flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-gray-900">Ajouter une étape</h3>
                   <button
                     type="button"
-                    className="rounded-full border border-gray-200 px-4 py-1.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                     onClick={() => setCreateNodeMenu(null)}
                   >
-                    Annuler
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-3 gap-x-6 gap-y-8 sm:grid-cols-4">
+                <div className="grid grid-cols-3 gap-x-5 gap-y-6 sm:grid-cols-5">
                   {CREATION_OPTIONS.map((option) => {
                     const Icon = option.icon
                     return (
                       <button
                         key={option.id}
                         type="button"
-                        className="group flex flex-col items-center gap-3 transition-transform hover:scale-110"
+                        className="group flex flex-col items-center gap-2 transition-transform hover:scale-105"
                         onClick={() => createNodeFromMenu(option.id)}
                       >
-                        <div className={`relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-shadow group-hover:shadow-xl ${option.globeBg} ${option.globeShadow}`}>
-                          <Icon className="h-6 w-6 text-white" strokeWidth={1.8} />
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-full shadow-md transition-shadow group-hover:shadow-lg ${option.globeBg} ${option.globeShadow}`}>
+                          <Icon className="h-5 w-5 text-white" strokeWidth={1.8} />
                         </div>
-                        <span className="text-center text-xs font-medium leading-tight text-gray-500 group-hover:text-gray-900">
+                        <span className="text-center text-[11px] font-medium leading-tight text-gray-500 group-hover:text-gray-900">
                           {option.label}
                         </span>
                       </button>
@@ -1606,24 +1539,25 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
           )}
 
           {showScenarioOverlay && (
-            <Card className="absolute bottom-3 left-3 z-30 h-[78%] w-[430px] overflow-hidden shadow-lg">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <CardTitle>Paramètres scénario</CardTitle>
-                    <CardDescription>
-                      Overlay de configuration, statistiques et validation.
-                    </CardDescription>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setShowScenarioOverlay(false)}>
-                    Fermer
-                  </Button>
+            <div className="absolute bottom-3 left-3 z-30 h-[78%] w-[400px] overflow-hidden rounded-2xl border border-border/40 bg-white shadow-lg">
+              <div className="flex items-center justify-between border-b border-border/40 px-5 py-3.5">
+                <div>
+                  <h3 className="text-base font-semibold tracking-tight">Paramètres</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Configuration et statistiques</p>
                 </div>
-              </CardHeader>
-              <CardContent className="h-[calc(100%-5.25rem)] space-y-4 overflow-y-auto">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Nom</label>
+                <button
+                  type="button"
+                  className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  onClick={() => setShowScenarioOverlay(false)}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="h-[calc(100%-4rem)] space-y-3 overflow-y-auto px-5 py-4">
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-medium">Nom</label>
                   <Input
+                    className="h-9 text-[13px]"
                     value={scenario.name}
                     onChange={(event) =>
                       updateScenario((draft) => ({
@@ -1633,8 +1567,8 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                     }
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Description</label>
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-medium">Description</label>
                   <Textarea
                     value={scenario.description}
                     onChange={(event) =>
@@ -1643,121 +1577,129 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                         description: event.target.value,
                       }))
                     }
-                    className="min-h-[85px]"
+                    className="min-h-[70px] text-[13px]"
                   />
                 </div>
-                <div className="flex items-center justify-between rounded-md border px-3 py-2">
-                  <span className="text-sm">Publié</span>
+                <div className="flex items-center justify-between rounded-lg border border-border/40 px-3 py-2.5">
+                  <span className="text-[13px]">Publié</span>
                   <Switch
                     checked={scenario.status === "active"}
                     onCheckedChange={toggleDraftMode}
                   />
                 </div>
                 {lastSavedAt && (
-                  <p className="text-xs text-muted-foreground">Dernière sauvegarde: {formatDate(lastSavedAt)}</p>
+                  <p className="text-[11px] text-muted-foreground">Dernière sauvegarde: {formatDate(lastSavedAt)}</p>
                 )}
-                <Button variant="outline" className="w-full" onClick={validateCurrentScenario}>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                <Button variant="outline" size="sm" className="w-full h-8 text-[13px] rounded-lg gap-1.5" onClick={validateCurrentScenario}>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
                   Valider le flow
                 </Button>
 
-                <div className="space-y-2 border-t pt-4">
-                  <p className="text-sm font-semibold">Variables globales</p>
+                <div className="space-y-2 border-t border-border/40 pt-3">
+                  <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Variables globales</p>
                   {scenario.global_variables.map((variable) => (
-                    <div key={variable.id} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                    <div key={variable.id} className="grid grid-cols-[1fr_1fr_auto] gap-1.5">
                       <Input
                         placeholder="clé"
+                        className="h-8 text-[12px]"
                         value={variable.key}
                         onChange={(event) => updateGlobalVariable(variable.id, { key: event.target.value })}
                       />
                       <Input
                         placeholder="valeur"
+                        className="h-8 text-[12px]"
                         value={variable.value}
                         onChange={(event) => updateGlobalVariable(variable.id, { value: event.target.value })}
                       />
                       <Button
-                        variant="outline"
-                        size="icon"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500"
                         onClick={() => removeGlobalVariable(variable.id)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   ))}
-                  <Button variant="outline" className="w-full" onClick={addGlobalVariable}>
-                    <Plus className="mr-2 h-4 w-4" />
+                  <Button variant="outline" size="sm" className="w-full h-8 text-[12px] rounded-lg gap-1.5" onClick={addGlobalVariable}>
+                    <Plus className="h-3 w-3" />
                     Ajouter variable
                   </Button>
                 </div>
 
-                <div className="space-y-2 border-t pt-4">
-                  <p className="text-sm font-semibold">Visualisation parcours</p>
+                <div className="space-y-2 border-t border-border/40 pt-3">
+                  <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Parcours</p>
                   {previewPath.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Lance la preview pour voir la progression des blocs.
+                    <p className="text-[12px] text-muted-foreground">
+                      Lance la preview pour voir la progression.
                     </p>
                   ) : (
                     previewPath.map((nodeId, index) => {
                       const node = findNode(scenario, nodeId)
                       if (!node) return null
                       return (
-                        <div key={nodeId} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                          <Badge variant="outline">{index + 1}</Badge>
-                          <span className="line-clamp-1">{node.title}</span>
+                        <div key={nodeId} className="flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
+                          <Badge variant="outline" className="text-[10px]">{index + 1}</Badge>
+                          <span className="text-[12px] line-clamp-1">{node.title}</span>
                         </div>
                       )
                     })
                   )}
                 </div>
 
-                <div className="space-y-2 border-t pt-4">
-                  <p className="text-sm font-semibold">Stats & versions</p>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-md border p-2">
-                      <p className="text-muted-foreground">Déclenchements</p>
-                      <p className="text-base font-semibold">{formatNumber(scenario.stats.trigger_count)}</p>
+                <div className="space-y-2 border-t border-border/40 pt-3">
+                  <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Stats & versions</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="rounded-lg border border-border/40 p-2">
+                      <p className="text-[11px] text-muted-foreground">Déclenchements</p>
+                      <p className="text-[13px] font-semibold">{formatNumber(scenario.stats.trigger_count)}</p>
                     </div>
-                    <div className="rounded-md border p-2">
-                      <p className="text-muted-foreground">Messages envoyés</p>
-                      <p className="text-base font-semibold">{formatNumber(scenario.stats.total_messages_sent)}</p>
+                    <div className="rounded-lg border border-border/40 p-2">
+                      <p className="text-[11px] text-muted-foreground">Messages envoyés</p>
+                      <p className="text-[13px] font-semibold">{formatNumber(scenario.stats.total_messages_sent)}</p>
                     </div>
-                    <div className="rounded-md border p-2">
-                      <p className="text-muted-foreground">Taux completion</p>
-                      <p className="text-base font-semibold">{scenario.stats.completion_rate}%</p>
+                    <div className="rounded-lg border border-border/40 p-2">
+                      <p className="text-[11px] text-muted-foreground">Taux completion</p>
+                      <p className="text-[13px] font-semibold">{scenario.stats.completion_rate}%</p>
                     </div>
-                    <div className="rounded-md border p-2">
-                      <p className="text-muted-foreground">Dernier déclenchement</p>
-                      <p className="text-base font-semibold">
+                    <div className="rounded-lg border border-border/40 p-2">
+                      <p className="text-[11px] text-muted-foreground">Dernier déclenchement</p>
+                      <p className="text-[13px] font-semibold">
                         {scenario.stats.last_triggered_at ? formatDate(scenario.stats.last_triggered_at) : "-"}
                       </p>
                     </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {scenario.versions.slice(0, 6).map((version) => (
-                      <div key={version.id} className="rounded-md border px-3 py-2">
-                        <p className="text-sm font-medium">{version.note}</p>
-                        <p className="text-xs text-muted-foreground">{formatDate(version.created_at)}</p>
+                      <div key={version.id} className="rounded-lg border border-border/40 px-3 py-2">
+                        <p className="text-[12px] font-medium">{version.note}</p>
+                        <p className="text-[11px] text-muted-foreground">{formatDate(version.created_at)}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="space-y-2 border-t pt-4">
-                  <p className="text-sm font-semibold">Connexions</p>
+                <div className="space-y-2 border-t border-border/40 pt-3">
+                  <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Connexions</p>
                   {scenario.flow.edges.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Aucune connexion définie.</p>
+                    <p className="text-[12px] text-muted-foreground">Aucune connexion définie.</p>
                   ) : (
                     scenario.flow.edges.map((edge) => {
                       const source = findNode(scenario, edge.source)
                       const target = findNode(scenario, edge.target)
                       return (
-                        <div key={edge.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2">
-                          <div className="min-w-0 text-xs">
-                            <p className="truncate font-medium">{source?.title ?? "Bloc"} → {target?.title ?? "Bloc"}</p>
-                            {edge.label && <p className="text-muted-foreground">Label: {edge.label}</p>}
+                        <div key={edge.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/40 px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-[12px] font-medium">{source?.title ?? "Bloc"} → {target?.title ?? "Bloc"}</p>
+                            {edge.label && <p className="text-[11px] text-muted-foreground">Label: {edge.label}</p>}
                           </div>
-                          <Button variant="outline" size="icon" onClick={() => removeEdge(edge.id)}>
-                            <Trash2 className="h-4 w-4" />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500"
+                            onClick={() => removeEdge(edge.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       )
@@ -1766,15 +1708,15 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                 </div>
 
                 {validationErrors.length > 0 && (
-                  <div className="space-y-2 rounded-md border border-destructive/30 p-3">
-                    <p className="text-sm font-semibold text-destructive">Erreurs de logique</p>
+                  <div className="space-y-1.5 rounded-lg border border-destructive/30 p-3">
+                    <p className="text-[13px] font-semibold text-destructive">Erreurs de logique</p>
                     {validationErrors.map((error) => (
-                      <p key={error} className="text-sm text-destructive">• {error}</p>
+                      <p key={error} className="text-[12px] text-destructive">• {error}</p>
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* SIDE PANEL REMOVED — floating panel handles all node types */}
@@ -1796,51 +1738,46 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
               onClick={() => setFloatingActionNodeId(null)}
             >
               <div
-                className="absolute left-1/2 top-1/2 w-full max-w-2xl max-h-[85vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+                className={`absolute left-1/2 top-1/2 w-full -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white shadow-2xl ${
+                  fFamily === "action" ? "max-w-[640px] max-h-[90vh] p-7" :
+                  fFamily === "message" ? "max-w-2xl max-h-[85vh] p-6" :
+                  "max-w-[580px] max-h-[80vh] p-6"
+                }`}
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="mb-5 flex items-center justify-between">
+                <div className="mb-6 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {(() => {
                       const FloatingIcon = getNodeTypeIcon(floatingActionNode.type)
-                      return <FloatingIcon className="h-5 w-5 text-gray-500" />
+                      return (
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${getNodeBadgeStyle(floatingActionNode.type)}`}>
+                          <FloatingIcon className="h-4 w-4" />
+                        </div>
+                      )
                     })()}
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {floatingActionNode.title || NODE_TYPE_LABELS[floatingActionNode.type]}
-                    </h3>
-                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${getNodeBadgeStyle(floatingActionNode.type)}`}>
-                      {getNodeFamilyLabel(floatingActionNode.type)}
-                    </span>
+                    <div>
+                      <h3 className="text-[15px] font-semibold text-gray-900">
+                        {floatingActionNode.title || NODE_TYPE_LABELS[floatingActionNode.type]}
+                      </h3>
+                      <p className="text-[11px] text-gray-400">{getNodeFamilyLabel(floatingActionNode.type)}</p>
+                    </div>
                   </div>
                   <button
                     type="button"
-                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                     onClick={() => setFloatingActionNodeId(null)}
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
                 <div className="space-y-4">
-                  {/* Note */}
-                  <Textarea
-                    value={typeof floatingActionNode.config.note === "string" ? floatingActionNode.config.note : ""}
-                    onChange={(event) =>
-                      updateNodeById(floatingActionNode.id, (node) => ({
-                        ...node,
-                        config: { ...node.config, note: event.target.value },
-                      }))
-                    }
-                    placeholder="ajouter une note..."
-                    className="min-h-[50px] resize-y border-amber-200 bg-amber-50/80 text-sm placeholder:text-gray-400"
-                  />
-
                   {/* ===== TRIGGER CONFIG ===== */}
                   {fFamily === "trigger" && (
                     <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-500">Type de déclencheur</label>
+                      <div className="space-y-1.5">
+                        <label className="text-[13px] font-medium text-gray-500">Type de déclencheur</label>
                         <select
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm"
+                          className="w-full h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px]"
                           value={floatingActionNode.type}
                           onChange={(event) =>
                             updateNodeById(floatingActionNode.id, (node) => ({
@@ -1857,15 +1794,15 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                       </div>
 
                       {floatingActionNode.type === "trigger_incoming" && (
-                        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-relaxed text-blue-800">
+                        <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-[13px] leading-relaxed text-blue-800">
                           Ce déclencheur s&apos;active à chaque message entrant. Aucune configuration supplémentaire n&apos;est nécessaire.
                         </div>
                       )}
 
                       {floatingActionNode.type === "trigger_keyword" && (
                         <>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">Mot-clé</label>
+                          <div className="space-y-1.5">
+                            <label className="text-[13px] font-medium text-gray-500">Mot-clé</label>
                             <Input
                               value={typeof floatingActionNode.config.keyword === "string" ? floatingActionNode.config.keyword : ""}
                               onChange={(event) =>
@@ -1877,8 +1814,8 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                               placeholder="Ex: bonjour, aide, start..."
                             />
                           </div>
-                          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3">
-                            <span className="text-sm text-gray-700">Sensible à la casse</span>
+                          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+                            <span className="text-[13px] text-gray-700">Sensible à la casse</span>
                             <Switch
                               checked={Boolean(floatingActionNode.config.case_sensitive)}
                               onCheckedChange={(checked) =>
@@ -1893,17 +1830,18 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                       )}
 
                       {floatingActionNode.type === "trigger_webhook" && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Endpoint webhook</label>
-                          <div className="flex gap-2">
+                        <div className="space-y-1.5">
+                          <label className="text-[13px] font-medium text-gray-500">Endpoint webhook</label>
+                          <div className="flex gap-1.5">
                             <Input
                               readOnly
                               value={typeof floatingActionNode.config.endpoint === "string" ? floatingActionNode.config.endpoint : `/api/webhooks/${floatingActionNode.id.slice(0, 8)}`}
-                              className="flex-1 bg-gray-50 font-mono text-xs"
+                              className="h-9 flex-1 bg-gray-50 font-mono text-[12px]"
                             />
                             <Button
                               variant="outline"
                               size="icon"
+                              className="h-9 w-9 shrink-0 rounded-lg"
                               onClick={() => {
                                 const endpoint = typeof floatingActionNode.config.endpoint === "string"
                                   ? floatingActionNode.config.endpoint
@@ -1912,94 +1850,23 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                                 toast.success("Endpoint copié")
                               }}
                             >
-                              <Copy className="h-4 w-4" />
+                              <Copy className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
                       )}
 
-                      {floatingActionNode.type === "trigger_event" && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Événement</label>
-                          <select
-                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm"
-                            value={typeof floatingActionNode.config.event === "string" ? floatingActionNode.config.event : ""}
-                            onChange={(event) =>
-                              updateNodeById(floatingActionNode.id, (node) => ({
-                                ...node,
-                                config: { ...node.config, event: event.target.value },
-                              }))
-                            }
-                          >
-                            <option value="">Sélectionner un événement...</option>
-                            <option value="contact.created">Contact créé</option>
-                            <option value="contact.updated">Contact mis à jour</option>
-                            <option value="tag.added">Tag ajouté</option>
-                            <option value="tag.removed">Tag retiré</option>
-                            <option value="conversation.opened">Conversation ouverte</option>
-                            <option value="conversation.closed">Conversation fermée</option>
-                          </select>
-                        </div>
-                      )}
-
-                      {floatingActionNode.type === "trigger_schedule" && (
-                        <>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">Expression cron</label>
-                            <Input
-                              value={typeof floatingActionNode.config.cron === "string" ? floatingActionNode.config.cron : ""}
-                              onChange={(event) =>
-                                updateNodeById(floatingActionNode.id, (node) => ({
-                                  ...node,
-                                  config: { ...node.config, cron: event.target.value },
-                                }))
-                              }
-                              placeholder="Ex: 0 * * * * (toutes les heures)"
-                              className="font-mono text-xs"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">Raccourcis</label>
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                { label: "Toutes les heures", cron: "0 * * * *" },
-                                { label: "Tous les jours (9h)", cron: "0 9 * * *" },
-                                { label: "Chaque lundi", cron: "0 9 * * 1" },
-                                { label: "1er du mois", cron: "0 9 1 * *" },
-                              ].map((preset) => (
-                                <button
-                                  key={preset.cron}
-                                  type="button"
-                                  className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                                    floatingActionNode.config.cron === preset.cron
-                                      ? "border-blue-300 bg-blue-50 text-blue-700"
-                                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                                  }`}
-                                  onClick={() =>
-                                    updateNodeById(floatingActionNode.id, (node) => ({
-                                      ...node,
-                                      config: { ...node.config, cron: preset.cron },
-                                    }))
-                                  }
-                                >
-                                  {preset.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
                     </div>
                   )}
 
                   {/* ===== CONDITION / LOGIC CONFIG ===== */}
                   {fFamily === "logic" && (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <div className="rounded-lg border border-gray-200 bg-white">
-                        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-                          <span className="text-sm font-semibold text-gray-900">Si correspond à</span>
+                        <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2.5">
+                          <span className="text-[13px] font-semibold text-gray-900">Si correspond à</span>
                           <select
-                            className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-600"
+                            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] text-gray-600"
                             value={typeof floatingActionNode.config.match_mode === "string" ? floatingActionNode.config.match_mode : "all"}
                             onChange={(event) =>
                               updateNodeById(floatingActionNode.id, (node) => ({
@@ -2012,7 +1879,7 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                             <option value="any">au moins une condition</option>
                           </select>
                         </div>
-                        <div className="space-y-2.5 p-4">
+                        <div className="space-y-2 p-3">
                           {(() => {
                             const conditions = Array.isArray(floatingActionNode.config.conditions)
                               ? floatingActionNode.config.conditions.filter((c): c is string => typeof c === "string")
@@ -2039,7 +1906,7 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                                     className="h-9 flex-1 text-sm"
                                   />
                                   <select
-                                    className="h-9 rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-600"
+                                    className="h-8 rounded-md border border-gray-200 bg-white px-2 text-[12px] text-gray-600"
                                     value={operator}
                                     onChange={(event) => {
                                       updateNodeById(floatingActionNode.id, (node) => {
@@ -2111,21 +1978,71 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                           </button>
                         </div>
                       </div>
-                      <div className="rounded-lg border border-gray-200 bg-white px-4 py-3">
-                        <p className="mb-1.5 text-sm font-semibold text-gray-900">Sinon</p>
-                        <p className="text-[13px] text-gray-500">Les contacts qui ne remplissent pas les conditions suivront la branche &quot;Non&quot;.</p>
+                      <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+                        <p className="mb-1 text-[13px] font-semibold text-gray-900">Sinon</p>
+                        <p className="text-[12px] text-gray-500">Les contacts qui ne remplissent pas les conditions suivront la branche &quot;Non&quot;.</p>
                       </div>
                     </div>
                   )}
 
                   {/* ===== MESSAGE CONFIG ===== */}
                   {fFamily === "message" && (
-                    <div className="space-y-4">
-                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                        Utilisez les options ci-dessous pour construire votre message.
+                    <div className="space-y-3">
+                      {/* AI Toggle */}
+                      <div className="rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50 p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100">
+                              <Bot className="h-4.5 w-4.5 text-violet-600" />
+                            </div>
+                            <div>
+                              <p className="text-[13px] font-semibold text-gray-900">Activer l&apos;IA</p>
+                              <p className="text-[11px] text-gray-500">Réponse automatique via l&apos;agent IA</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={Boolean(floatingActionNode.config.ai_enabled)}
+                            onCheckedChange={(checked) =>
+                              updateNodeById(floatingActionNode.id, (n) => ({
+                                ...n,
+                                config: {
+                                  ...n.config,
+                                  ai_enabled: checked,
+                                  ai_msg: checked ? "{{message}}" : n.config.ai_msg,
+                                  ai_model: n.config.ai_model || "gpt-4o",
+                                  ai_timeline: n.config.ai_timeline || "3600",
+                                },
+                              }))
+                            }
+                          />
+                        </div>
+                        {Boolean(floatingActionNode.config.ai_enabled) && (
+                          <div className="mt-4 space-y-3">
+                            <div className="space-y-1.5">
+                              <label className="text-[12px] font-medium text-violet-700">Instructions de l&apos;agent</label>
+                              <Textarea
+                                value={typeof floatingActionNode.config.ai_instructions === "string" ? floatingActionNode.config.ai_instructions : ""}
+                                onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, ai_instructions: e.target.value } }))}
+                                placeholder="Ex: Tu es un assistant commercial pour notre entreprise. Réponds de manière professionnelle aux questions des clients..."
+                                className="min-h-[80px] border-violet-200 bg-white text-[13px] placeholder:text-gray-400 focus:border-violet-400"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 rounded-lg bg-white/80 px-3 py-2 text-[11px] text-violet-600">
+                              <Zap className="h-3.5 w-3.5 shrink-0" />
+                              Le message du client est envoyé automatiquement à l&apos;IA. La réponse sera utilisée comme contenu du message.
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Message cards */}
+                      {!floatingActionNode.config.ai_enabled && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[13px] text-emerald-800">
+                        Utilisez les options ci-dessous pour construire votre message.
+                      </div>
+                      )}
+
+                      {/* Message cards (hidden when AI enabled) */}
+                      {!floatingActionNode.config.ai_enabled && (<>
                       <div className="space-y-2">
                         {fMessageItems.map((itemType, index) => {
                           const mediaType = fMessageMediaTypes[index] || "image"
@@ -2244,14 +2161,14 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                       </div>
 
                       {/* Add message component buttons */}
-                      <div className="grid grid-cols-2 gap-2.5 rounded-lg border bg-gray-50 p-3">
+                      <div className="grid grid-cols-2 gap-2 rounded-lg border bg-gray-50 p-2.5">
                         {MESSAGE_COMPONENT_OPTIONS.map((option) => {
                           const OptionIcon = option.icon
                           return (
                             <button
                               key={option.id}
                               type="button"
-                              className="relative flex min-h-[64px] flex-col items-start justify-center rounded-lg border border-dashed px-3 py-3 text-sm bg-white transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted"
+                              className="relative flex min-h-[52px] flex-col items-start justify-center rounded-lg border border-dashed px-3 py-2.5 text-[13px] bg-white transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted"
                               onClick={() =>
                                 updateNodeById(floatingActionNode.id, (node) => {
                                   const items = Array.isArray(node.config.message_items) ? node.config.message_items.filter((item): item is string => typeof item === "string") : []
@@ -2273,8 +2190,8 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
 
                       {/* Quick Replies */}
                       {floatingActionNode.type === "message_quick_reply" && (
-                        <div className="space-y-3 rounded-lg border bg-white p-4">
-                          <p className="text-sm font-semibold text-gray-900">Réponses rapides</p>
+                        <div className="space-y-2.5 rounded-lg border bg-white p-3">
+                          <p className="text-[13px] font-semibold text-gray-900">Réponses rapides</p>
                           {(() => {
                             const quickReplies = Array.isArray(floatingActionNode.config.quickReplies)
                               ? floatingActionNode.config.quickReplies.filter((r): r is string => typeof r === "string")
@@ -2330,342 +2247,108 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                           </button>
                         </div>
                       )}
+                      </>)}
                     </div>
                   )}
 
-                  {/* ===== ACTION CONFIG ===== */}
+                  {/* ===== ACTION CONFIG (Agent IA) ===== */}
                   {fFamily === "action" && (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-500">Type d&apos;action</label>
-                        <select
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm"
-                          value={floatingActionNode.type}
-                          onChange={(event) =>
-                            updateNodeById(floatingActionNode.id, (node) => ({
-                              ...node,
-                              type: event.target.value as ScenarioNodeType,
-                              title: NODE_TYPE_LABELS[event.target.value as ScenarioNodeType] || node.title,
-                            }))
-                          }
-                        >
-                          {ACTION_TYPE_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
+                    <div className="space-y-5">
+                      {/* AI Agent banner */}
+                      <div className="rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50 p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
+                            <Bot className="h-5 w-5 text-violet-600" />
+                          </div>
+                          <div>
+                            <p className="text-[14px] font-semibold text-gray-900">Agent IA</p>
+                            <p className="text-[12px] text-gray-500">Génère une réponse intelligente via l&apos;IA pour répondre automatiquement aux messages.</p>
+                          </div>
+                        </div>
                       </div>
 
-                      {floatingActionNode.type === "end" && (
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-700">
-                          Ce noeud termine le flux. Le contact sortira du scénario à cette étape.
-                        </div>
-                      )}
+                      {/* Instructions */}
+                      <div className="space-y-2">
+                        <label className="text-[13px] font-medium text-gray-700">Instructions de l&apos;agent</label>
+                        <p className="text-[11px] leading-relaxed text-gray-400">Décrivez le comportement de l&apos;IA : ton, rôle, informations à donner, limites, etc.</p>
+                        <Textarea
+                          value={typeof floatingActionNode.config.ai_instructions === "string" ? floatingActionNode.config.ai_instructions : ""}
+                          onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, ai_instructions: e.target.value } }))}
+                          placeholder="Ex: Tu es un assistant commercial pour notre entreprise. Réponds de manière professionnelle et concise aux questions des clients sur nos produits et services..."
+                          className="min-h-[120px] rounded-lg border-gray-200 text-[13px] leading-relaxed placeholder:text-gray-400"
+                        />
+                      </div>
 
-                      {floatingActionNode.type === "action_wait" && (
-                        <div className="flex gap-2">
-                          <div className="flex-1 space-y-2">
-                            <label className="text-sm font-medium text-gray-500">Durée</label>
+                      {/* Message template */}
+                      <div className="space-y-2">
+                        <label className="text-[13px] font-medium text-gray-700">Message à envoyer à l&apos;IA</label>
+                        <p className="text-[11px] leading-relaxed text-gray-400">Utilisez <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-violet-600">{"{{message}}"}</code> pour insérer le message du client.</p>
+                        <Input
+                          value={typeof floatingActionNode.config.ai_msg === "string" ? floatingActionNode.config.ai_msg : "{{message}}"}
+                          onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, ai_msg: e.target.value } }))}
+                          placeholder="{{message}}"
+                          className="h-10 rounded-lg text-[13px] font-mono"
+                        />
+                      </div>
+
+                      {/* Response info */}
+                      <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Réponse attendue</p>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between rounded-md bg-white px-3 py-2 text-[12px]">
+                            <span className="font-mono text-violet-600">inference</span>
+                            <span className="text-gray-400">Texte de la réponse IA</span>
+                          </div>
+                          <div className="flex items-center justify-between rounded-md bg-white px-3 py-2 text-[12px]">
+                            <span className="font-mono text-violet-600">credits</span>
+                            <span className="text-gray-400">Crédits consommés</span>
+                          </div>
+                        </div>
+                        <p className="mt-2.5 text-[11px] leading-relaxed text-gray-400">
+                          Le champ <code className="rounded bg-white px-1 py-0.5 font-mono text-[10px] text-violet-600">inference</code> sera utilisé comme contenu de la réponse envoyée au client.
+                        </p>
+                      </div>
+
+                      {/* Model config (collapsed) */}
+                      <details className="group rounded-lg border border-gray-200">
+                        <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-[13px] font-medium text-gray-600 hover:bg-gray-50">
+                          Configuration avancée
+                          <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        </summary>
+                        <div className="space-y-3 border-t border-gray-100 p-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[12px] font-medium text-gray-500">Modèle</label>
+                            <select
+                              className="w-full h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px]"
+                              value={typeof floatingActionNode.config.ai_model === "string" ? floatingActionNode.config.ai_model : "gpt-4o"}
+                              onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, ai_model: e.target.value } }))}
+                            >
+                              <option value="gpt-4o">GPT-4o</option>
+                              <option value="gpt-4o-mini">GPT-4o Mini</option>
+                              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[12px] font-medium text-gray-500">Session ID</label>
+                            <Input
+                              value={typeof floatingActionNode.config.ai_session_id === "string" ? floatingActionNode.config.ai_session_id : ""}
+                              onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, ai_session_id: e.target.value } }))}
+                              placeholder="Auto-généré si vide (contact_id)"
+                              className="h-9 text-[12px] font-mono"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[12px] font-medium text-gray-500">Durée session (sec)</label>
                             <Input
                               type="number"
-                              min={1}
-                              value={typeof floatingActionNode.config.delayMinutes === "number" ? floatingActionNode.config.delayMinutes : ""}
-                              onChange={(event) =>
-                                updateNodeById(floatingActionNode.id, (node) => ({
-                                  ...node,
-                                  config: { ...node.config, delayMinutes: Number(event.target.value) || 0 },
-                                }))
-                              }
-                              placeholder="5"
+                              value={typeof floatingActionNode.config.ai_timeline === "string" ? floatingActionNode.config.ai_timeline : "3600"}
+                              onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, ai_timeline: e.target.value } }))}
+                              placeholder="3600"
+                              className="h-9 text-[12px]"
                             />
                           </div>
-                          <div className="w-28 space-y-2">
-                            <label className="text-sm font-medium text-gray-500">Unité</label>
-                            <select
-                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm"
-                              value={typeof floatingActionNode.config.delayUnit === "string" ? floatingActionNode.config.delayUnit : "minutes"}
-                              onChange={(event) =>
-                                updateNodeById(floatingActionNode.id, (node) => ({
-                                  ...node,
-                                  config: { ...node.config, delayUnit: event.target.value },
-                                }))
-                              }
-                            >
-                              <option value="minutes">Minutes</option>
-                              <option value="heures">Heures</option>
-                              <option value="jours">Jours</option>
-                            </select>
-                          </div>
                         </div>
-                      )}
-
-                      {floatingActionNode.type === "action_tag" && (
-                        <>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">Action</label>
-                            <select
-                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm"
-                              value={typeof floatingActionNode.config.tag_action === "string" ? floatingActionNode.config.tag_action : "add"}
-                              onChange={(event) =>
-                                updateNodeById(floatingActionNode.id, (node) => ({
-                                  ...node,
-                                  config: { ...node.config, tag_action: event.target.value },
-                                }))
-                              }
-                            >
-                              <option value="add">Ajouter le tag</option>
-                              <option value="remove">Retirer le tag</option>
-                            </select>
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">Nom du tag</label>
-                            <Input
-                              value={typeof floatingActionNode.config.tag === "string" ? floatingActionNode.config.tag : ""}
-                              onChange={(event) =>
-                                updateNodeById(floatingActionNode.id, (node) => ({
-                                  ...node,
-                                  config: { ...node.config, tag: event.target.value },
-                                }))
-                              }
-                              placeholder="Ex: vip, prospect, newsletter..."
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {floatingActionNode.type === "action_update_field" && (
-                        <>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">Champ</label>
-                            <Input
-                              value={typeof floatingActionNode.config.field === "string" ? floatingActionNode.config.field : ""}
-                              onChange={(event) =>
-                                updateNodeById(floatingActionNode.id, (node) => ({
-                                  ...node,
-                                  config: { ...node.config, field: event.target.value },
-                                }))
-                              }
-                              placeholder="Ex: contact.name, custom_field..."
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">Valeur</label>
-                            <Input
-                              value={typeof floatingActionNode.config.value === "string" ? floatingActionNode.config.value : ""}
-                              onChange={(event) =>
-                                updateNodeById(floatingActionNode.id, (node) => ({
-                                  ...node,
-                                  config: { ...node.config, value: event.target.value },
-                                }))
-                              }
-                              placeholder="Nouvelle valeur"
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {floatingActionNode.type === "action_api_call" && (
-                        <div className="space-y-4">
-                          <div className="flex gap-2">
-                            <select
-                              className="w-28 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium"
-                              value={typeof floatingActionNode.config.method === "string" ? floatingActionNode.config.method : "GET"}
-                              onChange={(event) =>
-                                updateNodeById(floatingActionNode.id, (node) => ({
-                                  ...node,
-                                  config: { ...node.config, method: event.target.value },
-                                }))
-                              }
-                            >
-                              <option value="GET">GET</option>
-                              <option value="POST">POST</option>
-                              <option value="PUT">PUT</option>
-                              <option value="PATCH">PATCH</option>
-                              <option value="DELETE">DELETE</option>
-                            </select>
-                            <div className="relative flex-1">
-                              <Input
-                                value={typeof floatingActionNode.config.url === "string" ? floatingActionNode.config.url : ""}
-                                onChange={(event) =>
-                                  updateNodeById(floatingActionNode.id, (node) => ({
-                                    ...node,
-                                    config: { ...node.config, url: event.target.value },
-                                  }))
-                                }
-                                placeholder="https://api.example.com/endpoint"
-                                className="pr-9 font-mono text-xs"
-                              />
-                              <button
-                                type="button"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:text-gray-600"
-                                title="Insérer variable"
-                              >
-                                <Variable className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                            <Button variant="outline" size="icon" title="Tester">
-                              <Play className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <div className="flex gap-1 border-b border-gray-200">
-                            {([
-                              { id: "params" as const, label: "URL Params" },
-                              { id: "headers" as const, label: "Headers" },
-                              { id: "body" as const, label: "Body" },
-                              { id: "auth" as const, label: "Authorization" },
-                              { id: "response" as const, label: "Response" },
-                            ]).map((tab) => (
-                              <button
-                                key={tab.id}
-                                type="button"
-                                className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${
-                                  apiCallTab === tab.id
-                                    ? "border-blue-500 text-blue-600"
-                                    : "border-transparent text-gray-500 hover:text-gray-700"
-                                }`}
-                                onClick={() => setApiCallTab(tab.id)}
-                              >
-                                {tab.label}
-                              </button>
-                            ))}
-                          </div>
-                          {apiCallTab === "params" && (
-                            <div className="space-y-3">
-                              <p className="text-xs font-medium text-gray-500">Paramètres de requête</p>
-                              {(() => {
-                                const pairs = parseJsonArray(floatingActionNode.config.url_params)
-                                return (
-                                  <>
-                                    {pairs.map((pair, idx) => (
-                                      <div key={idx} className="flex items-center gap-2">
-                                        <Input value={pair.key} onChange={(e) => { const u = [...pairs]; u[idx] = { ...u[idx], key: e.target.value }; updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, url_params: JSON.stringify(u) } })) }} placeholder="Clé" className="h-8 flex-1 text-xs" />
-                                        <Input value={pair.value} onChange={(e) => { const u = [...pairs]; u[idx] = { ...u[idx], value: e.target.value }; updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, url_params: JSON.stringify(u) } })) }} placeholder="Valeur" className="h-8 flex-1 text-xs" />
-                                        <button type="button" className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-rose-50 hover:text-rose-500" onClick={() => { const u = pairs.filter((_, i) => i !== idx); updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, url_params: JSON.stringify(u) } })) }}><Trash2 className="h-3.5 w-3.5" /></button>
-                                      </div>
-                                    ))}
-                                    <button type="button" className="flex h-8 w-full items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs text-blue-500 hover:border-blue-300 hover:bg-blue-50" onClick={() => { const u = [...pairs, { key: "", value: "" }]; updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, url_params: JSON.stringify(u) } })) }}>+ Ajouter un paramètre</button>
-                                  </>
-                                )
-                              })()}
-                            </div>
-                          )}
-                          {apiCallTab === "headers" && (
-                            <div className="space-y-3">
-                              <p className="text-xs font-medium text-gray-500">En-têtes HTTP</p>
-                              {(() => {
-                                const pairs = parseJsonArray(floatingActionNode.config.headers_pairs)
-                                return (
-                                  <>
-                                    {pairs.map((pair, idx) => (
-                                      <div key={idx} className="flex items-center gap-2">
-                                        <Input value={pair.key} onChange={(e) => { const u = [...pairs]; u[idx] = { ...u[idx], key: e.target.value }; updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, headers_pairs: JSON.stringify(u) } })) }} placeholder="Clé" className="h-8 flex-1 text-xs" />
-                                        <Input value={pair.value} onChange={(e) => { const u = [...pairs]; u[idx] = { ...u[idx], value: e.target.value }; updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, headers_pairs: JSON.stringify(u) } })) }} placeholder="Valeur" className="h-8 flex-1 text-xs" />
-                                        <button type="button" className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-rose-50 hover:text-rose-500" onClick={() => { const u = pairs.filter((_, i) => i !== idx); updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, headers_pairs: JSON.stringify(u) } })) }}><Trash2 className="h-3.5 w-3.5" /></button>
-                                      </div>
-                                    ))}
-                                    <button type="button" className="flex h-8 w-full items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs text-blue-500 hover:border-blue-300 hover:bg-blue-50" onClick={() => { const u = [...pairs, { key: "", value: "" }]; updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, headers_pairs: JSON.stringify(u) } })) }}>+ Ajouter un en-tête</button>
-                                  </>
-                                )
-                              })()}
-                            </div>
-                          )}
-                          {apiCallTab === "body" && (
-                            <div className="space-y-3">
-                              <div className="flex flex-wrap gap-2">
-                                {(["none", "multipart", "urlencoded", "graphql", "raw"] as const).map((format) => (
-                                  <label key={format} className="flex items-center gap-1.5 text-xs">
-                                    <input type="radio" name="fp_body_format" checked={(typeof floatingActionNode.config.body_format === "string" ? floatingActionNode.config.body_format : "none") === format} onChange={() => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, body_format: format } }))} className="accent-blue-500" />
-                                    {format === "none" ? "None" : format === "multipart" ? "Multipart" : format === "urlencoded" ? "URL Encoded" : format === "graphql" ? "GraphQL" : "Raw"}
-                                  </label>
-                                ))}
-                              </div>
-                              {(typeof floatingActionNode.config.body_format === "string" ? floatingActionNode.config.body_format : "none") !== "none" && (
-                                <Textarea
-                                  value={typeof floatingActionNode.config.body_raw === "string" ? floatingActionNode.config.body_raw : ""}
-                                  onChange={(event) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, body_raw: event.target.value } }))}
-                                  placeholder='{"key": "value"}'
-                                  className="min-h-[100px] font-mono text-xs"
-                                />
-                              )}
-                            </div>
-                          )}
-                          {apiCallTab === "auth" && (
-                            <div className="space-y-3">
-                              <select className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm" value={typeof floatingActionNode.config.auth_type === "string" ? floatingActionNode.config.auth_type : "none"} onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, auth_type: e.target.value } }))}>
-                                <option value="none">None</option>
-                                <option value="bearer">Bearer Token</option>
-                                <option value="api_key">API Key</option>
-                                <option value="custom_header">Custom Header</option>
-                              </select>
-                              {(typeof floatingActionNode.config.auth_type === "string" ? floatingActionNode.config.auth_type : "none") === "bearer" && (
-                                <Input value={typeof floatingActionNode.config.auth_token === "string" ? floatingActionNode.config.auth_token : ""} onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, auth_token: e.target.value } }))} placeholder="Bearer token..." className="font-mono text-xs" />
-                              )}
-                              {(typeof floatingActionNode.config.auth_type === "string" ? floatingActionNode.config.auth_type : "none") === "api_key" && (
-                                <div className="space-y-2">
-                                  <Input value={typeof floatingActionNode.config.auth_key_name === "string" ? floatingActionNode.config.auth_key_name : ""} onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, auth_key_name: e.target.value } }))} placeholder="X-API-Key" className="text-xs" />
-                                  <Input value={typeof floatingActionNode.config.auth_key_value === "string" ? floatingActionNode.config.auth_key_value : ""} onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, auth_key_value: e.target.value } }))} placeholder="Clé API..." className="font-mono text-xs" />
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {apiCallTab === "response" && (
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3">
-                                <span className="text-sm text-gray-700">Prétraitement des données</span>
-                                <Switch checked={Boolean(floatingActionNode.config.response_preprocess)} onCheckedChange={(checked) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, response_preprocess: checked } }))} />
-                              </div>
-                              <Button variant="outline" className="w-full" size="sm"><Play className="mr-2 h-3.5 w-3.5" />Tester l&apos;exécution</Button>
-                              <p className="text-xs font-medium text-gray-500">Mapping de réponse</p>
-                              {(() => {
-                                const mappings = parseJsonArray(floatingActionNode.config.response_mappings)
-                                return (
-                                  <>
-                                    {mappings.map((m, idx) => (
-                                      <div key={idx} className="flex items-center gap-2">
-                                        <Input value={m.key} onChange={(e) => { const u = [...mappings]; u[idx] = { ...u[idx], key: e.target.value }; updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, response_mappings: JSON.stringify(u) } })) }} placeholder="$.data.id" className="h-8 flex-1 font-mono text-xs" />
-                                        <Input value={m.value} onChange={(e) => { const u = [...mappings]; u[idx] = { ...u[idx], value: e.target.value }; updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, response_mappings: JSON.stringify(u) } })) }} placeholder="Champ" className="h-8 w-24 text-xs" />
-                                        <button type="button" className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-rose-50 hover:text-rose-500" onClick={() => { const u = mappings.filter((_, i) => i !== idx); updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, response_mappings: JSON.stringify(u) } })) }}><Trash2 className="h-3.5 w-3.5" /></button>
-                                      </div>
-                                    ))}
-                                    <button type="button" className="flex h-8 w-full items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs text-blue-500 hover:border-blue-300 hover:bg-blue-50" onClick={() => { const u = [...mappings, { key: "", value: "" }]; updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, response_mappings: JSON.stringify(u) } })) }}>+ Ajouter un mapping</button>
-                                  </>
-                                )
-                              })()}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {floatingActionNode.type === "action_redirect_scenario" && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">ID du scénario cible</label>
-                          <Input
-                            value={typeof floatingActionNode.config.targetScenarioId === "string" ? floatingActionNode.config.targetScenarioId : ""}
-                            onChange={(event) =>
-                              updateNodeById(floatingActionNode.id, (node) => ({
-                                ...node,
-                                config: { ...node.config, targetScenarioId: event.target.value },
-                              }))
-                            }
-                            placeholder="ID du scénario"
-                          />
-                        </div>
-                      )}
-
-                      {floatingActionNode.type === "action_assign_agent" && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">File d&apos;attente</label>
-                          <Input
-                            value={typeof floatingActionNode.config.queue === "string" ? floatingActionNode.config.queue : ""}
-                            onChange={(event) =>
-                              updateNodeById(floatingActionNode.id, (node) => ({
-                                ...node,
-                                config: { ...node.config, queue: event.target.value },
-                              }))
-                            }
-                            placeholder="Ex: support, vente, technique..."
-                          />
-                        </div>
-                      )}
+                      </details>
                     </div>
                   )}
                 </div>
@@ -2676,22 +2359,23 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
 
 
           {isButtonModalOpen && (
-            <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/35 p-4">
-              <div className="w-full max-w-xl rounded-xl border bg-card p-6 shadow-2xl">
-                <div className="mb-5 flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Configurer le bouton</h3>
+            <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/20 backdrop-blur-[2px] p-4">
+              <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-base font-semibold">Configurer le bouton</h3>
                   <button
                     type="button"
-                    className="rounded-md p-1 hover:bg-muted"
+                    className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                     onClick={() => setIsButtonModalOpen(false)}
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium">Titre du bouton</label>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[13px] font-medium">Titre du bouton</label>
                     <Input
+                      className="h-9 text-[13px]"
                       value={messageButtonDraft.label}
                       onChange={(event) =>
                         setMessageButtonDraft((prev) => ({
@@ -2702,21 +2386,22 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                       placeholder="Ex: Continuer"
                     />
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium">Quand ce bouton est pressé</label>
+                  <div className="space-y-1.5">
+                    <label className="text-[13px] font-medium">Quand ce bouton est pressé</label>
                     <button
                       type="button"
-                      className="flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm hover:bg-muted"
+                      className="flex h-9 w-full items-center justify-between rounded-lg border border-border/40 px-3 text-[13px] hover:bg-muted"
                       onClick={() => setIsNextStepModalOpen(true)}
                     >
                       <span>{messageButtonDraft.nextStepLabel || "Sélectionner l'étape suivante"}</span>
-                      <Ellipsis className="h-4 w-4 text-muted-foreground" />
+                      <Ellipsis className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>
                   </div>
                   {messageButtonDraft.nextStepId === "open_website" && (
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium">URL du website</label>
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-medium">URL du website</label>
                       <Input
+                        className="h-9 text-[13px]"
                         value={messageButtonDraft.websiteUrl}
                         onChange={(event) =>
                           setMessageButtonDraft((prev) => ({
@@ -2728,38 +2413,38 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                       />
                     </div>
                   )}
-                </div>
-                <div className="mt-5 flex justify-end">
-                  <Button onClick={saveMessageButtonDraft}>Enregistrer le bouton</Button>
+                  <div className="flex justify-end pt-1">
+                    <Button size="sm" className="h-9 text-[13px] rounded-lg" onClick={saveMessageButtonDraft}>Enregistrer</Button>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
           {isNextStepModalOpen && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-              <div className="max-h-[85vh] w-full max-w-5xl overflow-hidden rounded-2xl border bg-white shadow-2xl">
-                <div className="flex items-center justify-between border-b px-6 py-5">
-                  <h3 className="text-xl font-semibold">Sélectionner l&apos;étape suivante</h3>
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px] p-4">
+              <div className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-border/40 px-5 py-4">
+                  <h3 className="text-base font-semibold">Sélectionner l&apos;étape suivante</h3>
                   <button
                     type="button"
-                    className="rounded-md p-1 hover:bg-muted"
+                    className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                     onClick={() => setIsNextStepModalOpen(false)}
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="space-y-8 overflow-y-auto p-6">
-                  <div className="space-y-4">
-                    <p className="text-base font-medium">Nouvelle étape</p>
-                    <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
+                <div className="space-y-5 overflow-y-auto p-5">
+                  <div className="space-y-3">
+                    <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Nouvelle étape</p>
+                    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
                       {NEXT_STEP_OPTIONS.map((option) => {
                         const OptionIcon = option.icon
                         return (
                           <button
                             key={option.id}
                             type="button"
-                            className="group flex items-center gap-3 rounded-xl border border-dashed px-4 py-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/[0.04]"
+                            className="group flex items-center gap-2.5 rounded-xl border border-dashed px-3 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/[0.04]"
                             onClick={() => {
                               setMessageButtonDraft((prev) => ({
                                 ...prev,
@@ -2770,38 +2455,38 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                               setIsNextStepModalOpen(false)
                             }}
                           >
-                            <span className={`rounded-lg p-2.5 transition-transform group-hover:scale-105 ${option.tone}`}>
-                              <OptionIcon className="h-5 w-5" />
+                            <span className={`rounded-lg p-2 transition-transform group-hover:scale-105 ${option.tone}`}>
+                              <OptionIcon className="h-4 w-4" />
                             </span>
-                            <span className="text-[15px] font-medium">{option.label}</span>
+                            <span className="text-[13px] font-medium">{option.label}</span>
                           </button>
                         )
                       })}
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="text-base font-medium">Étapes existantes</p>
-                      <div className="relative w-72 max-w-full">
-                        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Étapes existantes</p>
+                      <div className="relative w-56 max-w-full">
+                        <Search className="pointer-events-none absolute left-3 top-2 h-3.5 w-3.5 text-muted-foreground" />
                         <Input
                           value={existingStepQuery}
                           onChange={(event) => setExistingStepQuery(event.target.value)}
-                          placeholder="Rechercher par nom"
-                          className="pl-9"
+                          placeholder="Rechercher..."
+                          className="h-8 pl-8 text-[12px]"
                         />
                       </div>
                     </div>
-                    <div className="max-h-60 space-y-2 overflow-y-auto rounded-lg border p-3">
+                    <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border/40 p-2">
                       {existingSteps.length === 0 ? (
-                        <p className="px-2 py-2 text-sm text-muted-foreground">Aucune étape trouvée.</p>
+                        <p className="px-2 py-2 text-[12px] text-muted-foreground">Aucune étape trouvée.</p>
                       ) : (
                         existingSteps.map((step) => (
                           <button
                             key={step.id}
                             type="button"
-                            className="w-full rounded-lg border px-4 py-2.5 text-left text-sm hover:bg-muted"
+                            className="w-full rounded-lg px-3 py-2 text-left text-[13px] hover:bg-accent/50 transition-colors"
                             onClick={() => {
                               setMessageButtonDraft((prev) => ({
                                 ...prev,

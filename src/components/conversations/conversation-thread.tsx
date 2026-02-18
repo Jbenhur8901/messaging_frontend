@@ -57,10 +57,21 @@ function formatDateSeparator(date: string): string {
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
 }
 
+function getMessageTimestamp(msg: WhatsAppConversationMessage): string {
+  return msg.created_at || msg.timestamp || msg.received_at || msg.meta_timestamp || ""
+}
+
 function groupMessagesByDate(messages: WhatsAppConversationMessage[]): Map<string, WhatsAppConversationMessage[]> {
+  // Sort chronologically first (oldest → newest)
+  const sorted = [...messages].sort((a, b) => {
+    const tsA = getMessageTimestamp(a)
+    const tsB = getMessageTimestamp(b)
+    return new Date(tsA || 0).getTime() - new Date(tsB || 0).getTime()
+  })
   const groups = new Map<string, WhatsAppConversationMessage[]>()
-  for (const msg of messages) {
-    const dateKey = new Date(msg.created_at).toLocaleDateString("fr-FR")
+  for (const msg of sorted) {
+    const ts = getMessageTimestamp(msg)
+    const dateKey = ts ? new Date(ts).toLocaleDateString("fr-FR") : "—"
     if (!groups.has(dateKey)) {
       groups.set(dateKey, [])
     }
@@ -190,7 +201,7 @@ export function ConversationThread({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth" ref={scrollRef}>
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth" ref={scrollRef}>
         {isLoading ? (
           <ThreadSkeleton />
         ) : (
@@ -200,7 +211,7 @@ export function ConversationThread({
                 <div className="flex items-center gap-3 my-3">
                   <div className="flex-1 h-px bg-border/40" />
                   <span className="text-[10px] text-muted-foreground/70 font-medium uppercase tracking-wider">
-                    {formatDateSeparator(dayMessages[0].created_at)}
+                    {formatDateSeparator(getMessageTimestamp(dayMessages[0]))}
                   </span>
                   <div className="flex-1 h-px bg-border/40" />
                 </div>

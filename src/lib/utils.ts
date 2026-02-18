@@ -28,7 +28,9 @@ export function truncate(str: string, length: number) {
   return str.slice(0, length) + "..."
 }
 
-export function formatPhoneNumber(phone: string) {
+export function formatPhoneNumber(phone?: string | null) {
+  if (!phone) return ""
+
   const cleaned = phone.replace(/\D/g, "")
   if (cleaned.startsWith("33") && cleaned.length === 11) {
     return `+33 ${cleaned.slice(2, 3)} ${cleaned.slice(3, 5)} ${cleaned.slice(5, 7)} ${cleaned.slice(7, 9)} ${cleaned.slice(9)}`

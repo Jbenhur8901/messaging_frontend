@@ -60,6 +60,11 @@ export function MessageComposer({
     setIsUploading(true)
     try {
       const result = await whatsappService.uploadMedia(file)
+      if (!result.media_id) {
+        toast.error("Upload réussi mais aucun identifiant média retourné")
+        setIsUploading(false)
+        return
+      }
       await onSendMedia({
         media_type: mediaTypeRef.current,
         media_id: result.media_id,
@@ -90,11 +95,8 @@ export function MessageComposer({
       <div className="flex items-center gap-2 border-t px-4 py-3 bg-muted/50 shrink-0">
         <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
         <span className="text-xs text-muted-foreground flex-1">
-          La fen&ecirc;tre de conversation est ferm&eacute;e. Seuls les templates peuvent &ecirc;tre envoy&eacute;s.
+          Fenêtre de 24h expirée. Seuls les templates peuvent être envoyés.
         </span>
-        <Button variant="outline" size="sm" disabled>
-          Envoyer un template
-        </Button>
       </div>
     )
   }

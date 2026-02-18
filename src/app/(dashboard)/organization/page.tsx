@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useOrganizationStore } from "@/stores"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Building2, Users, Save, CreditCard } from "lucide-react"
+import { Building2, Users, Save } from "lucide-react"
 import { toast } from "sonner"
-import { formatNumber } from "@/lib/utils"
 
 export default function OrganizationPage() {
   const {
@@ -62,17 +61,12 @@ export default function OrganizationPage() {
 
   if (isLoading && !currentOrganization) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-32" />
-          </CardContent>
-        </Card>
+      <div className="space-y-5">
+        <Skeleton className="h-7 w-48 rounded-xl" />
+        <div className="space-y-3 max-w-2xl">
+          <Skeleton className="h-9 w-full rounded-xl" />
+          <Skeleton className="h-9 w-32 rounded-xl" />
+        </div>
       </div>
     )
   }
@@ -80,92 +74,54 @@ export default function OrganizationPage() {
   const userRole = organizations.find((o) => o.id === currentOrganization?.id)?.role
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Organisation</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl font-semibold tracking-tight">Organisation</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">
             Gérez les paramètres de votre organisation.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link href="/organization/members">
-              <Users className="mr-2 h-4 w-4" />
-              Gérer les membres
-            </Link>
-          </Button>
-        </div>
+        <Button asChild variant="outline" className="h-8 text-[13px] rounded-lg gap-1.5">
+          <Link href="/organization/members">
+            <Users className="h-3.5 w-3.5" />
+            Gérer les membres
+          </Link>
+        </Button>
       </div>
 
-      {/* Organization Info */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              <CardTitle>Informations</CardTitle>
-            </div>
-            <CardDescription>
-              Modifiez les informations de votre organisation
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nom de l&apos;organisation</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Mon entreprise"
-                disabled={userRole !== "owner" && userRole !== "admin"}
-              />
-            </div>
-            {(userRole === "owner" || userRole === "admin") && (
-              <Button onClick={handleSave} disabled={isSaving}>
-                <Save className="mr-2 h-4 w-4" />
-                {isSaving ? "Enregistrement..." : "Enregistrer"}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              <CardTitle>Crédits</CardTitle>
-            </div>
-            <CardDescription>
-              Solde de crédits de l&apos;organisation
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {formatNumber(currentOrganization?.credit_balance || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              crédits disponibles
-            </p>
-            <div className="mt-4">
-              <Button asChild variant="outline" size="sm">
-                <Link href="/credits">
-                  Voir les détails
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Role Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Votre rôle</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="grid gap-5 max-w-2xl">
+        {/* Informations */}
+        <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <span className="font-medium">
+            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+            <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Informations</h2>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="name" className="text-[13px]">Nom de l&apos;organisation</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Mon entreprise"
+              disabled={userRole !== "owner" && userRole !== "admin"}
+              className="h-9 text-[13px] rounded-lg"
+            />
+          </div>
+          {(userRole === "owner" || userRole === "admin") && (
+            <Button onClick={handleSave} disabled={isSaving} className="h-8 text-[13px] rounded-lg gap-1.5">
+              <Save className="h-3.5 w-3.5" />
+              {isSaving ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          )}
+        </div>
+
+        {/* Votre rôle */}
+        <div className="space-y-3">
+          <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Votre rôle</h2>
+          <div className="flex items-center gap-2 rounded-xl px-4 py-3 border border-border/40">
+            <Badge variant="secondary" className="text-[10px] h-5">
               {userRole === "owner"
                 ? "Propriétaire"
                 : userRole === "admin"
@@ -173,19 +129,19 @@ export default function OrganizationPage() {
                 : userRole === "member"
                 ? "Membre"
                 : "Lecteur"}
-            </span>
-            <span className="text-muted-foreground">
+            </Badge>
+            <span className="text-[11px] text-muted-foreground">
               {userRole === "owner"
-                ? "- Accès complet à toutes les fonctionnalités"
+                ? "Accès complet à toutes les fonctionnalités"
                 : userRole === "admin"
-                ? "- Peut gérer les membres et les paramètres"
+                ? "Peut gérer les membres et les paramètres"
                 : userRole === "member"
-                ? "- Peut envoyer des messages et gérer les contacts"
-                : "- Accès en lecture seule"}
+                ? "Peut envoyer des messages et gérer les contacts"
+                : "Accès en lecture seule"}
             </span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

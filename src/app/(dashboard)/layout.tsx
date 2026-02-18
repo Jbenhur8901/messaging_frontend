@@ -72,14 +72,10 @@ export default function DashboardLayout({
     }
 
     if (orgs.length > 0) {
-      const preferredOrg = currentUser?.organization_id
-        ? orgs.find((org) => org.id === currentUser?.organization_id)
+      const userOrg = currentUser?.organization_id
+        ? orgs.find((org) => org.id === currentUser.organization_id)
         : null
-      if (preferredOrg) {
-        setCurrentOrganization(preferredOrg)
-      } else if (!currentOrg) {
-        setCurrentOrganization(orgs[0])
-      }
+      setCurrentOrganization(userOrg || orgs[0])
     }
 
     // User has organization, load balance

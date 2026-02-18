@@ -5,6 +5,15 @@ import { mapInboxToConversation } from "@/types/conversations"
 import { conversationsService } from "@/services/conversations"
 import { whatsappService } from "@/services/whatsapp"
 
+/** Sort messages chronologically (oldest first) */
+function sortMessages(msgs: WhatsAppConversationMessage[]): WhatsAppConversationMessage[] {
+  return [...msgs].sort((a, b) => {
+    const tsA = a.created_at || a.timestamp || a.received_at || a.meta_timestamp || ""
+    const tsB = b.created_at || b.timestamp || b.received_at || b.meta_timestamp || ""
+    return new Date(tsA).getTime() - new Date(tsB).getTime()
+  })
+}
+
 interface ConversationsState {
   conversations: Conversation[]
   selectedConversationId: string | null
@@ -67,7 +76,7 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
 
     try {
       const result = await conversationsService.getConversationMessages(conversationId)
-      set({ selectedMessages: result.messages || [], isLoadingThread: false })
+      set({ selectedMessages: sortMessages(result.messages || []), isLoadingThread: false })
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Erreur de chargement des messages",
@@ -100,7 +109,7 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
 
       if (selectedConversationId) {
         const msgResult = await conversationsService.getConversationMessages(selectedConversationId)
-        set({ selectedMessages: msgResult.messages })
+        set({ selectedMessages: sortMessages(msgResult.messages || []) })
       }
     } catch {
       // Silent fail on poll refresh
@@ -158,7 +167,7 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
       await whatsappService.sendTextMessage({ to: conversation.phoneNumber, text })
       // Refresh messages after sending
       const result = await conversationsService.getConversationMessages(selectedConversationId)
-      set({ selectedMessages: result.messages || [], isSending: false })
+      set({ selectedMessages: sortMessages(result.messages || []), isSending: false })
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Erreur d'envoi",
@@ -177,7 +186,7 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
     try {
       await whatsappService.sendMediaMessage({ to: conversation.phoneNumber, ...payload })
       const result = await conversationsService.getConversationMessages(selectedConversationId)
-      set({ selectedMessages: result.messages || [], isSending: false })
+      set({ selectedMessages: sortMessages(result.messages || []), isSending: false })
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Erreur d'envoi",

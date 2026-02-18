@@ -243,6 +243,16 @@ export const authService = {
     return data
   },
 
+  async regenerateBackupCodes(code: string): Promise<{ success: boolean; backup_codes: string[]; message?: string }> {
+    const formData = new URLSearchParams()
+    formData.append("code", code)
+    const { data } = await api.post<{ success: boolean; backup_codes: string[]; message?: string }>(
+      "/v1/auth/mfa/regenerate-backup-codes",
+      formData
+    )
+    return data
+  },
+
   async disableMFA(code: string): Promise<{ success: boolean; mfa_enabled: boolean; message?: string }> {
     const formData = new URLSearchParams()
     formData.append("code", code)

@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 import type { Organization, OrganizationMember, OrganizationRole } from "@/types"
 import { organizationsService } from "@/services/organizations"
 
@@ -22,7 +21,6 @@ interface OrganizationState {
 }
 
 export const useOrganizationStore = create<OrganizationState>()(
-  persist(
     (set, get) => ({
       currentOrganization: null,
       organizations: [],
@@ -38,11 +36,6 @@ export const useOrganizationStore = create<OrganizationState>()(
           const response = await organizationsService.getOrganizations()
           const orgs = response.organizations
           set({ organizations: orgs, isLoading: false })
-          // Set current organization if not set and orgs exist
-          const current = get().currentOrganization
-          if (!current && orgs.length > 0) {
-            set({ currentOrganization: orgs[0] })
-          }
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Erreur lors du chargement des organisations",
@@ -144,12 +137,5 @@ export const useOrganizationStore = create<OrganizationState>()(
       },
 
       clearError: () => set({ error: null }),
-    }),
-    {
-      name: "organization-storage",
-      partialize: (state) => ({
-        currentOrganization: state.currentOrganization,
-      }),
-    }
-  )
+    })
 )

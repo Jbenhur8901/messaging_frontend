@@ -42,13 +42,17 @@ export interface AuthResponse {
 export interface MFAStatus {
   mfa_enabled: boolean
   mfa_verified_at?: string | null
+  backup_codes_remaining?: number
+  backup_codes_low?: boolean
+  account_locked?: boolean
+  locked_until?: string | null
 }
 
 export interface MFASetupResponse {
   success: boolean
-  secret: string
+  secret?: string
   qr_code: string
-  provisioning_uri: string
+  provisioning_uri?: string
   message?: string
 }
 
@@ -629,43 +633,87 @@ export interface WhatsAppMessageResult {
 // === Conversations Inbox ===
 export interface WhatsAppInboxConversation {
   id: string
-  phone_number: string
+  phone_number?: string
+  contact_phone?: string
   contact_name: string | null
   status: "open" | "closed" | "archived"
   assigned_to?: string | null
   unread_count: number
   last_message_at: string | null
+  last_message_preview?: string | null
+  last_message_direction?: string | null
   created_at: string
   updated_at: string
+  contact_id?: string | null
 }
 
 export type WhatsAppMessageDirection = "inbound" | "outbound"
-export type WhatsAppMessageType = "text" | "template" | "image" | "video" | "audio" | "document" | "location" | "contacts" | "interactive"
+export type WhatsAppMessageType = "text" | "template" | "image" | "video" | "audio" | "document" | "location" | "contacts" | "interactive" | "reaction" | "sticker" | "button" | "order" | "unknown"
 
 export interface WhatsAppConversationMessage {
   id: string
-  message_id: string
+  message_id?: string
   wamid?: string
   direction: WhatsAppMessageDirection
-  type: WhatsAppMessageType
+  // Type: API sends message_type (inbound) or content_type (outbound)
+  type?: WhatsAppMessageType
+  message_type?: string
+  content_type?: string
+  // Text: API sends text_body
   content?: string
-  phone_number: string
+  body?: string
+  text_body?: string | null
+  text?: string | { body?: string }
+  // Phone
+  phone_number?: string
+  contact_phone?: string
+  from_phone?: string
+  to_phone?: string
+  from_name?: string
+  // Template
   template_name?: string
   template_language?: string
-  status: WhatsAppMessageStatus
+  // Status & timestamps
+  status?: WhatsAppMessageStatus
   error_message?: string
   sent_at?: string
   delivered_at?: string
   read_at?: string
-  created_at: string
-  media_url?: string
-  media_type?: string
-  caption?: string
-  filename?: string
-  latitude?: number
-  longitude?: number
-  location_name?: string
-  location_address?: string
+  created_at?: string
+  received_at?: string
+  timestamp?: string
+  meta_timestamp?: string
+  is_read?: boolean
+  // Media
+  media_url?: string | null
+  media_id?: string | null
+  media_type?: string | null
+  media_mime_type?: string | null
+  media_filename?: string | null
+  media_caption?: string | null
+  caption?: string | null
+  filename?: string | null
+  // Location (flat fields from API)
+  latitude?: number | null
+  longitude?: number | null
+  location_latitude?: number | null
+  location_longitude?: number | null
+  location_name?: string | null
+  location_address?: string | null
+  // Interactive (flat fields from API)
+  interactive_type?: string | null
+  interactive_reply_id?: string | null
+  interactive_reply_title?: string | null
+  interactive_data?: unknown
+  // Reaction (flat field from API)
+  reaction_emoji?: string | null
+  reaction_message_id?: string | null
+  // Contacts
+  contacts_data?: unknown
+  // Context
+  context_message_id?: string | null
+  // AI
+  is_ai_reply?: boolean
 }
 
 // === Freeform Messages ===
@@ -798,13 +846,6 @@ export interface WhatsAppAccount {
   verified_name?: string
   created_at: string
   updated_at: string
-}
-
-export interface WhatsAppAccountEvent {
-  id: string
-  event_type: string
-  details?: string
-  created_at: string
 }
 
 // === Consentement ===

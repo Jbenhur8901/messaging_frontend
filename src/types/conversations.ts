@@ -30,12 +30,12 @@ export interface ConversationFilters {
 export function mapInboxToConversation(inbox: WhatsAppInboxConversation): Conversation {
   return {
     id: inbox.id,
-    phoneNumber: inbox.phone_number,
+    phoneNumber: inbox.contact_phone || inbox.phone_number || "",
     contactName: inbox.contact_name,
     contact: null,
     status: inbox.status,
     assignedTo: inbox.assigned_to,
-    unreadCount: inbox.unread_count,
+    unreadCount: inbox.unread_count ?? 0,
     lastMessageAt: inbox.last_message_at,
     lastActivityAt: inbox.last_message_at || inbox.updated_at,
     messageCount: 0,

@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation"
 import { scenariosService, handleApiError } from "@/services"
 import type { ConversationScenario, ScenarioStatus } from "@/types"
 import { formatDate, formatNumber } from "@/lib/utils"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -21,8 +22,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -37,28 +36,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import {
   Copy,
   Eye,
-  Filter,
   GitBranch,
-  LayoutGrid,
-  List,
   Loader2,
   Plus,
   Search,
   Trash2,
 } from "lucide-react"
+
+const stagger = (i: number) => ({
+  opacity: 0,
+  animation: `fadeIn 0.45s ease-out ${i * 0.06}s forwards`,
+})
 
 const STATUS_LABELS: Record<ScenarioStatus, string> = {
   active: "Actif",
@@ -81,7 +73,6 @@ export default function ScenariosPage() {
   const [deleteScenarioId, setDeleteScenarioId] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | ScenarioStatus>("all")
-  const [viewMode, setViewMode] = useState<"table" | "cards">("table")
 
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -185,252 +176,207 @@ export default function ScenariosPage() {
     }
   }
 
-  const header = (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-semibold">Scenarios</h1>
-        <p className="mt-1 text-muted-foreground">
-          Crée, édite et exécute des workflows conversationnels WhatsApp.
-        </p>
+  if (isLoading) {
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-7 w-44" />
+          <Skeleton className="h-8 w-32 rounded-lg" />
+        </div>
+        <Skeleton className="h-9 w-full rounded-lg" />
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          onClick={() => setViewMode((prev) => (prev === "table" ? "cards" : "table"))}
-        >
-          {viewMode === "table" ? <LayoutGrid className="mr-2 h-4 w-4" /> : <List className="mr-2 h-4 w-4" />}
-          {viewMode === "table" ? "Vue cartes" : "Vue tableau"}
-        </Button>
+    )
+  }
 
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between" style={stagger(0)}>
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Scénarios</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">
+            Workflows conversationnels WhatsApp
+          </p>
+        </div>
+        <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm() }}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouveau scénario
+            <Button size="sm" className="h-8 gap-1.5 text-[13px] rounded-lg">
+              <Plus className="h-3.5 w-3.5" />
+              Nouveau
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Créer un scénario</DialogTitle>
-              <DialogDescription>
-                Initialise un nouveau flow conversationnel WhatsApp.
-              </DialogDescription>
+              <DialogTitle className="text-base">Créer un scénario</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Nom</label>
+            <div className="space-y-3 pt-1">
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-medium">Nom *</label>
                 <Input
+                  className="h-9 text-[13px]"
                   value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Qualification nouveaux leads"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Description</label>
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-medium">Description</label>
                 <Textarea
                   value={description}
-                  onChange={(event) => setDescription(event.target.value)}
+                  onChange={(e) => setDescription(e.target.value)}
                   placeholder="Résumé court du parcours client"
-                  className="min-h-[110px]"
+                  className="min-h-[100px] text-[13px]"
                 />
               </div>
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 text-[13px] rounded-lg"
+                  onClick={() => { setIsCreateOpen(false); resetForm() }}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 h-9 text-[13px] rounded-lg"
+                  onClick={handleCreate}
+                  disabled={isSaving}
+                >
+                  {isSaving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  Créer
+                </Button>
+              </div>
             </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsCreateOpen(false)
-                  resetForm()
-                }}
-              >
-                Annuler
-              </Button>
-              <Button onClick={handleCreate} disabled={isSaving}>
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Créer
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
-    </div>
-  )
 
-  return (
-    <div className="space-y-6">
-      {header}
+      {/* Search & Filter */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center" style={stagger(1)}>
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher..."
+            className="h-9 pl-9 text-[13px]"
+          />
+        </div>
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => setStatusFilter(value as "all" | ScenarioStatus)}
+        >
+          <SelectTrigger className="h-9 w-full sm:w-[160px] text-[13px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous</SelectItem>
+            <SelectItem value="active">Actifs</SelectItem>
+            <SelectItem value="inactive">Inactifs</SelectItem>
+            <SelectItem value="draft">Brouillons</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Scénarios conversationnels</CardTitle>
-          <CardDescription>
-            Filtre, active et ouvre tes scénarios pour édition visuelle.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Rechercher un scénario"
-                className="pl-9"
-              />
-            </div>
-            <div className="flex items-center gap-2 sm:w-[240px]">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select
-                value={statusFilter}
-                onValueChange={(value) => setStatusFilter(value as "all" | ScenarioStatus)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="active">Actifs</SelectItem>
-                  <SelectItem value="inactive">Inactifs</SelectItem>
-                  <SelectItem value="draft">Brouillons</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+      {/* Scenarios list */}
+      {filteredScenarios.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center" style={stagger(2)}>
+          <GitBranch className="h-8 w-8 text-muted-foreground/50 mb-3" />
+          <p className="text-[13px] font-medium">Aucun scénario trouvé</p>
+          <p className="text-[12px] text-muted-foreground mt-0.5">
+            Ajustez les filtres ou créez votre premier scénario.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {filteredScenarios.map((scenario, i) => (
+            <div
+              key={scenario.id}
+              className="group flex items-center gap-4 rounded-xl px-4 py-3 transition-colors duration-200 hover:bg-accent/50"
+              style={stagger(i + 2)}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/scenarios/${scenario.id}`}
+                    className="text-[13px] font-medium truncate hover:underline"
+                  >
+                    {scenario.name}
+                  </Link>
+                  <Badge variant={STATUS_VARIANTS[scenario.status]} className="text-[10px] shrink-0">
+                    {STATUS_LABELS[scenario.status]}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  {scenario.description && (
+                    <span className="text-[11px] text-muted-foreground truncate max-w-[280px]">
+                      {scenario.description}
+                    </span>
+                  )}
+                  {scenario.description && (
+                    <span className="text-muted-foreground/40 text-[11px]">&middot;</span>
+                  )}
+                  <span className="text-[11px] text-muted-foreground">
+                    {formatNumber(scenario.stats.trigger_count)} déclenchements
+                  </span>
+                </div>
+              </div>
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16 text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Chargement des scénarios...
-            </div>
-          ) : filteredScenarios.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-12 text-center">
-              <GitBranch className="mx-auto mb-3 h-9 w-9 text-muted-foreground" />
-              <p className="text-base font-medium">Aucun scénario trouvé</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Ajuste les filtres ou crée ton premier flow.
-              </p>
-            </div>
-          ) : viewMode === "table" ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Canal</TableHead>
-                  <TableHead>Créé le</TableHead>
-                  <TableHead>Mis à jour</TableHead>
-                  <TableHead className="text-right">Déclenchements</TableHead>
-                  <TableHead className="text-right">Actif</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredScenarios.map((scenario) => (
-                  <TableRow key={scenario.id}>
-                    <TableCell className="font-medium">{scenario.name}</TableCell>
-                    <TableCell className="max-w-[280px] truncate text-muted-foreground">
-                      {scenario.description || "Sans description"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_VARIANTS[scenario.status]}>{STATUS_LABELS[scenario.status]}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">WhatsApp</Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(scenario.created_at)}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(scenario.updated_at)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(scenario.stats.trigger_count)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end">
-                        <Switch
-                          checked={scenario.status === "active"}
-                          onCheckedChange={(checked) => handleToggleActive(scenario, checked)}
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleDuplicate(scenario.id)}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" asChild>
-                          <Link href={`/scenarios/${scenario.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteScenarioId(scenario.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {filteredScenarios.map((scenario) => (
-                <Card key={scenario.id} className="border-border/40">
-                  <CardHeader className="space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="line-clamp-1 text-base">{scenario.name}</CardTitle>
-                      <Badge variant={STATUS_VARIANTS[scenario.status]}>{STATUS_LABELS[scenario.status]}</Badge>
-                    </div>
-                    <CardDescription className="line-clamp-2">
-                      {scenario.description || "Sans description"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                      <p>Canal: WhatsApp</p>
-                      <p>Déclenchements: {formatNumber(scenario.stats.trigger_count)}</p>
-                      <p>Créé: {formatDate(scenario.created_at)}</p>
-                      <p>MAJ: {formatDate(scenario.updated_at)}</p>
-                    </div>
-                    <div className="flex items-center justify-between rounded-md border px-3 py-2">
-                      <span className="text-sm">Activer</span>
-                      <Switch
-                        checked={scenario.status === "active"}
-                        onCheckedChange={(checked) => handleToggleActive(scenario, checked)}
-                      />
-                    </div>
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleDuplicate(scenario.id)}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        Dupliquer
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/scenarios/${scenario.id}`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Ouvrir
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDeleteScenarioId(scenario.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                        Supprimer
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              <span className="hidden lg:block text-[11px] text-muted-foreground shrink-0">
+                {formatDate(scenario.updated_at)}
+              </span>
 
+              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                <Switch
+                  checked={scenario.status === "active"}
+                  onCheckedChange={(checked) => handleToggleActive(scenario, checked)}
+                  aria-label="Activer/Désactiver"
+                />
+              </div>
+
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => handleDuplicate(scenario.id)}
+                  title="Dupliquer"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                  asChild
+                >
+                  <Link href={`/scenarios/${scenario.id}`} title="Ouvrir">
+                    <Eye className="h-3 w-3" />
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500"
+                  onClick={() => setDeleteScenarioId(scenario.id)}
+                  title="Supprimer"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Delete confirmation */}
       <AlertDialog
         open={!!deleteScenarioId}
-        onOpenChange={(open) => {
-          if (!open) setDeleteScenarioId(null)
-        }}
+        onOpenChange={(open) => { if (!open) setDeleteScenarioId(null) }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>

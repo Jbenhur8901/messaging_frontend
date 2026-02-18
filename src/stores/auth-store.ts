@@ -135,6 +135,10 @@ export const useAuthStore = create<AuthState>()(
           // Check if this is first login (user just registered)
           const showMFARecommendation = response.user.is_first_login && !response.user.mfa_enabled
 
+          // Clear stale organization from previous session
+          if (typeof window !== "undefined") {
+            try { localStorage.removeItem("organization-storage") } catch {}
+          }
 
           set({
             user: effectiveUser,
@@ -192,6 +196,7 @@ export const useAuthStore = create<AuthState>()(
           if (typeof window !== "undefined") {
             sessionStorage.removeItem("mfa_required")
             sessionStorage.removeItem("mfa_pre_auth_token")
+            try { localStorage.removeItem("organization-storage") } catch {}
           }
           set({
             user: null,
