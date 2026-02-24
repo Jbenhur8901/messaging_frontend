@@ -10,7 +10,7 @@ interface CreditRequestsState {
 
   // Actions
   fetchRequests: (status?: CreditRequestStatus, limit?: number, offset?: number) => Promise<void>
-  createRequest: (amount: number, paymentMethod: PaymentMethod, paymentReference?: string) => Promise<void>
+  createRequest: (amount: number, paymentMethod: PaymentMethod, paymentReference?: string, paymentProof?: File) => Promise<void>
   cancelRequest: (id: string) => Promise<void>
   clearError: () => void
   reset: () => void
@@ -39,10 +39,10 @@ export const useCreditRequestsStore = create<CreditRequestsState>()((set, get) =
     }
   },
 
-  createRequest: async (amount, paymentMethod, paymentReference) => {
+  createRequest: async (amount, paymentMethod, paymentReference, paymentProof) => {
     set({ isLoading: true, error: null })
     try {
-      await creditRequestsService.createRequest(amount, paymentMethod, paymentReference)
+      await creditRequestsService.createRequest(amount, paymentMethod, paymentReference, paymentProof)
       // Refresh the list
       await get().fetchRequests()
     } catch (error) {

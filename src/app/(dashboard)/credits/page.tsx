@@ -1,34 +1,47 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import Link from "next/link"
-import { creditsService, whatsappService } from "@/services"
+import { creditsService, whatsappService, handleApiError } from "@/services"
+import { creditRequestsService } from "@/services/credit-requests"
 import { authStorage } from "@/lib/auth-storage"
-import type { CreditBalance, CreditTransaction, CreditUsage, Pagination, WhatsAppCreditBalance } from "@/types"
-import { formatNumber, formatDate } from "@/lib/utils"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import type {
+  CreditBalance,
+  CreditTransaction,
+  CreditUsage,
+  CreditRequest,
+  CreditRequestStatus,
+  Pagination,
+  WhatsAppCreditBalance,
+} from "@/types"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
+  Loader2,
   Wallet,
   CreditCard,
   TrendingUp,
   TrendingDown,
-  History,
-  ArrowUpRight,
-  ArrowDownRight,
   ChevronLeft,
   ChevronRight,
+  XCircle,
+  AlertTriangle,
+  History,
+  Gift,
+  Clock,
+  CheckCircle,
+  Ban,
+  Upload,
+  FileImage,
+  FileText,
+  Plus,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react"
 import {
   AreaChart,
@@ -40,66 +53,187 @@ import {
   ResponsiveContainer,
 } from "recharts"
 
+const stagger = (i: number) => ({
+  opacity: 0,
+  animation: `fadeIn 0.45s ease-out ${i * 0.06}s forwards`,
+})
+
+const formatNumber = (n: number) =>
+  new Intl.NumberFormat("fr-FR").format(n)
+
+const formatDate = (iso: string) => {
+  const d = new Date(iso)
+  return d.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+const requestStatusMeta: Record<
+  string,
+  { label: string; color: string; bg: string; icon: typeof Clock }
+> = {
+  pending: { label: "En attente", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Clock },
+  approved: { label: "Approuvée", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: CheckCircle },
+  rejected: { label: "Rejetée", color: "text-red-700", bg: "bg-red-50 border-red-200", icon: XCircle },
+  cancelled: { label: "Annulée", color: "text-gray-700", bg: "bg-gray-50 border-gray-200", icon: Ban },
+}
+
 export default function CreditsPage() {
+  const [isLoading, setIsLoading] = useState(true)
   const [balance, setBalance] = useState<CreditBalance | null>(null)
   const [walletBalance, setWalletBalance] = useState<WhatsAppCreditBalance | null>(null)
   const [usage, setUsage] = useState<CreditUsage | null>(null)
   const [transactions, setTransactions] = useState<CreditTransaction[]>([])
-  const [pagination, setPagination] = useState<Pagination | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const limit = 20
+  const [txPagination, setTxPagination] = useState<Pagination | null>(null)
+  const [txPage, setTxPage] = useState(1)
+  const [txLoading, setTxLoading] = useState(false)
+
+  // Requests state
+  const [requests, setRequests] = useState<CreditRequest[]>([])
+  const [requestsLoading, setRequestsLoading] = useState(false)
+  const [requestStatusFilter, setRequestStatusFilter] = useState<CreditRequestStatus | "all">("all")
+
+  // Request dialog state
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false)
+  const [requestAmount, setRequestAmount] = useState("")
+  const [paymentMethod, setPaymentMethod] = useState("mobile_money")
+  const [paymentReference, setPaymentReference] = useState("")
+  const [paymentProof, setPaymentProof] = useState<File | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Detail dialog
+  const [detailRequest, setDetailRequest] = useState<CreditRequest | null>(null)
+
+  const TX_LIMIT = 20
+
+  const loadTransactions = useCallback(async (page: number) => {
+    setTxLoading(true)
+    try {
+      const offset = (page - 1) * TX_LIMIT
+      const result = await creditsService.getHistory(TX_LIMIT, offset)
+      setTransactions(result.transactions)
+      setTxPagination(result.pagination)
+    } catch {
+      toast.error("Impossible de charger les transactions")
+    } finally {
+      setTxLoading(false)
+    }
+  }, [])
+
+  const loadRequests = useCallback(async () => {
+    setRequestsLoading(true)
+    try {
+      const data = await creditRequestsService.getRequests(
+        requestStatusFilter === "all" ? undefined : requestStatusFilter,
+        50,
+        0
+      )
+      setRequests(data.requests || [])
+    } catch {
+      toast.error("Impossible de charger les demandes")
+    } finally {
+      setRequestsLoading(false)
+    }
+  }, [requestStatusFilter])
 
   useEffect(() => {
-    const loadData = async () => {
-      // Check for token before making API calls
-      const token = authStorage.getItem("access_token")
-      if (!token) {
-        setIsLoading(false)
-        return
-      }
+    const token = authStorage.getItem("access_token")
+    if (!token) {
+      setIsLoading(false)
+      return
+    }
 
+    const loadAll = async () => {
       try {
-        const [balanceData, usageData, walletData] = await Promise.all([
+        const [balanceResult, usageResult, walletResult, txResult, reqResult] = await Promise.allSettled([
           creditsService.getBalance(),
           creditsService.getUsage(30),
-          whatsappService.getWhatsAppBalance().catch(() => null),
+          whatsappService.getWhatsAppBalance(),
+          creditsService.getHistory(TX_LIMIT, 0),
+          creditRequestsService.getRequests(undefined, 50, 0),
         ])
-        setBalance(balanceData)
-        setUsage(usageData)
-        if (walletData) setWalletBalance(walletData)
-      } catch (error) {
+        if (balanceResult.status === "fulfilled") setBalance(balanceResult.value)
+        if (usageResult.status === "fulfilled") setUsage(usageResult.value)
+        if (walletResult.status === "fulfilled") setWalletBalance(walletResult.value)
+        if (txResult.status === "fulfilled") {
+          setTransactions(txResult.value.transactions)
+          setTxPagination(txResult.value.pagination)
+        }
+        if (reqResult.status === "fulfilled") setRequests(reqResult.value.requests || [])
       } finally {
         setIsLoading(false)
       }
     }
-
-    loadData()
+    loadAll()
   }, [])
 
   useEffect(() => {
-    const loadTransactions = async () => {
-      // Check for token before making API calls
-      const token = authStorage.getItem("access_token")
-      if (!token) {
-        return
-      }
+    if (!isLoading) loadRequests()
+  }, [requestStatusFilter])
 
-      try {
-        const offset = (page - 1) * limit
-        const result = await creditsService.getHistory(limit, offset)
-        setTransactions(result.transactions)
-        setPagination(result.pagination)
-      } catch (error) {
-      }
+  const handleSubmitRequest = async () => {
+    const amountNum = parseInt(requestAmount, 10)
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast.error("Veuillez entrer un montant valide")
+      return
     }
+    setIsSubmitting(true)
+    try {
+      await creditRequestsService.createRequest(
+        amountNum,
+        paymentMethod as "mobile_money" | "airtel_money" | "cash",
+        paymentReference || undefined,
+        paymentProof || undefined
+      )
+      toast.success("Demande envoyée ! Elle sera traitée par un administrateur.")
+      setRequestDialogOpen(false)
+      setRequestAmount("")
+      setPaymentReference("")
+      setPaymentProof(null)
+      loadRequests()
+    } catch (error) {
+      const apiError = handleApiError(error)
+      toast.error(apiError.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
-    loadTransactions()
-  }, [page])
+  const handleCancelRequest = async (id: string) => {
+    setCancellingId(id)
+    try {
+      await creditRequestsService.cancelRequest(id)
+      toast.success("Demande annulée")
+      setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "cancelled" as CreditRequestStatus } : r))
+    } catch (error) {
+      const apiError = handleApiError(error)
+      toast.error(apiError.message)
+    } finally {
+      setCancellingId(null)
+    }
+  }
 
-  const totalPages = pagination ? Math.ceil(pagination.total / limit) : 1
+  const handlePrevPage = () => {
+    const newPage = Math.max(1, txPage - 1)
+    setTxPage(newPage)
+    loadTransactions(newPage)
+  }
 
-  // Prepare chart data
+  const handleNextPage = () => {
+    const totalPages = txPagination ? Math.ceil(txPagination.total / TX_LIMIT) : 1
+    if (txPage < totalPages) {
+      const newPage = txPage + 1
+      setTxPage(newPage)
+      loadTransactions(newPage)
+    }
+  }
+
+  // Chart data
   const chartData = usage
     ? Object.entries(usage.daily_breakdown)
         .map(([date, value]) => ({ date, credits: value }))
@@ -108,123 +242,159 @@ export default function CreditsPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid gap-4 md:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
-                <Skeleton className="h-4 w-24" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-32" />
-              </CardContent>
-            </Card>
-          ))}
+      <div className="space-y-5">
+        <Skeleton className="h-7 w-44" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-28 w-full rounded-xl" />
+          <Skeleton className="h-28 w-full rounded-xl" />
+          <Skeleton className="h-28 w-full rounded-xl" />
         </div>
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <Skeleton className="h-60 w-full rounded-xl" />
       </div>
     )
   }
 
+  const isLowBalance = balance && (balance.whatsapp_credit_available ?? balance.whatsapp_credit_balance ?? 0) > 0 && (balance.whatsapp_credit_available ?? balance.whatsapp_credit_balance ?? 0) < 1000
+  const isEmptyBalance = balance && (balance.whatsapp_credit_available ?? balance.whatsapp_credit_balance ?? 0) === 0
+  const pendingRequests = requests.filter((r) => r.status === "pending")
+  const totalPages = txPagination ? Math.ceil(txPagination.total / TX_LIMIT) : 1
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Crédits</h1>
-          <p className="text-muted-foreground mt-1">
-            Gérez vos crédits et consultez votre consommation.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/credits/requests">
-              Mes demandes
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/credits/request">
-              <CreditCard className="mr-2 h-4 w-4" />
-              Demander des crédits
-            </Link>
-          </Button>
-        </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div style={stagger(0)}>
+        <h1 className="text-xl font-semibold tracking-tight">Crédits</h1>
+        <p className="text-[13px] text-muted-foreground mt-0.5">
+          Gérez vos crédits et consultez votre consommation
+        </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Balance + Stats */}
+      <div className="grid gap-4 sm:grid-cols-3" style={stagger(1)}>
+        {/* WhatsApp Wallet Card */}
         <Link href="/whatsapp/credits" className="block">
-          <Card className="transition-colors hover:border-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Wallet WhatsApp
-              </CardTitle>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold">
-                {formatNumber(
-                  walletBalance
-                    ? walletBalance.marketing.available + walletBalance.utility.available + walletBalance.authentication.available + walletBalance.free.available
-                    : (balance?.whatsapp_credit_available ?? balance?.whatsapp_credit_balance ?? 0)
-                )} <span className="text-sm font-normal text-muted-foreground">FCFA</span>
+          <div className={`rounded-xl border p-5 transition-all hover:shadow-md ${
+            isEmptyBalance
+              ? "border-red-200 bg-gradient-to-br from-red-50/80 to-orange-50/60"
+              : isLowBalance
+              ? "border-amber-200 bg-gradient-to-br from-amber-50/80 to-yellow-50/60"
+              : "border-border/40 bg-gradient-to-br from-emerald-50/60 to-green-50/40"
+          }`}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                isEmptyBalance ? "bg-red-100" : isLowBalance ? "bg-amber-100" : "bg-emerald-100"
+              }`}>
+                {isEmptyBalance ? (
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                ) : (
+                  <Wallet className={`h-5 w-5 ${isLowBalance ? "text-amber-600" : "text-emerald-600"}`} />
+                )}
               </div>
-              {walletBalance && (
-                <div className="flex gap-2 mt-2 text-[11px] text-muted-foreground">
-                  <span className="text-violet-600">M:{formatNumber(walletBalance.marketing.available)}</span>
-                  <span className="text-blue-600">U:{formatNumber(walletBalance.utility.available)}</span>
-                  <span className="text-emerald-600">A:{formatNumber(walletBalance.authentication.available)}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Wallet WhatsApp
+                </p>
+                <p className="text-2xl font-bold tracking-tight">
+                  {formatNumber(
+                    walletBalance
+                      ? walletBalance.marketing.available + walletBalance.utility.available + walletBalance.authentication.available + walletBalance.free.available
+                      : (balance?.whatsapp_credit_available ?? balance?.whatsapp_credit_balance ?? 0)
+                  )}
+                </p>
+              </div>
+            </div>
+            <p className="text-[12px] text-muted-foreground">
+              FCFA disponibles
+            </p>
+            {walletBalance && (
+              <div className="flex gap-2 mt-2 text-[11px]">
+                <span className="text-violet-600 font-medium">M:{formatNumber(walletBalance.marketing.available)}</span>
+                <span className="text-blue-600 font-medium">U:{formatNumber(walletBalance.utility.available)}</span>
+                <span className="text-emerald-600 font-medium">A:{formatNumber(walletBalance.authentication.available)}</span>
+              </div>
+            )}
+            {isEmptyBalance && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg bg-red-100/60 px-3 py-2">
+                <AlertTriangle className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                <p className="text-[11px] text-red-700">
+                  Solde épuisé. Rechargez pour continuer vos envois.
+                </p>
+              </div>
+            )}
+            {isLowBalance && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-100/60 px-3 py-2">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                <p className="text-[11px] text-amber-700">
+                  Solde faible. Rechargez pour éviter une interruption.
+                </p>
+              </div>
+            )}
+          </div>
         </Link>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Consommation (30j)
-            </CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">
-              {formatNumber(usage?.total_consumed || 0)}
+        {/* Consumption Card */}
+        <div className="rounded-xl border border-border/40 bg-gradient-to-br from-blue-50/50 to-sky-50/30 p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
+              <TrendingDown className="h-5 w-5 text-blue-600" />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              ~{formatNumber(Math.round(usage?.average_daily_consumption || 0))}/jour
-            </p>
-          </CardContent>
-        </Card>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Consommation (30j)
+              </p>
+              <p className="text-2xl font-bold tracking-tight">
+                {formatNumber(usage?.total_consumed || 0)}
+              </p>
+            </div>
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            ~{formatNumber(Math.round(usage?.average_daily_consumption || 0))}/jour en moyenne
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Autonomie estimée
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">
-              {usage?.estimated_days_remaining
-                ? `${formatNumber(usage.estimated_days_remaining)} jours`
-                : "—"}
+        {/* Autonomy Card */}
+        <div className="rounded-xl border border-border/40 bg-gradient-to-br from-violet-50/50 to-purple-50/30 p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
+              <TrendingUp className="h-5 w-5 text-violet-600" />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Au rythme actuel
-            </p>
-          </CardContent>
-        </Card>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Autonomie estimée
+              </p>
+              <p className="text-2xl font-bold tracking-tight">
+                {usage?.estimated_days_remaining
+                  ? `${formatNumber(usage.estimated_days_remaining)} j`
+                  : "—"}
+              </p>
+            </div>
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            au rythme actuel
+          </p>
+          {pendingRequests.length > 0 && (
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50/80 border border-amber-200/60 px-3 py-2">
+              <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+              <p className="text-[11px] text-amber-700">
+                {pendingRequests.length} demande{pendingRequests.length > 1 ? "s" : ""} en attente de validation
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Usage Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Consommation quotidienne</CardTitle>
-          <CardDescription>Crédits utilisés sur les 30 derniers jours</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div style={stagger(2)}>
+        <div className="flex items-center gap-2 mb-3">
+          <TrendingDown className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+            Consommation quotidienne
+          </h2>
+        </div>
+        <div className="rounded-xl border border-border/40 p-5">
           {chartData.length > 0 ? (
-            <div className="h-64">
+            <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <defs>
@@ -266,105 +436,519 @@ export default function CreditsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
+            <div className="h-52 flex items-center justify-center text-muted-foreground text-[13px]">
               Aucune donnée de consommation disponible
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Transactions History */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <History className="h-5 w-5" />
-            <CardTitle>Historique des transactions</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Montant</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.map((tx) => (
-                <TableRow key={tx.id}>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(tx.created_at)}
-                  </TableCell>
-                  <TableCell>{tx.description}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        tx.type === "recharge"
-                          ? "success"
-                          : tx.type === "consumption"
-                          ? "secondary"
-                          : "default"
-                      }
-                    >
-                      {tx.type === "recharge"
-                        ? "Recharge"
-                        : tx.type === "consumption"
-                        ? "Consommation"
-                        : tx.type === "refund"
-                        ? "Remboursement"
-                        : "Ajustement"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span
-                      className={`flex items-center justify-end gap-1 font-medium ${
-                        tx.amount > 0 ? "text-emerald-600" : "text-foreground"
-                      }`}
-                    >
-                      {tx.amount > 0 ? (
-                        <ArrowUpRight className="h-4 w-4" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4" />
-                      )}
-                      {tx.amount > 0 ? "+" : ""}
-                      {formatNumber(tx.amount)}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t px-4 py-3">
-              <p className="text-sm text-muted-foreground">
-                Page {page} sur {totalPages}
+      {/* Request CTA */}
+      <div style={stagger(3)}>
+        <div className="flex items-center justify-between rounded-xl border border-blue-200/60 bg-gradient-to-r from-blue-50/80 to-sky-50/60 p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
+              <CreditCard className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-gray-900">
+                Besoin de crédits ?
               </p>
-              <div className="flex gap-2">
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                Effectuez votre paiement puis soumettez votre demande avec la preuve
+              </p>
+            </div>
+          </div>
+          <Button
+            className="h-9 rounded-lg px-5 text-[13px] gap-2"
+            onClick={() => setRequestDialogOpen(true)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Demander des crédits
+          </Button>
+        </div>
+      </div>
+
+      {/* My Requests Section */}
+      <div style={stagger(4)}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+              Mes demandes
+            </h2>
+          </div>
+          <select
+            className="h-7 rounded-lg border border-gray-200 bg-white px-2 text-[11px]"
+            value={requestStatusFilter}
+            onChange={(e) => setRequestStatusFilter(e.target.value as CreditRequestStatus | "all")}
+          >
+            <option value="all">Toutes</option>
+            <option value="pending">En attente</option>
+            <option value="approved">Approuvées</option>
+            <option value="rejected">Rejetées</option>
+            <option value="cancelled">Annulées</option>
+          </select>
+        </div>
+
+        {requestsLoading && requests.length === 0 ? (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : requests.length === 0 ? (
+          <Card className="border-transparent">
+            <CardContent className="flex flex-col items-center justify-center py-10 gap-2">
+              <FileText className="h-8 w-8 text-muted-foreground/40" />
+              <p className="text-[13px] text-muted-foreground">Aucune demande</p>
+              <p className="text-[11px] text-muted-foreground/60">
+                Cliquez sur &quot;Demander des crédits&quot; pour envoyer une demande.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {requests.map((req) => {
+              const meta = requestStatusMeta[req.status] || requestStatusMeta.pending
+              const StatusIcon = meta.icon
+              return (
+                <div
+                  key={req.id}
+                  className="rounded-xl border border-border/40 p-4 hover:bg-muted/20 transition-colors cursor-pointer"
+                  onClick={() => setDetailRequest(req)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 shrink-0">
+                        <CreditCard className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-medium truncate">
+                          {formatNumber(req.amount)} crédits
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {req.payment_method === "mobile_money" ? "Mobile Money" : req.payment_method === "airtel_money" ? "Airtel Money" : "Cash"}
+                          {req.payment_reference ? ` · ${req.payment_reference}` : ""}
+                          {" · "}
+                          {formatDate(req.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {req.payment_proof_url && (
+                        <a
+                          href={req.payment_proof_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Voir la preuve"
+                        >
+                          <FileImage className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta.bg} ${meta.color}`}>
+                        <StatusIcon className="h-3 w-3" />
+                        {meta.label}
+                      </span>
+                      {req.status === "pending" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500"
+                          disabled={cancellingId === req.id}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCancelRequest(req.id)
+                          }}
+                        >
+                          {cancellingId === req.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Ban className="h-3 w-3" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {req.status === "rejected" && req.review_note && (
+                    <div className="mt-2 rounded-lg bg-red-50/60 border border-red-200/60 px-3 py-2">
+                      <p className="text-[11px] text-red-700">
+                        <span className="font-semibold">Motif :</span> {req.review_note}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Transaction History */}
+      <div style={stagger(5)}>
+        <div className="flex items-center gap-2 mb-3">
+          <History className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+            Historique des transactions
+          </h2>
+        </div>
+
+        {transactions.length === 0 && !txLoading ? (
+          <Card className="border-transparent">
+            <CardContent className="flex flex-col items-center justify-center py-10 gap-2">
+              <History className="h-8 w-8 text-muted-foreground/40" />
+              <p className="text-[13px] text-muted-foreground">Aucune transaction</p>
+              <p className="text-[11px] text-muted-foreground/60">
+                Vos transactions de crédits apparaîtront ici.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="rounded-xl border border-border/40 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border/40 bg-muted/30">
+                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Date</th>
+                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Description</th>
+                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Type</th>
+                    <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Montant</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {txLoading ? (
+                    [...Array(5)].map((_, i) => (
+                      <tr key={i} className="border-b border-border/20 last:border-0">
+                        <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                        <td className="px-4 py-3"><Skeleton className="h-4 w-48" /></td>
+                        <td className="px-4 py-3"><Skeleton className="h-5 w-20 rounded-full" /></td>
+                        <td className="px-4 py-3 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                      </tr>
+                    ))
+                  ) : (
+                    transactions.map((tx) => {
+                      const isPositive = tx.amount > 0
+                      const typeLabel = tx.type === "recharge" ? "Recharge" : tx.type === "consumption" ? "Consommation" : tx.type === "refund" ? "Remboursement" : "Ajustement"
+                      const typeBg = tx.type === "recharge"
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        : tx.type === "consumption"
+                        ? "bg-amber-50 border-amber-200 text-amber-700"
+                        : "bg-gray-50 border-gray-200 text-gray-700"
+                      return (
+                        <tr key={tx.id} className="border-b border-border/20 last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="px-4 py-3 text-[12px] text-muted-foreground whitespace-nowrap">
+                            {formatDate(tx.created_at)}
+                          </td>
+                          <td className="px-4 py-3 text-[12px] text-foreground max-w-xs truncate">
+                            {tx.description}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${typeBg}`}>
+                              {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                              {typeLabel}
+                            </span>
+                          </td>
+                          <td className={`px-4 py-3 text-right text-[13px] font-semibold whitespace-nowrap ${
+                            isPositive ? "text-emerald-600" : "text-red-500"
+                          }`}>
+                            {isPositive ? "+" : ""}{formatNumber(tx.amount)}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-border/40 px-4 py-3">
+                <p className="text-[11px] text-muted-foreground">
+                  Page {txPage} sur {totalPages}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" disabled={txPage === 1 || txLoading} onClick={handlePrevPage}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" disabled={txPage >= totalPages || txLoading} onClick={handleNextPage}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Request Dialog ── */}
+      {requestDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
+          onClick={() => {
+            setRequestDialogOpen(false)
+            setPaymentProof(null)
+            setRequestAmount("")
+            setPaymentReference("")
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setRequestDialogOpen(false)
+              setPaymentProof(null)
+              setRequestAmount("")
+              setPaymentReference("")
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100">
+                  <CreditCard className="h-4.5 w-4.5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-semibold text-gray-900">
+                    Demander des crédits
+                  </h3>
+                  <p className="text-[11px] text-gray-400">
+                    Votre demande sera validée par un administrateur
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                onClick={() => {
+                  setRequestDialogOpen(false)
+                  setPaymentProof(null)
+                  setRequestAmount("")
+                  setPaymentReference("")
+                }}
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Amount */}
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Montant (crédits)</Label>
+                <Input
+                  type="number"
+                  value={requestAmount}
+                  onChange={(e) => setRequestAmount(e.target.value)}
+                  placeholder="5000"
+                  min="1"
+                  className="h-9 rounded-lg text-[13px]"
+                />
+                <p className="text-[10px] text-gray-400">1 crédit = 1 segment SMS</p>
+              </div>
+
+              {/* Payment method */}
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Moyen de paiement</Label>
+                <select
+                  className="w-full h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px]"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
+                  <option value="mobile_money">Mobile Money</option>
+                  <option value="airtel_money">Airtel Money</option>
+                  <option value="cash">Cash</option>
+                </select>
+              </div>
+
+              {/* Payment reference */}
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Référence de paiement (optionnel)</Label>
+                <Input
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  placeholder="TXN123456 ou numéro de transaction"
+                  className="h-9 rounded-lg text-[13px]"
+                />
+              </div>
+
+              {/* Payment proof */}
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Preuve de paiement</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) setPaymentProof(e.target.files[0])
+                  }}
+                />
+                <div
+                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 p-4 cursor-pointer hover:border-gray-300 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {paymentProof ? (
+                    <div className="flex items-center gap-2 text-center">
+                      <FileImage className="h-4 w-4 text-blue-500 shrink-0" />
+                      <div>
+                        <p className="text-[12px] font-medium text-gray-700">{paymentProof.name}</p>
+                        <p className="text-[10px] text-gray-400">
+                          {(paymentProof.size / 1024).toFixed(0)} Ko
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Upload className="h-5 w-5 text-gray-300 mx-auto mb-1" />
+                      <p className="text-[12px] text-gray-400">
+                        Capture d&apos;écran ou reçu de paiement
+                      </p>
+                      <p className="text-[10px] text-gray-300 mt-0.5">
+                        Image ou PDF
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* How it works */}
+              <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5">
+                <p className="text-[11px] font-semibold text-gray-500 mb-1">Comment ça marche ?</p>
+                <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-gray-400">
+                  <li>Effectuez votre paiement via le mode choisi</li>
+                  <li>Joignez la preuve de paiement ci-dessus</li>
+                  <li>Un administrateur vérifiera et approuvera</li>
+                  <li>Les crédits seront ajoutés à votre compte</li>
+                </ol>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
+                  className="h-9 rounded-lg px-4 text-[13px]"
+                  onClick={() => {
+                    setRequestDialogOpen(false)
+                    setPaymentProof(null)
+                    setRequestAmount("")
+                    setPaymentReference("")
+                  }}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  Annuler
                 </Button>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
+                  className="h-9 rounded-lg px-5 text-[13px] gap-2"
+                  onClick={handleSubmitRequest}
+                  disabled={isSubmitting || !requestAmount}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Envoyer la demande
                 </Button>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      )}
+
+      {/* ── Detail Dialog ── */}
+      {detailRequest && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
+          onClick={() => setDetailRequest(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setDetailRequest(null)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-[15px] font-semibold text-gray-900">Détail de la demande</h3>
+              <button
+                type="button"
+                className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                onClick={() => setDetailRequest(null)}
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Montant</p>
+                  <p className="text-[13px] font-medium">{formatNumber(detailRequest.amount)} crédits</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Paiement</p>
+                  <p className="text-[13px] font-medium">
+                    {detailRequest.payment_method === "mobile_money" ? "Mobile Money" : detailRequest.payment_method === "airtel_money" ? "Airtel Money" : "Cash"}
+                  </p>
+                </div>
+                {detailRequest.payment_reference && (
+                  <div className="col-span-2">
+                    <p className="text-[11px] text-gray-400 uppercase tracking-wide">Référence</p>
+                    <p className="text-[13px] font-mono">{detailRequest.payment_reference}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Date</p>
+                  <p className="text-[13px]">{formatDate(detailRequest.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Statut</p>
+                  {(() => {
+                    const meta = requestStatusMeta[detailRequest.status] || requestStatusMeta.pending
+                    const StatusIcon = meta.icon
+                    return (
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta.bg} ${meta.color}`}>
+                        <StatusIcon className="h-3 w-3" />
+                        {meta.label}
+                      </span>
+                    )
+                  })()}
+                </div>
+              </div>
+              {detailRequest.payment_proof_url && (
+                <div>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Preuve de paiement</p>
+                  <a
+                    href={detailRequest.payment_proof_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[12px] text-primary hover:underline"
+                  >
+                    <FileImage className="h-3.5 w-3.5" />
+                    Voir la preuve
+                  </a>
+                </div>
+              )}
+              {detailRequest.review_note && (
+                <div className={`rounded-lg px-3 py-2 ${
+                  detailRequest.status === "rejected" ? "bg-red-50/60 border border-red-200/60" : "bg-emerald-50/60 border border-emerald-200/60"
+                }`}>
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                    Note de l&apos;administrateur
+                  </p>
+                  <p className={`text-[12px] ${detailRequest.status === "rejected" ? "text-red-700" : "text-emerald-700"}`}>
+                    {detailRequest.review_note}
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button variant="outline" className="h-9 rounded-lg px-4 text-[13px]" onClick={() => setDetailRequest(null)}>
+                Fermer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -38,6 +38,7 @@ import {
   XCircle,
   Clock,
   Filter,
+  FileImage,
 } from "lucide-react"
 import { toast } from "sonner"
 import { formatDate, formatNumber } from "@/lib/utils"
@@ -195,6 +196,7 @@ export default function AdminCreditRequestsPage() {
                   <TableHead>Montant</TableHead>
                   <TableHead>Paiement</TableHead>
                   <TableHead>Référence</TableHead>
+                  <TableHead>Preuve</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead className="w-32">Actions</TableHead>
                 </TableRow>
@@ -227,6 +229,21 @@ export default function AdminCreditRequestsPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {request.payment_reference || "—"}
+                    </TableCell>
+                    <TableCell>
+                      {request.payment_proof_url ? (
+                        <a
+                          href={request.payment_proof_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <FileImage className="h-3.5 w-3.5" />
+                          Voir
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusVariants[request.status]}>

@@ -831,15 +831,18 @@ export const whatsappService = {
   async purchasePackage(
     code: string,
     paymentReference: string,
-    paymentMethod: string
+    paymentMethod: string,
+    paymentProof?: File
   ): Promise<{ success: boolean; transaction: WhatsAppCreditTransaction }> {
-    const formData = new URLSearchParams()
+    const formData = new FormData()
     formData.append("code", code)
     formData.append("payment_reference", paymentReference)
     formData.append("payment_method", paymentMethod)
+    if (paymentProof) formData.append("payment_proof", paymentProof)
     const { data } = await api.post<{ success: boolean; transaction: WhatsAppCreditTransaction }>(
       "/v1/whatsapp/credits/purchase",
-      formData
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
     )
     return data
   },
@@ -847,15 +850,18 @@ export const whatsappService = {
   async topUpCredits(
     amountFcfa: number,
     paymentReference: string,
-    description?: string
+    description?: string,
+    paymentProof?: File
   ): Promise<{ success: boolean; transaction: WhatsAppCreditTransaction }> {
-    const formData = new URLSearchParams()
+    const formData = new FormData()
     formData.append("amount_fcfa", String(amountFcfa))
     formData.append("payment_reference", paymentReference)
     if (description) formData.append("description", description)
+    if (paymentProof) formData.append("payment_proof", paymentProof)
     const { data } = await api.post<{ success: boolean; transaction: WhatsAppCreditTransaction }>(
       "/v1/whatsapp/credits/topup",
-      formData
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
     )
     return data
   },

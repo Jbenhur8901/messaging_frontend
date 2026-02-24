@@ -451,6 +451,7 @@ export interface CreditRequest {
   amount: number
   payment_method: PaymentMethod
   payment_reference?: string
+  payment_proof_url?: string
   status: CreditRequestStatus
   reviewed_by?: string
   reviewed_at?: string

@@ -5,15 +5,21 @@ export const creditRequestsService = {
   async createRequest(
     amount: number,
     paymentMethod: PaymentMethod,
-    paymentReference?: string
+    paymentReference?: string,
+    paymentProof?: File
   ): Promise<{ success: boolean; request: CreditRequest }> {
-    const formData = new URLSearchParams()
+    const formData = new FormData()
     formData.append("amount", amount.toString())
     formData.append("payment_method", paymentMethod)
     if (paymentReference) {
       formData.append("payment_reference", paymentReference)
     }
-    const { data } = await api.post("/v1/credits/request", formData)
+    if (paymentProof) {
+      formData.append("payment_proof", paymentProof)
+    }
+    const { data } = await api.post("/v1/credits/request", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
     return data
   },
 
