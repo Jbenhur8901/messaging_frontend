@@ -12,6 +12,33 @@ const createNonce = () => {
 }
 
 export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // ── Route Protection ──
+
+  // Public routes — no auth needed
+  const publicRoutes = ["/auth/", "/terms", "/invite/"]
+  const isPublic = publicRoutes.some((r) => pathname.startsWith(r))
+
+  if (!isPublic) {
+    // Admin routes
+    if (pathname.startsWith("/admin")) {
+      const adminToken = request.cookies.get("admin_token")?.value
+      if (!adminToken && !pathname.startsWith("/admin/login")) {
+        return NextResponse.redirect(new URL("/admin/login", request.url))
+      }
+    }
+    // Dashboard routes — require access_token cookie
+    else if (pathname !== "/") {
+      const accessToken = request.cookies.get("access_token")?.value
+      if (!accessToken) {
+        return NextResponse.redirect(new URL("/auth/login", request.url))
+      }
+    }
+  }
+
+  // ── Security Headers ──
+
   const nonce = createNonce()
   const isDev = process.env.NODE_ENV !== "production"
 
@@ -51,6 +78,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/).*)",
   ],
 }

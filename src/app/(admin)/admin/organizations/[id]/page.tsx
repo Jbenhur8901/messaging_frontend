@@ -4,11 +4,22 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { adminService } from "@/services"
+import { handleApiError } from "@/services/api"
 import type { Organization, OrganizationMember, CreditRequest, OrganizationRole } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Table,
   TableBody,
@@ -19,10 +30,11 @@ import {
 } from "@/components/ui/table"
 import {
   ArrowLeft,
-  Building2,
   Users,
   CreditCard,
   Clock,
+  ShieldOff,
+  Loader2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { formatDate, formatNumber } from "@/lib/utils"
@@ -43,6 +55,8 @@ export default function AdminOrganizationDetailPage() {
   const [recentRequests, setRecentRequests] = useState<CreditRequest[]>([])
   const [stats, setStats] = useState<{ total_members: number; total_credit_requests: number; pending_requests: number } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [resetMFAMember, setResetMFAMember] = useState<OrganizationMember | null>(null)
+  const [isResettingMFA, setIsResettingMFA] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -63,6 +77,21 @@ export default function AdminOrganizationDetailPage() {
       loadData()
     }
   }, [orgId])
+
+  const handleResetMFA = async (member: OrganizationMember) => {
+    if (!member.user_id) return
+    setIsResettingMFA(true)
+    try {
+      await adminService.resetUserMFA(member.user_id)
+      toast.success(`MFA réinitialisé pour ${member.email}`)
+      setResetMFAMember(null)
+    } catch (error) {
+      const apiError = handleApiError(error)
+      toast.error(apiError.message)
+    } finally {
+      setIsResettingMFA(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -184,6 +213,7 @@ export default function AdminOrganizationDetailPage() {
                 <TableHead>Nom</TableHead>
                 <TableHead>Rôle</TableHead>
                 <TableHead>Statut</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -202,6 +232,19 @@ export default function AdminOrganizationDetailPage() {
                     <Badge variant={member.status === "accepted" ? "default" : "secondary"}>
                       {member.status === "accepted" ? "Actif" : "En attente"}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {member.user_id && member.status === "accepted" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[12px] gap-1.5"
+                        onClick={() => setResetMFAMember(member)}
+                      >
+                        <ShieldOff className="h-3 w-3" />
+                        Reset MFA
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -259,6 +302,37 @@ export default function AdminOrganizationDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Reset MFA Confirmation Dialog */}
+      <AlertDialog
+        open={!!resetMFAMember}
+        onOpenChange={(open) => {
+          if (!open) setResetMFAMember(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Réinitialiser le MFA</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous réinitialiser l&apos;authentification à double facteur pour{" "}
+              <strong>{resetMFAMember?.email}</strong> ? L&apos;utilisateur devra reconfigurer son 2FA.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResettingMFA}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                if (resetMFAMember) void handleResetMFA(resetMFAMember)
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isResettingMFA && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Réinitialiser
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

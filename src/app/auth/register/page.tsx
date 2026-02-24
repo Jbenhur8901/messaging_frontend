@@ -14,10 +14,8 @@ import { Label } from "@/components/ui/label"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
@@ -73,108 +71,113 @@ export default function RegisterPage() {
 
   return (
     <Card className="w-full border-0 bg-transparent p-0 shadow-none">
-      <CardHeader className="space-y-2 p-0">
-        <CardTitle className="text-2xl font-semibold text-foreground">
-          Créer un compte
-        </CardTitle>
-        <CardDescription className="text-muted-foreground">
-          Renseignez vos informations pour démarrer rapidement.
-        </CardDescription>
+      <CardHeader className="space-y-1.5 p-0">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">
+          Cr&eacute;er un compte
+        </h2>
+        <p className="text-[13px] text-muted-foreground">
+          Renseignez vos informations pour d&eacute;marrer rapidement.
+        </p>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4 px-0 pb-0 pt-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">Prénom</Label>
+        <CardContent className="space-y-3 px-0 pb-0 pt-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="firstName" className="text-[13px]">Pr&eacute;nom</Label>
               <Input
                 id="firstName"
                 placeholder="Jean"
+                className="h-9 text-[13px] rounded-lg"
                 {...register("firstName")}
                 disabled={isLoading}
               />
               {errors.firstName && (
-                <p className="text-sm text-destructive">
+                <p className="text-[12px] text-destructive">
                   {errors.firstName.message}
                 </p>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Nom</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="lastName" className="text-[13px]">Nom</Label>
               <Input
                 id="lastName"
                 placeholder="Dupont"
+                className="h-9 text-[13px] rounded-lg"
                 {...register("lastName")}
                 disabled={isLoading}
               />
               {errors.lastName && (
-                <p className="text-sm text-destructive">
+                <p className="text-[12px] text-destructive">
                   {errors.lastName.message}
                 </p>
               )}
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-[13px]">Email</Label>
             <Input
               id="email"
               type="email"
               placeholder="vous@exemple.com"
+              className="h-9 text-[13px] rounded-lg"
               {...register("email")}
               disabled={isLoading}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p className="text-[12px] text-destructive">{errors.email.message}</p>
             )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Mot de passe</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-[13px]">Mot de passe</Label>
             <Input
               id="password"
               type="password"
               placeholder="••••••••"
+              className="h-9 text-[13px] rounded-lg"
               {...register("password")}
               disabled={isLoading}
             />
             {errors.password && (
-              <p className="text-sm text-destructive">
+              <p className="text-[12px] text-destructive">
                 {errors.password.message}
               </p>
             )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="confirmPassword" className="text-[13px]">Confirmer le mot de passe</Label>
             <Input
               id="confirmPassword"
               type="password"
               placeholder="••••••••"
+              className="h-9 text-[13px] rounded-lg"
               {...register("confirmPassword")}
               disabled={isLoading}
             />
             {errors.confirmPassword && (
-              <p className="text-sm text-destructive">
+              <p className="text-[12px] text-destructive">
                 {errors.confirmPassword.message}
               </p>
             )}
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4 px-0 pb-0 pt-6">
-          <p className="text-center text-xs text-muted-foreground">
-            En creant un compte, vous acceptez nos{" "}
+        <CardFooter className="flex flex-col space-y-3 px-0 pb-0 pt-5">
+          <p className="text-center text-[11px] text-muted-foreground/60">
+            En cr&eacute;ant un compte, vous acceptez nos{" "}
             <Link
               href="/terms"
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-muted-foreground hover:text-primary transition-colors underline"
               target="_blank"
             >
-              Conditions Generales d&apos;Utilisation
+              Conditions G&eacute;n&eacute;rales d&apos;Utilisation
             </Link>
             .
           </p>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Créer mon compte
+          <Button type="submit" className="w-full h-9 text-[13px] rounded-lg" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            Cr&eacute;er mon compte
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            Déjà un compte ?{" "}
+          <p className="text-center text-[13px] text-muted-foreground">
+            D&eacute;j&agrave; un compte ?{" "}
             <Link
               href="/auth/login"
               className="font-medium text-primary hover:underline"

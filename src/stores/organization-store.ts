@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { createJSONStorage, persist } from "zustand/middleware"
 import type { Organization, OrganizationMember, OrganizationRole } from "@/types"
 import { organizationsService } from "@/services/organizations"
 
@@ -18,9 +19,11 @@ interface OrganizationState {
   removeMember: (memberId: string) => Promise<void>
   updateOrganization: (name: string) => Promise<void>
   clearError: () => void
+  reset: () => void
 }
 
 export const useOrganizationStore = create<OrganizationState>()(
+  persist(
     (set, get) => ({
       currentOrganization: null,
       organizations: [],
@@ -137,5 +140,21 @@ export const useOrganizationStore = create<OrganizationState>()(
       },
 
       clearError: () => set({ error: null }),
-    })
+
+      reset: () => set({
+        currentOrganization: null,
+        organizations: [],
+        members: [],
+        isLoading: false,
+        error: null,
+      }),
+    }),
+    {
+      name: "organization-storage",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        currentOrganization: state.currentOrganization,
+      }),
+    }
+  )
 )

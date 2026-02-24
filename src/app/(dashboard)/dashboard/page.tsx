@@ -320,7 +320,7 @@ export default function DashboardPage() {
                 </p>
                 {walletBalance && (
                   <div className="flex items-center gap-2.5 mt-1.5">
-                    <span className="text-[10px] text-violet-500/80 font-medium">M {formatNumber(walletBalance.marketing.available)}</span>
+                    <span className="text-[10px] text-blue-500/80 font-medium">M {formatNumber(walletBalance.marketing.available)}</span>
                     <span className="text-[10px] text-blue-500/80 font-medium">U {formatNumber(walletBalance.utility.available)}</span>
                     <span className="text-[10px] text-emerald-500/80 font-medium">A {formatNumber(walletBalance.authentication.available)}</span>
                   </div>

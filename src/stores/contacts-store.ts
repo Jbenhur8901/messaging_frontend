@@ -22,6 +22,7 @@ interface ContactsState {
   clearSelection: () => void
   deleteContact: (contactId: string) => Promise<void>
   clearError: () => void
+  reset: () => void
 }
 
 export const useContactsStore = create<ContactsState>((set, get) => ({
@@ -54,7 +55,8 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
     try {
       const result = await tagsService.getTags()
       set({ tags: result.tags })
-    } catch (error) {
+    } catch {
+      set({ error: "Impossible de charger les tags" })
     }
   },
 
@@ -96,4 +98,14 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  reset: () => set({
+    contacts: [],
+    tags: [],
+    selectedContacts: [],
+    pagination: null,
+    isLoading: false,
+    error: null,
+    searchQuery: "",
+  }),
 }))

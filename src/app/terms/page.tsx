@@ -1,317 +1,394 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, FileText, Building2, UserCheck, Shield, CreditCard, Scale, MessageSquare, Lock, Copyright, Server, AlertTriangle, Ban, PenLine, Gavel, Mail } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 export const metadata: Metadata = {
   title: "Conditions d'utilisation - Flow by Nodes Technology",
   description: "Conditions d'utilisation de la plateforme Flow by Nodes Technology",
 }
 
+const stagger = (i: number) => ({
+  opacity: 0,
+  animation: `fadeIn 0.45s ease-out ${i * 0.06}s forwards`,
+})
+
+function Section({
+  icon: Icon,
+  title,
+  index,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  index: number
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-3" style={stagger(index)}>
+      <div className="flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+        <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+          {title}
+        </h2>
+      </div>
+      <div className="rounded-xl border border-border/40 p-5 space-y-4">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function SubSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <h3 className="text-[13px] font-medium text-foreground">{title}</h3>
+      {children}
+    </div>
+  )
+}
+
+function Paragraph({ children }: { children: React.ReactNode }) {
+  return <p className="text-[13px] leading-relaxed text-foreground/80">{children}</p>
+}
+
+function List({ items }: { items: React.ReactNode[] }) {
+  return (
+    <ul className="space-y-1.5 pl-4">
+      {items.map((item, i) => (
+        <li key={i} className="text-[13px] leading-relaxed text-foreground/80 list-disc">
+          {item}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export default function TermsOfUsePage() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-6 py-12">
+      <div className="mx-auto max-w-2xl px-6 py-10">
+        {/* Back link */}
         <Link
           href="/"
-          className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          style={stagger(0)}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3.5 w-3.5" />
           Retour
         </Link>
 
-        <div className="space-y-2 mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Conditions Generales d&apos;Utilisation
+        {/* Header */}
+        <div className="mb-8" style={stagger(1)}>
+          <h1 className="text-xl font-semibold tracking-tight">
+            Conditions G&eacute;n&eacute;rales d&apos;Utilisation
           </h1>
-          <p className="text-muted-foreground">
-            Derniere mise a jour : 17 fevrier 2025
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-[13px] text-muted-foreground">
+              Flow by Nodes Technology
+            </p>
+            <Badge variant="secondary" className="text-[10px]">
+              Mise &agrave; jour : 17 f&eacute;vrier 2025
+            </Badge>
+          </div>
         </div>
 
-        <div className="prose prose-neutral max-w-none space-y-8 text-foreground/90 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-foreground [&_h3]:text-base [&_h3]:font-medium [&_h3]:text-foreground">
+        {/* Articles */}
+        <div className="space-y-5">
           {/* Article 1 */}
-          <section className="space-y-4">
-            <h2>Article 1 - Objet</h2>
-            <p>
-              Les presentes Conditions Generales d&apos;Utilisation (ci-apres &quot;CGU&quot;) ont pour objet de definir les
-              modalites et conditions dans lesquelles la societe <strong>Nodes Technology</strong>, societe de droit
-              congolais dont le siege social est situe a Brazzaville, Republique du Congo (ci-apres &quot;Nodes Technology&quot;,
-              &quot;nous&quot;, &quot;notre&quot; ou &quot;nos&quot;), met a disposition sa plateforme <strong>Flow</strong> (ci-apres la
-              &quot;Plateforme&quot;) et les services associes.
-            </p>
-            <p>
-              L&apos;utilisation de la Plateforme implique l&apos;acceptation pleine et entiere des presentes CGU. Si vous
+          <Section icon={FileText} title="Article 1 - Objet" index={2}>
+            <Paragraph>
+              Les pr&eacute;sentes Conditions G&eacute;n&eacute;rales d&apos;Utilisation (ci-apr&egrave;s &laquo; CGU &raquo;) ont pour objet de d&eacute;finir les
+              modalit&eacute;s et conditions dans lesquelles l&apos;entreprise <strong>Ets NODES TECHNOLOGIE</strong> (nom commercial : NODES TECHNOLOGY),
+              entreprise individuelle de droit congolais dont le si&egrave;ge social est situ&eacute; &agrave; Brazzaville, R&eacute;publique du Congo,
+              immatricul&eacute;e au RCCM sous le num&eacute;ro CG-BZV-01-2023-A10-02101 (ci-apr&egrave;s &laquo; Nodes Technology &raquo;,
+              &laquo; nous &raquo;, &laquo; notre &raquo; ou &laquo; nos &raquo;), met &agrave; disposition sa plateforme <strong>Flow</strong> (ci-apr&egrave;s la
+              &laquo; Plateforme &raquo;) et les services associ&eacute;s.
+            </Paragraph>
+            <Paragraph>
+              L&apos;utilisation de la Plateforme implique l&apos;acceptation pleine et enti&egrave;re des pr&eacute;sentes CGU. Si vous
               n&apos;acceptez pas ces conditions, vous ne devez pas utiliser la Plateforme.
-            </p>
-          </section>
+            </Paragraph>
+          </Section>
 
           {/* Article 2 */}
-          <section className="space-y-4">
-            <h2>Article 2 - Presentation de la Plateforme</h2>
-            <p>
+          <Section icon={Building2} title="Article 2 - Pr&eacute;sentation de la Plateforme" index={3}>
+            <Paragraph>
               <strong>Flow</strong> est une plateforme SaaS (Software as a Service) de gestion de campagnes marketing
               conversationnelles et d&apos;automatisation de la relation client. La Plateforme permet notamment :
-            </p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li>La gestion et l&apos;envoi de campagnes via WhatsApp Business API</li>
-              <li>La gestion de contacts et de listes de diffusion</li>
-              <li>La creation et la gestion de templates de messages</li>
-              <li>L&apos;automatisation de scenarios conversationnels</li>
-              <li>Le suivi et l&apos;analyse des performances des campagnes</li>
-              <li>La gestion de credits et de la facturation</li>
-            </ul>
-          </section>
+            </Paragraph>
+            <List
+              items={[
+                "La gestion et l'envoi de campagnes via WhatsApp Business API",
+                "La gestion de contacts et de listes de diffusion",
+                "La cr\u00e9ation et la gestion de templates de messages",
+                "L'automatisation de sc\u00e9narios conversationnels",
+                "Le suivi et l'analyse des performances des campagnes",
+                "La gestion de cr\u00e9dits et de la facturation",
+              ]}
+            />
+          </Section>
 
           {/* Article 3 */}
-          <section className="space-y-4">
-            <h2>Article 3 - Editeur de la Plateforme</h2>
-            <p>La Plateforme est editee par :</p>
-            <div className="rounded-lg border border-border/60 bg-muted/30 p-4 text-sm space-y-1">
-              <p><strong>Nodes Technology</strong></p>
-              <p>Societe privee independante</p>
-              <p>Siege social : Brazzaville, Republique du Congo</p>
-              <p>Annee de creation : 2023</p>
-              <p>Secteur : Intelligence Artificielle, Automatisation, Technologies de l&apos;Information</p>
+          <Section icon={Building2} title="Article 3 - &Eacute;diteur de la Plateforme" index={4}>
+            <Paragraph>La Plateforme est &eacute;dit&eacute;e par :</Paragraph>
+            <div className="rounded-lg border border-border/40 bg-muted/30 p-4 space-y-3">
+              <div className="space-y-0.5">
+                <p className="text-[13px] font-medium">Ets NODES TECHNOLOGIE</p>
+                <p className="text-[12px] text-muted-foreground">Nom commercial : NODES TECHNOLOGY</p>
+                <p className="text-[12px] text-muted-foreground">Forme juridique : Entreprise Individuelle (ETS)</p>
+                <p className="text-[12px] text-muted-foreground">Activit&eacute; principale : Programmation informatique &mdash; D&eacute;veloppement et gestion des solutions num&eacute;riques</p>
+                <p className="text-[12px] text-muted-foreground">Si&egrave;ge social : Brazzaville, R&eacute;publique du Congo</p>
+                <p className="text-[12px] text-muted-foreground">Date de cr&eacute;ation : 29 novembre 2023</p>
+              </div>
+              <div className="border-t border-border/40 pt-3 space-y-0.5">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Immatriculations</p>
+                <p className="text-[12px] text-muted-foreground">RCCM : CG-BZV-01-2023-A10-02101</p>
+                <p className="text-[12px] text-muted-foreground">NIU : P23000000460555T</p>
+                <p className="text-[12px] text-muted-foreground">N&deg; SCIEN : 2033364</p>
+                <p className="text-[12px] text-muted-foreground">N&deg; SCIET : 2033364015</p>
+                <p className="text-[12px] text-muted-foreground">Autorisation commerciale : AEXE02588EI1870BZV201223/MCAC/DGCI/DPCN</p>
+              </div>
             </div>
-          </section>
+          </Section>
 
           {/* Article 4 */}
-          <section className="space-y-4">
-            <h2>Article 4 - Inscription et Compte Utilisateur</h2>
-
-            <h3>4.1 Creation de compte</h3>
-            <p>
-              L&apos;acces a la Plateforme necessite la creation d&apos;un compte utilisateur. Lors de l&apos;inscription,
-              l&apos;utilisateur s&apos;engage a fournir des informations exactes, completes et a jour. Toute information
-              inexacte ou incomplete pourra entrainer la suspension ou la suppression du compte.
-            </p>
-
-            <h3>4.2 Securite du compte</h3>
-            <p>
-              L&apos;utilisateur est responsable de la confidentialite de ses identifiants de connexion (email et mot de
-              passe). Il s&apos;engage a ne pas communiquer ses identifiants a des tiers. Toute activite realisee depuis
-              son compte sera reputee effectuee par l&apos;utilisateur. L&apos;utilisateur doit informer immediatement
-              Nodes Technology de toute utilisation non autorisee de son compte.
-            </p>
-
-            <h3>4.3 Authentification a deux facteurs</h3>
-            <p>
-              La Plateforme propose un systeme d&apos;authentification a deux facteurs (2FA). Nodes Technology recommande
-              fortement l&apos;activation de cette fonctionnalite pour renforcer la securite du compte.
-            </p>
-          </section>
+          <Section icon={UserCheck} title="Article 4 - Inscription et Compte Utilisateur" index={5}>
+            <SubSection title="4.1 Cr&eacute;ation de compte">
+              <Paragraph>
+                L&apos;acc&egrave;s &agrave; la Plateforme n&eacute;cessite la cr&eacute;ation d&apos;un compte utilisateur. Lors de l&apos;inscription,
+                l&apos;utilisateur s&apos;engage &agrave; fournir des informations exactes, compl&egrave;tes et &agrave; jour. Toute information
+                inexacte ou incompl&egrave;te pourra entra&icirc;ner la suspension ou la suppression du compte.
+              </Paragraph>
+            </SubSection>
+            <SubSection title="4.2 S&eacute;curit&eacute; du compte">
+              <Paragraph>
+                L&apos;utilisateur est responsable de la confidentialit&eacute; de ses identifiants de connexion (email et mot de
+                passe). Il s&apos;engage &agrave; ne pas communiquer ses identifiants &agrave; des tiers. Toute activit&eacute; r&eacute;alis&eacute;e depuis
+                son compte sera r&eacute;put&eacute;e effectu&eacute;e par l&apos;utilisateur. L&apos;utilisateur doit informer imm&eacute;diatement
+                Nodes Technology de toute utilisation non autoris&eacute;e de son compte.
+              </Paragraph>
+            </SubSection>
+            <SubSection title="4.3 Authentification &agrave; deux facteurs">
+              <Paragraph>
+                La Plateforme propose un syst&egrave;me d&apos;authentification &agrave; deux facteurs (2FA). Nodes Technology recommande
+                fortement l&apos;activation de cette fonctionnalit&eacute; pour renforcer la s&eacute;curit&eacute; du compte.
+              </Paragraph>
+            </SubSection>
+          </Section>
 
           {/* Article 5 */}
-          <section className="space-y-4">
-            <h2>Article 5 - Organisations et Acces Multi-utilisateurs</h2>
-            <p>
-              La Plateforme permet la creation d&apos;organisations regroupant plusieurs utilisateurs. L&apos;administrateur
-              d&apos;une organisation est responsable de la gestion des membres, des roles et des permissions au sein de
-              son organisation. Il s&apos;engage a n&apos;accorder l&apos;acces qu&apos;aux personnes autorisees.
-            </p>
-          </section>
+          <Section icon={Shield} title="Article 5 - Organisations et Acc&egrave;s Multi-utilisateurs" index={6}>
+            <Paragraph>
+              La Plateforme permet la cr&eacute;ation d&apos;organisations regroupant plusieurs utilisateurs. L&apos;administrateur
+              d&apos;une organisation est responsable de la gestion des membres, des r&ocirc;les et des permissions au sein de
+              son organisation. Il s&apos;engage &agrave; n&apos;accorder l&apos;acc&egrave;s qu&apos;aux personnes autoris&eacute;es.
+            </Paragraph>
+          </Section>
 
           {/* Article 6 */}
-          <section className="space-y-4">
-            <h2>Article 6 - Credits et Facturation</h2>
-
-            <h3>6.1 Systeme de credits</h3>
-            <p>
-              L&apos;utilisation de certains services de la Plateforme (envoi de messages WhatsApp, campagnes, etc.)
-              est soumise a un systeme de credits. Les credits sont acquis par l&apos;utilisateur selon les tarifs en
-              vigueur et sont debites au fur et a mesure de l&apos;utilisation des services.
-            </p>
-
-            <h3>6.2 Non-remboursement</h3>
-            <p>
-              Sauf disposition contraire expressement convenue, les credits acquis ne sont pas remboursables.
-              Les credits non utilises ne sont pas reportables au-dela de la periode de validite definie lors
-              de l&apos;achat, sauf mention contraire.
-            </p>
-
-            <h3>6.3 Tarification</h3>
-            <p>
-              Les tarifs des credits et des services sont communiques sur la Plateforme ou sur demande. Nodes
-              Technology se reserve le droit de modifier ses tarifs a tout moment, sous reserve d&apos;en informer
-              les utilisateurs prealablement.
-            </p>
-          </section>
+          <Section icon={CreditCard} title="Article 6 - Cr&eacute;dits et Facturation" index={7}>
+            <SubSection title="6.1 Syst&egrave;me de cr&eacute;dits">
+              <Paragraph>
+                L&apos;utilisation de certains services de la Plateforme (envoi de messages WhatsApp, campagnes, etc.)
+                est soumise &agrave; un syst&egrave;me de cr&eacute;dits. Les cr&eacute;dits sont acquis par l&apos;utilisateur selon les tarifs en
+                vigueur et sont d&eacute;bit&eacute;s au fur et &agrave; mesure de l&apos;utilisation des services.
+              </Paragraph>
+            </SubSection>
+            <SubSection title="6.2 Non-remboursement">
+              <Paragraph>
+                Sauf disposition contraire express&eacute;ment convenue, les cr&eacute;dits acquis ne sont pas remboursables.
+                Les cr&eacute;dits non utilis&eacute;s ne sont pas reportables au-del&agrave; de la p&eacute;riode de validit&eacute; d&eacute;finie lors
+                de l&apos;achat, sauf mention contraire.
+              </Paragraph>
+            </SubSection>
+            <SubSection title="6.3 Tarification">
+              <Paragraph>
+                Les tarifs des cr&eacute;dits et des services sont communiqu&eacute;s sur la Plateforme ou sur demande. Nodes
+                Technology se r&eacute;serve le droit de modifier ses tarifs &agrave; tout moment, sous r&eacute;serve d&apos;en informer
+                les utilisateurs pr&eacute;alablement.
+              </Paragraph>
+            </SubSection>
+          </Section>
 
           {/* Article 7 */}
-          <section className="space-y-4">
-            <h2>Article 7 - Utilisation Acceptable</h2>
-            <p>L&apos;utilisateur s&apos;engage a utiliser la Plateforme de maniere loyale et conforme aux presentes CGU. Il est interdit de :</p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li>Utiliser la Plateforme pour envoyer des messages non sollicites (spam)</li>
-              <li>Envoyer des contenus illicites, diffamatoires, haineux, pornographiques ou portant atteinte aux droits de tiers</li>
-              <li>Usurper l&apos;identite d&apos;un tiers ou d&apos;une organisation</li>
-              <li>Tenter de contourner les mesures de securite de la Plateforme</li>
-              <li>Utiliser la Plateforme a des fins de phishing, de fraude ou d&apos;escroquerie</li>
-              <li>Revendre ou sous-licencier l&apos;acces a la Plateforme sans autorisation ecrite</li>
-              <li>Collecter ou traiter des donnees personnelles en violation des lois applicables</li>
-              <li>Perturber le fonctionnement de la Plateforme ou de ses infrastructures</li>
-            </ul>
-            <p>
-              Tout manquement a ces obligations pourra entrainer la suspension ou la resiliation immediate du compte,
-              sans prejudice des dommages et interets que Nodes Technology pourrait reclamer.
-            </p>
-          </section>
+          <Section icon={Scale} title="Article 7 - Utilisation Acceptable" index={8}>
+            <Paragraph>
+              L&apos;utilisateur s&apos;engage &agrave; utiliser la Plateforme de mani&egrave;re loyale et conforme aux pr&eacute;sentes CGU. Il est interdit de :
+            </Paragraph>
+            <List
+              items={[
+                "Utiliser la Plateforme pour envoyer des messages non sollicit\u00e9s (spam)",
+                "Envoyer des contenus illicites, diffamatoires, haineux, pornographiques ou portant atteinte aux droits de tiers",
+                "Usurper l'identit\u00e9 d'un tiers ou d'une organisation",
+                "Tenter de contourner les mesures de s\u00e9curit\u00e9 de la Plateforme",
+                "Utiliser la Plateforme \u00e0 des fins de phishing, de fraude ou d'escroquerie",
+                "Revendre ou sous-licencier l'acc\u00e8s \u00e0 la Plateforme sans autorisation \u00e9crite",
+                "Collecter ou traiter des donn\u00e9es personnelles en violation des lois applicables",
+                "Perturber le fonctionnement de la Plateforme ou de ses infrastructures",
+              ]}
+            />
+            <Paragraph>
+              Tout manquement &agrave; ces obligations pourra entra&icirc;ner la suspension ou la r&eacute;siliation imm&eacute;diate du compte,
+              sans pr&eacute;judice des dommages et int&eacute;r&ecirc;ts que Nodes Technology pourrait r&eacute;clamer.
+            </Paragraph>
+          </Section>
 
           {/* Article 8 */}
-          <section className="space-y-4">
-            <h2>Article 8 - Conformite WhatsApp Business</h2>
-            <p>
+          <Section icon={MessageSquare} title="Article 8 - Conformit&eacute; WhatsApp Business" index={9}>
+            <Paragraph>
               L&apos;utilisation de la Plateforme impliquant l&apos;API WhatsApp Business, l&apos;utilisateur s&apos;engage
-              a respecter les <strong>Conditions d&apos;utilisation de WhatsApp Business</strong> et la <strong>Politique
-              commerciale de WhatsApp</strong>. Nodes Technology ne saurait etre tenue responsable en cas de suspension
-              ou de restriction du compte WhatsApp Business de l&apos;utilisateur resultant d&apos;une violation de ces politiques.
-            </p>
-          </section>
+              &agrave; respecter les <strong>Conditions d&apos;utilisation de WhatsApp Business</strong> et la <strong>Politique
+              commerciale de WhatsApp</strong>. Nodes Technology ne saurait &ecirc;tre tenue responsable en cas de suspension
+              ou de restriction du compte WhatsApp Business de l&apos;utilisateur r&eacute;sultant d&apos;une violation de ces politiques.
+            </Paragraph>
+          </Section>
 
           {/* Article 9 */}
-          <section className="space-y-4">
-            <h2>Article 9 - Protection des Donnees Personnelles</h2>
-
-            <h3>9.1 Responsabilite</h3>
-            <p>
-              L&apos;utilisateur est considere comme responsable du traitement des donnees personnelles de ses contacts
-              qu&apos;il importe et gere via la Plateforme. Nodes Technology agit en qualite de sous-traitant au sens
-              des lois applicables en matiere de protection des donnees.
-            </p>
-
-            <h3>9.2 Obligations de l&apos;utilisateur</h3>
-            <p>L&apos;utilisateur s&apos;engage a :</p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li>Disposer d&apos;une base legale valide pour le traitement des donnees personnelles de ses contacts (consentement, interet legitime, etc.)</li>
-              <li>Respecter les droits des personnes concernees (acces, rectification, suppression, opposition)</li>
-              <li>Ne pas importer de donnees personnelles obtenues de maniere illicite</li>
-              <li>Informer ses contacts de l&apos;utilisation de leurs donnees</li>
-            </ul>
-
-            <h3>9.3 Mesures de securite</h3>
-            <p>
-              Nodes Technology met en oeuvre des mesures techniques et organisationnelles appropriees pour proteger
-              les donnees personnelles traitees via la Plateforme contre tout acces non autorise, perte, destruction
-              ou alteration.
-            </p>
-          </section>
+          <Section icon={Lock} title="Article 9 - Protection des Donn&eacute;es Personnelles" index={10}>
+            <SubSection title="9.1 Responsabilit&eacute;">
+              <Paragraph>
+                L&apos;utilisateur est consid&eacute;r&eacute; comme responsable du traitement des donn&eacute;es personnelles de ses contacts
+                qu&apos;il importe et g&egrave;re via la Plateforme. Nodes Technology agit en qualit&eacute; de sous-traitant au sens
+                des lois applicables en mati&egrave;re de protection des donn&eacute;es.
+              </Paragraph>
+            </SubSection>
+            <SubSection title="9.2 Obligations de l'utilisateur">
+              <Paragraph>L&apos;utilisateur s&apos;engage &agrave; :</Paragraph>
+              <List
+                items={[
+                  "Disposer d'une base l\u00e9gale valide pour le traitement des donn\u00e9es personnelles de ses contacts (consentement, int\u00e9r\u00eat l\u00e9gitime, etc.)",
+                  "Respecter les droits des personnes concern\u00e9es (acc\u00e8s, rectification, suppression, opposition)",
+                  "Ne pas importer de donn\u00e9es personnelles obtenues de mani\u00e8re illicite",
+                  "Informer ses contacts de l'utilisation de leurs donn\u00e9es",
+                ]}
+              />
+            </SubSection>
+            <SubSection title="9.3 Mesures de s&eacute;curit&eacute;">
+              <Paragraph>
+                Nodes Technology met en &#339;uvre des mesures techniques et organisationnelles appropri&eacute;es pour prot&eacute;ger
+                les donn&eacute;es personnelles trait&eacute;es via la Plateforme contre tout acc&egrave;s non autoris&eacute;, perte, destruction
+                ou alt&eacute;ration.
+              </Paragraph>
+            </SubSection>
+          </Section>
 
           {/* Article 10 */}
-          <section className="space-y-4">
-            <h2>Article 10 - Propriete Intellectuelle</h2>
-            <p>
-              L&apos;ensemble des elements composant la Plateforme (logiciel, interface, code source, textes, graphismes,
-              logos, marques, etc.) est la propriete exclusive de Nodes Technology ou de ses partenaires et est protege
-              par les lois relatives a la propriete intellectuelle.
-            </p>
-            <p>
+          <Section icon={Copyright} title="Article 10 - Propri&eacute;t&eacute; Intellectuelle" index={11}>
+            <Paragraph>
+              L&apos;ensemble des &eacute;l&eacute;ments composant la Plateforme (logiciel, interface, code source, textes, graphismes,
+              logos, marques, etc.) est la propri&eacute;t&eacute; exclusive de Nodes Technology ou de ses partenaires et est prot&eacute;g&eacute;
+              par les lois relatives &agrave; la propri&eacute;t&eacute; intellectuelle.
+            </Paragraph>
+            <Paragraph>
               L&apos;utilisateur ne dispose que d&apos;un droit d&apos;utilisation personnel, non exclusif et non cessible de la
-              Plateforme, dans le cadre et pour la duree de son abonnement. Toute reproduction, representation,
-              modification ou exploitation non autorisee est strictement interdite.
-            </p>
-          </section>
+              Plateforme, dans le cadre et pour la dur&eacute;e de son abonnement. Toute reproduction, repr&eacute;sentation,
+              modification ou exploitation non autoris&eacute;e est strictement interdite.
+            </Paragraph>
+          </Section>
 
           {/* Article 11 */}
-          <section className="space-y-4">
-            <h2>Article 11 - Disponibilite et Maintenance</h2>
-            <p>
-              Nodes Technology s&apos;efforce d&apos;assurer la disponibilite de la Plateforme 24 heures sur 24, 7 jours sur 7.
-              Toutefois, Nodes Technology ne garantit pas un fonctionnement ininterrompu et ne saurait etre tenue
-              responsable des interruptions, qu&apos;elles soient programmees (maintenance) ou imprevues (panne, force majeure).
-            </p>
-            <p>
-              Nodes Technology se reserve le droit de suspendre temporairement l&apos;acces a la Plateforme pour des
-              operations de maintenance, de mise a jour ou d&apos;amelioration, en s&apos;efforcant d&apos;en informer les
-              utilisateurs dans un delai raisonnable.
-            </p>
-          </section>
+          <Section icon={Server} title="Article 11 - Disponibilit&eacute; et Maintenance" index={12}>
+            <Paragraph>
+              Nodes Technology s&apos;efforce d&apos;assurer la disponibilit&eacute; de la Plateforme 24 heures sur 24, 7 jours sur 7.
+              Toutefois, Nodes Technology ne garantit pas un fonctionnement ininterrompu et ne saurait &ecirc;tre tenue
+              responsable des interruptions, qu&apos;elles soient programm&eacute;es (maintenance) ou impr&eacute;vues (panne, force majeure).
+            </Paragraph>
+            <Paragraph>
+              Nodes Technology se r&eacute;serve le droit de suspendre temporairement l&apos;acc&egrave;s &agrave; la Plateforme pour des
+              op&eacute;rations de maintenance, de mise &agrave; jour ou d&apos;am&eacute;lioration, en s&apos;effor&ccedil;ant d&apos;en informer les
+              utilisateurs dans un d&eacute;lai raisonnable.
+            </Paragraph>
+          </Section>
 
           {/* Article 12 */}
-          <section className="space-y-4">
-            <h2>Article 12 - Limitation de Responsabilite</h2>
-            <p>
-              La Plateforme est fournie &quot;en l&apos;etat&quot;. Nodes Technology ne saurait etre tenue responsable :
-            </p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li>Des dommages indirects, y compris les pertes de profit, de donnees, de chiffre d&apos;affaires ou d&apos;opportunites</li>
-              <li>De l&apos;utilisation faite par l&apos;utilisateur de la Plateforme ou du contenu des messages envoyes</li>
-              <li>Des dysfonctionnements lies aux reseaux, aux fournisseurs tiers (WhatsApp, hebergeurs, etc.) ou a des evenements de force majeure</li>
-              <li>De la perte ou de l&apos;alteration de donnees resultant d&apos;une utilisation non conforme de la Plateforme</li>
-            </ul>
-            <p>
-              En tout etat de cause, la responsabilite totale de Nodes Technology au titre des presentes CGU est
-              limitee au montant des sommes effectivement versees par l&apos;utilisateur au cours des douze (12) mois
-              precedant l&apos;evenement donnant lieu a responsabilite.
-            </p>
-          </section>
+          <Section icon={AlertTriangle} title="Article 12 - Limitation de Responsabilit&eacute;" index={13}>
+            <Paragraph>
+              La Plateforme est fournie &laquo; en l&apos;&eacute;tat &raquo;. Nodes Technology ne saurait &ecirc;tre tenue responsable :
+            </Paragraph>
+            <List
+              items={[
+                "Des dommages indirects, y compris les pertes de profit, de donn\u00e9es, de chiffre d'affaires ou d'opportunit\u00e9s",
+                "De l'utilisation faite par l'utilisateur de la Plateforme ou du contenu des messages envoy\u00e9s",
+                "Des dysfonctionnements li\u00e9s aux r\u00e9seaux, aux fournisseurs tiers (WhatsApp, h\u00e9bergeurs, etc.) ou \u00e0 des \u00e9v\u00e9nements de force majeure",
+                "De la perte ou de l'alt\u00e9ration de donn\u00e9es r\u00e9sultant d'une utilisation non conforme de la Plateforme",
+              ]}
+            />
+            <Paragraph>
+              En tout &eacute;tat de cause, la responsabilit&eacute; totale de Nodes Technology au titre des pr&eacute;sentes CGU est
+              limit&eacute;e au montant des sommes effectivement vers&eacute;es par l&apos;utilisateur au cours des douze (12) mois
+              pr&eacute;c&eacute;dant l&apos;&eacute;v&eacute;nement donnant lieu &agrave; responsabilit&eacute;.
+            </Paragraph>
+          </Section>
 
           {/* Article 13 */}
-          <section className="space-y-4">
-            <h2>Article 13 - Suspension et Resiliation</h2>
-
-            <h3>13.1 Par l&apos;utilisateur</h3>
-            <p>
-              L&apos;utilisateur peut cesser d&apos;utiliser la Plateforme a tout moment. La suppression du compte peut etre
-              demandee aupres de Nodes Technology. Les credits restants ne seront pas rembourses sauf disposition
-              contraire.
-            </p>
-
-            <h3>13.2 Par Nodes Technology</h3>
-            <p>
-              Nodes Technology se reserve le droit de suspendre ou de resilier l&apos;acces d&apos;un utilisateur a la
-              Plateforme, sans preavis ni indemnite, en cas de :
-            </p>
-            <ul className="list-disc space-y-2 pl-6">
-              <li>Violation des presentes CGU</li>
-              <li>Utilisation frauduleuse ou abusive de la Plateforme</li>
-              <li>Non-paiement des sommes dues</li>
-              <li>Demande des autorites competentes</li>
-            </ul>
-          </section>
+          <Section icon={Ban} title="Article 13 - Suspension et R&eacute;siliation" index={14}>
+            <SubSection title="13.1 Par l'utilisateur">
+              <Paragraph>
+                L&apos;utilisateur peut cesser d&apos;utiliser la Plateforme &agrave; tout moment. La suppression du compte peut &ecirc;tre
+                demand&eacute;e aupr&egrave;s de Nodes Technology. Les cr&eacute;dits restants ne seront pas rembours&eacute;s sauf disposition
+                contraire.
+              </Paragraph>
+            </SubSection>
+            <SubSection title="13.2 Par Nodes Technology">
+              <Paragraph>
+                Nodes Technology se r&eacute;serve le droit de suspendre ou de r&eacute;silier l&apos;acc&egrave;s d&apos;un utilisateur &agrave; la
+                Plateforme, sans pr&eacute;avis ni indemnit&eacute;, en cas de :
+              </Paragraph>
+              <List
+                items={[
+                  "Violation des pr\u00e9sentes CGU",
+                  "Utilisation frauduleuse ou abusive de la Plateforme",
+                  "Non-paiement des sommes dues",
+                  "Demande des autorit\u00e9s comp\u00e9tentes",
+                ]}
+              />
+            </SubSection>
+          </Section>
 
           {/* Article 14 */}
-          <section className="space-y-4">
-            <h2>Article 14 - Modification des CGU</h2>
-            <p>
-              Nodes Technology se reserve le droit de modifier les presentes CGU a tout moment. Les utilisateurs
-              seront informes de toute modification substantielle par notification sur la Plateforme ou par email.
-              La poursuite de l&apos;utilisation de la Plateforme apres modification vaut acceptation des nouvelles CGU.
-            </p>
-          </section>
+          <Section icon={PenLine} title="Article 14 - Modification des CGU" index={15}>
+            <Paragraph>
+              Nodes Technology se r&eacute;serve le droit de modifier les pr&eacute;sentes CGU &agrave; tout moment. Les utilisateurs
+              seront inform&eacute;s de toute modification substantielle par notification sur la Plateforme ou par email.
+              La poursuite de l&apos;utilisation de la Plateforme apr&egrave;s modification vaut acceptation des nouvelles CGU.
+            </Paragraph>
+          </Section>
 
           {/* Article 15 */}
-          <section className="space-y-4">
-            <h2>Article 15 - Droit Applicable et Litiges</h2>
-            <p>
-              Les presentes CGU sont regies par le droit de la Republique du Congo. En cas de litige, les parties
-              s&apos;engagent a rechercher une solution amiable. A defaut d&apos;accord, le litige sera soumis aux
-              juridictions competentes de Brazzaville, Republique du Congo.
-            </p>
-          </section>
+          <Section icon={Gavel} title="Article 15 - Droit Applicable et Litiges" index={16}>
+            <Paragraph>
+              Les pr&eacute;sentes CGU sont r&eacute;gies par le droit de la R&eacute;publique du Congo. En cas de litige, les parties
+              s&apos;engagent &agrave; rechercher une solution amiable. &Agrave; d&eacute;faut d&apos;accord, le litige sera soumis aux
+              juridictions comp&eacute;tentes de Brazzaville, R&eacute;publique du Congo.
+            </Paragraph>
+          </Section>
 
           {/* Article 16 */}
-          <section className="space-y-4">
-            <h2>Article 16 - Contact</h2>
-            <p>
-              Pour toute question relative aux presentes CGU ou a l&apos;utilisation de la Plateforme, vous pouvez
+          <Section icon={Mail} title="Article 16 - Contact" index={17}>
+            <Paragraph>
+              Pour toute question relative aux pr&eacute;sentes CGU ou &agrave; l&apos;utilisation de la Plateforme, vous pouvez
               contacter Nodes Technology :
-            </p>
-            <div className="rounded-lg border border-border/60 bg-muted/30 p-4 text-sm space-y-1">
-              <p><strong>Nodes Technology</strong></p>
-              <p>Brazzaville, Republique du Congo</p>
-              <p>Email : contact@nodestechnology.com</p>
+            </Paragraph>
+            <div className="rounded-lg border border-border/40 bg-muted/30 p-4 space-y-0.5">
+              <p className="text-[13px] font-medium">Ets NODES TECHNOLOGIE</p>
+              <p className="text-[12px] text-muted-foreground">Brazzaville, R&eacute;publique du Congo</p>
+              <p className="text-[12px] text-muted-foreground">Email : support@nodes-hub.com</p>
             </div>
-          </section>
+          </Section>
 
-          {/* Separator */}
-          <hr className="border-border/60" />
-
-          <p className="text-sm text-muted-foreground">
-            En utilisant la plateforme Flow, vous reconnaissez avoir lu, compris et accepte les presentes
-            Conditions Generales d&apos;Utilisation.
-          </p>
+          {/* Footer */}
+          <div className="pt-3" style={stagger(18)}>
+            <div className="rounded-xl border border-border/40 bg-muted/20 p-4">
+              <p className="text-[12px] text-muted-foreground leading-relaxed">
+                En utilisant la plateforme Flow, vous reconnaissez avoir lu, compris et accept&eacute; les pr&eacute;sentes
+                Conditions G&eacute;n&eacute;rales d&apos;Utilisation.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
+
     </div>
   )
 }

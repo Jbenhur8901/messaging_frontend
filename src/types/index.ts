@@ -458,6 +458,28 @@ export interface CreditRequest {
   created_at: string
 }
 
+// AI Credit Request types
+export interface AICreditRequest {
+  id: string
+  organization_id: string
+  organization_name?: string
+  requested_by: string
+  requester_email?: string
+  requester_name?: string
+  package_code: string
+  package_name?: string
+  credits_amount: number
+  total_price_fcfa: number
+  payment_method: PaymentMethod
+  payment_reference?: string
+  payment_proof_url?: string
+  status: CreditRequestStatus
+  reviewed_by?: string
+  reviewed_at?: string
+  review_note?: string
+  created_at: string
+}
+
 // Admin types
 export type AdminRole = "admin" | "super_admin"
 

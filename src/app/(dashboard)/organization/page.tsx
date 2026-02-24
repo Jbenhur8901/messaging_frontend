@@ -1,14 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useOrganizationStore } from "@/stores"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Building2, Users, Save } from "lucide-react"
+import { Building2, Save } from "lucide-react"
 import { toast } from "sonner"
 
 export default function OrganizationPage() {
@@ -83,12 +82,6 @@ export default function OrganizationPage() {
             Gérez les paramètres de votre organisation.
           </p>
         </div>
-        <Button asChild variant="outline" className="h-8 text-[13px] rounded-lg gap-1.5">
-          <Link href="/organization/members">
-            <Users className="h-3.5 w-3.5" />
-            Gérer les membres
-          </Link>
-        </Button>
       </div>
 
       <div className="grid gap-5 max-w-2xl">

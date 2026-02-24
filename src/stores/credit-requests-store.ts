@@ -13,6 +13,7 @@ interface CreditRequestsState {
   createRequest: (amount: number, paymentMethod: PaymentMethod, paymentReference?: string) => Promise<void>
   cancelRequest: (id: string) => Promise<void>
   clearError: () => void
+  reset: () => void
 }
 
 export const useCreditRequestsStore = create<CreditRequestsState>()((set, get) => ({
@@ -69,4 +70,11 @@ export const useCreditRequestsStore = create<CreditRequestsState>()((set, get) =
   },
 
   clearError: () => set({ error: null }),
+
+  reset: () => set({
+    requests: [],
+    pagination: null,
+    isLoading: false,
+    error: null,
+  }),
 }))

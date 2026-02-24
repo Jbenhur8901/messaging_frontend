@@ -7,6 +7,7 @@ import type {
   AdminDashboard,
   CreditRequest,
   CreditRequestStatus,
+  AICreditRequest,
   Organization,
   OrganizationMember,
   Pagination,
@@ -96,6 +97,47 @@ export const adminService = {
     return data
   },
 
+  // AI Credit Requests Management
+  async getAICreditRequests(
+    status?: CreditRequestStatus,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<{ requests: AICreditRequest[]; pagination: Pagination }> {
+    const params = new URLSearchParams()
+    params.append("limit", limit.toString())
+    params.append("offset", offset.toString())
+    if (status) params.append("status_filter", status)
+    const { data } = await adminApi.get(`/v1/admin/ai-credit-requests?${params}`)
+    return data
+  },
+
+  async getAICreditRequest(id: string): Promise<AICreditRequest> {
+    const { data } = await adminApi.get(`/v1/admin/ai-credit-requests/${id}`)
+    return data
+  },
+
+  async approveAICreditRequest(id: string, note?: string): Promise<{
+    success: boolean
+    request_id: string
+    credits_added: number
+    new_balance: number
+  }> {
+    const formData = new URLSearchParams()
+    if (note) formData.append("note", note)
+    const { data } = await adminApi.post(`/v1/admin/ai-credit-requests/${id}/approve`, formData)
+    return data
+  },
+
+  async rejectAICreditRequest(id: string, note: string): Promise<{
+    success: boolean
+    message: string
+  }> {
+    const formData = new URLSearchParams()
+    formData.append("note", note)
+    const { data } = await adminApi.post(`/v1/admin/ai-credit-requests/${id}/reject`, formData)
+    return data
+  },
+
   // Organization Management
   async getOrganizations(
     search?: string,
@@ -123,6 +165,12 @@ export const adminService = {
     }
   }> {
     const { data } = await adminApi.get(`/v1/admin/organizations/${orgId}`)
+    return data
+  },
+
+  // MFA Management
+  async resetUserMFA(userId: string): Promise<{ success: boolean; message: string }> {
+    const { data } = await adminApi.post(`/v1/admin/users/${userId}/reset-mfa`)
     return data
   },
 }

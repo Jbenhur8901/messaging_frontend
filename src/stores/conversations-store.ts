@@ -38,6 +38,7 @@ interface ConversationsState {
   sendMessage: (text: string) => Promise<void>
   sendMedia: (payload: { media_type: "image" | "video" | "audio" | "document"; media_id?: string; media_url?: string; caption?: string; filename?: string }) => Promise<void>
   clearError: () => void
+  reset: () => void
 }
 
 export const useConversationsStore = create<ConversationsState>((set, get) => ({
@@ -117,29 +118,32 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
   },
 
   closeConversation: async (id: string) => {
+    set({ isLoading: true })
     try {
       await conversationsService.updateConversation(id, { status: "closed" })
       get().fetchConversations()
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : "Erreur" })
+      set({ error: error instanceof Error ? error.message : "Erreur", isLoading: false })
     }
   },
 
   archiveConversation: async (id: string) => {
+    set({ isLoading: true })
     try {
       await conversationsService.updateConversation(id, { status: "archived" })
       get().fetchConversations()
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : "Erreur" })
+      set({ error: error instanceof Error ? error.message : "Erreur", isLoading: false })
     }
   },
 
   reopenConversation: async (id: string) => {
+    set({ isLoading: true })
     try {
       await conversationsService.updateConversation(id, { status: "open" })
       get().fetchConversations()
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : "Erreur" })
+      set({ error: error instanceof Error ? error.message : "Erreur", isLoading: false })
     }
   },
 
@@ -196,4 +200,16 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  reset: () => set({
+    conversations: [],
+    selectedConversationId: null,
+    selectedMessages: [],
+    isLoading: false,
+    isLoadingThread: false,
+    isSending: false,
+    searchQuery: "",
+    conversationStatus: "open",
+    error: null,
+  }),
 }))

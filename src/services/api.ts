@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios"
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios"
 import { authStorage } from "@/lib/auth-storage"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
@@ -44,6 +44,84 @@ const isAuthEndpoint = (url?: string) => {
   return url.includes("/v1/auth")
 }
 
+// ── Token refresh lock (shared between api and apiJson) ──
+let isRefreshing = false
+let refreshSubscribers: ((token: string) => void)[] = []
+
+function onRefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token))
+  refreshSubscribers = []
+}
+
+function addRefreshSubscriber(cb: (token: string) => void) {
+  refreshSubscribers.push(cb)
+}
+
+function clearAuthAndRedirect() {
+  authStorage.removeItem("access_token")
+  authStorage.removeItem("refresh_token")
+  authStorage.removeItem("user")
+  authStorage.removeItem("auth-storage")
+  if (typeof window !== "undefined") {
+    window.location.href = "/auth/login"
+  }
+}
+
+async function handleTokenRefresh(
+  originalRequest: InternalAxiosRequestConfig & { _retry?: boolean },
+  instance: AxiosInstance
+): Promise<unknown> {
+  if (typeof window === "undefined") return Promise.reject()
+
+  const refreshToken = authStorage.getItem("refresh_token")
+
+  if (!refreshToken) {
+    clearAuthAndRedirect()
+    return Promise.reject()
+  }
+
+  if (isRefreshing) {
+    return new Promise((resolve) => {
+      addRefreshSubscriber((newToken: string) => {
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        resolve(instance(originalRequest))
+      })
+    })
+  }
+
+  isRefreshing = true
+
+  try {
+    const formData = new URLSearchParams()
+    formData.append("refresh_token", refreshToken)
+
+    const { data } = await axios.post(
+      `${API_BASE_URL}/v1/auth/refresh`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    )
+
+    const newToken = data.session.access_token
+    authStorage.setItem("access_token", newToken)
+    authStorage.setItem("refresh_token", data.session.refresh_token)
+
+    originalRequest.headers.Authorization = `Bearer ${newToken}`
+    onRefreshed(newToken)
+
+    return instance(originalRequest)
+  } catch {
+    refreshSubscribers = []
+    clearAuthAndRedirect()
+    return Promise.reject()
+  } finally {
+    isRefreshing = false
+  }
+}
+
 // Request interceptor to add auth token and set content type
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -59,9 +137,9 @@ api.interceptors.request.use(
         config.headers["X-API-Key"] = apiKey
       }
     }
-    // Set Content-Type for POST/PUT/PATCH requests only
+    // Set Content-Type for POST/PUT/PATCH requests only (skip FormData)
     if (config.method && ["post", "put", "patch"].includes(config.method.toLowerCase())) {
-      if (!config.headers["Content-Type"]) {
+      if (!config.headers["Content-Type"] && !(config.data instanceof FormData)) {
         config.headers["Content-Type"] = "application/x-www-form-urlencoded"
       }
     }
@@ -92,44 +170,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
-
-      if (typeof window !== "undefined") {
-        const refreshToken = authStorage.getItem("refresh_token")
-
-        if (refreshToken) {
-          try {
-            const formData = new URLSearchParams()
-            formData.append("refresh_token", refreshToken)
-
-            const { data } = await axios.post(
-              `${API_BASE_URL}/v1/auth/refresh`,
-              formData,
-              {
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-              }
-            )
-
-            authStorage.setItem("access_token", data.session.access_token)
-            authStorage.setItem("refresh_token", data.session.refresh_token)
-
-            originalRequest.headers.Authorization = `Bearer ${data.session.access_token}`
-            return api(originalRequest)
-          } catch {
-            authStorage.removeItem("access_token")
-            authStorage.removeItem("refresh_token")
-            authStorage.removeItem("user")
-            authStorage.removeItem("auth-storage")
-            window.location.href = "/auth/login"
-          }
-        } else {
-          authStorage.removeItem("access_token")
-          authStorage.removeItem("user")
-          authStorage.removeItem("auth-storage")
-          window.location.href = "/auth/login"
-        }
-      }
+      return handleTokenRefresh(originalRequest, api)
     }
 
     return Promise.reject(error)
@@ -166,15 +207,15 @@ apiJson.interceptors.request.use(
 apiJson.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== "undefined") {
-        authStorage.removeItem("access_token")
-        authStorage.removeItem("refresh_token")
-        authStorage.removeItem("user")
-        authStorage.removeItem("auth-storage")
-        window.location.href = "/auth/login"
-      }
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean
     }
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+      return handleTokenRefresh(originalRequest, apiJson)
+    }
+
     return Promise.reject(error)
   }
 )

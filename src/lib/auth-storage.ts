@@ -7,31 +7,41 @@ type StorageKey =
   | "auth-storage"
   | "admin_token"
   | "admin_user"
-  | "session_started_at"
 
-const migrateIfNeeded = (key: string): string | null => {
+const migrateToLocal = (key: string): string | null => {
   if (!isBrowser()) return null
+  const localValue = localStorage.getItem(key)
+  if (localValue !== null) return localValue
+  // Migrate from sessionStorage if still there
   const sessionValue = sessionStorage.getItem(key)
-  if (sessionValue !== null) return sessionValue
-  const legacyValue = localStorage.getItem(key)
-  if (legacyValue !== null) {
-    sessionStorage.setItem(key, legacyValue)
-    localStorage.removeItem(key)
-    return legacyValue
+  if (sessionValue !== null) {
+    localStorage.setItem(key, sessionValue)
+    sessionStorage.removeItem(key)
+    return sessionValue
   }
   return null
 }
 
+const COOKIE_KEYS: ReadonlySet<string> = new Set(["access_token", "admin_token"])
+
 export const authStorage = {
-  getItem: (key: StorageKey | string): string | null => migrateIfNeeded(key),
+  getItem: (key: StorageKey | string): string | null => migrateToLocal(key),
   setItem: (key: StorageKey | string, value: string): void => {
     if (!isBrowser()) return
-    sessionStorage.setItem(key, value)
-    localStorage.removeItem(key)
+    localStorage.setItem(key, value)
+    sessionStorage.removeItem(key)
+    // Sync to cookie so the Next.js middleware can read it
+    if (COOKIE_KEYS.has(key)) {
+      document.cookie = `${key}=${value}; path=/; SameSite=Lax; max-age=86400`
+    }
   },
   removeItem: (key: StorageKey | string): void => {
     if (!isBrowser()) return
-    sessionStorage.removeItem(key)
     localStorage.removeItem(key)
+    sessionStorage.removeItem(key)
+    // Clear cookie
+    if (COOKIE_KEYS.has(key)) {
+      document.cookie = `${key}=; path=/; max-age=0`
+    }
   },
 }

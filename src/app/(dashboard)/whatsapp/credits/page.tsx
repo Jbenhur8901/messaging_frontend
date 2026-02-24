@@ -89,7 +89,7 @@ const PACKAGES = {
 }
 
 const CAT = {
-  marketing: { label: "Marketing", color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/30", border: "border-violet-200 dark:border-violet-800", icon: Megaphone, rate: 18 },
+  marketing: { label: "Marketing", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800", icon: Megaphone, rate: 18 },
   utility: { label: "Utility", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800", icon: Wrench, rate: 6 },
   authentication: { label: "Auth", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800", icon: ShieldCheck, rate: 6 },
   topup: { label: "Libres", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-800", icon: Zap, rate: 0 },

@@ -16,6 +16,7 @@ interface CreditsState {
   fetchWalletBalance: () => Promise<void>
   fetchUsage: (days?: number) => Promise<void>
   clearError: () => void
+  reset: () => void
 }
 
 export const useCreditsStore = create<CreditsState>((set) => ({
@@ -69,4 +70,13 @@ export const useCreditsStore = create<CreditsState>((set) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  reset: () => set({
+    balance: null,
+    walletBalance: null,
+    walletTotal: 0,
+    usage: null,
+    isLoading: false,
+    error: null,
+  }),
 }))

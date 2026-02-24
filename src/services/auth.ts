@@ -227,7 +227,7 @@ export const authService = {
 
   // MFA (Two-Factor Authentication) methods using backend API
   async setupMFA(): Promise<MFASetupResponse> {
-    const { data } = await api.post<MFASetupResponse>("/v1/auth/mfa/setup")
+    const { data } = await apiJson.post<MFASetupResponse>("/v1/auth/mfa/setup", {})
     return data
   },
 

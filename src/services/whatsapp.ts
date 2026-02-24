@@ -58,6 +58,8 @@ export const whatsappService = {
       ai_instructions?: string
       ai_model?: string
       ai_timeline?: string
+      ai_tools?: string
+      ai_vector_store_ids?: string
     }
   ): Promise<{ success: boolean; message: string }> {
     const formData = new URLSearchParams()
@@ -68,6 +70,8 @@ export const whatsappService = {
     if (config.ai_instructions !== undefined) formData.append("ai_instructions", config.ai_instructions)
     if (config.ai_model !== undefined) formData.append("ai_model", config.ai_model)
     if (config.ai_timeline !== undefined) formData.append("ai_timeline", config.ai_timeline)
+    if (config.ai_tools !== undefined) formData.append("ai_tools", config.ai_tools)
+    if (config.ai_vector_store_ids !== undefined) formData.append("ai_vector_store_ids", config.ai_vector_store_ids)
 
     const { data } = await api.put<{ success: boolean; message: string }>(
       `/v1/organizations/${organizationId}/whatsapp`,

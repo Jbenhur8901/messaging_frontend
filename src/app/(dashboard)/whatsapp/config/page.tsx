@@ -7,11 +7,12 @@ import type { WhatsAppAccount } from "@/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
+import { Skeleton } from "@/components/ui/skeleton"
+
 import {
   Dialog,
   DialogContent,
@@ -39,9 +40,6 @@ import {
   Star,
   RefreshCw,
   Trash2,
-  Bot,
-  Zap,
-  Settings,
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 
@@ -92,14 +90,6 @@ export default function WhatsAppConfigPage() {
   const [isSettingActive, setIsSettingActive] = useState(false)
   const [togglingAccountId, setTogglingAccountId] = useState<string | null>(null)
 
-  // ── AI Assistant state ──
-  const [aiEnabled, setAiEnabled] = useState(false)
-  const [aiDialogOpen, setAiDialogOpen] = useState(false)
-  const [aiInstructions, setAiInstructions] = useState("")
-  const [aiModel, setAiModel] = useState("gpt-4o")
-  const [aiTimeline, setAiTimeline] = useState("3600")
-  const [aiSaving, setAiSaving] = useState(false)
-
   // ── Load org config ──
   useEffect(() => {
     loadConfig()
@@ -127,11 +117,6 @@ export default function WhatsAppConfigPage() {
       if (phoneId) setConfigPhoneNumberId(phoneId)
       if (wabaId) setConfigWabaId(wabaId)
 
-      // AI config — always at root level
-      if (typeof r.ai_enabled === "boolean") setAiEnabled(r.ai_enabled)
-      if (typeof r.ai_instructions === "string") setAiInstructions(r.ai_instructions)
-      if (typeof r.ai_model === "string") setAiModel(r.ai_model)
-      if (typeof r.ai_timeline === "string") setAiTimeline(r.ai_timeline)
     } catch (error) {
       const apiError = handleApiError(error)
       setConfigError(apiError.message)
@@ -284,27 +269,6 @@ export default function WhatsAppConfigPage() {
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
-    }
-  }
-
-  const handleSaveAi = async (overrideEnabled?: boolean) => {
-    if (!currentOrganization?.id) return
-    const enabled = overrideEnabled !== undefined ? overrideEnabled : aiEnabled
-    setAiSaving(true)
-    try {
-      await whatsappService.setConfig(currentOrganization.id, {
-        ai_enabled: enabled,
-        ai_instructions: aiInstructions,
-        ai_model: aiModel,
-        ai_timeline: aiTimeline,
-      })
-      toast.success(enabled ? "Assistance IA activée" : "Assistance IA désactivée")
-      setAiDialogOpen(false)
-    } catch (error) {
-      const apiError = handleApiError(error)
-      toast.error(apiError.message)
-    } finally {
-      setAiSaving(false)
     }
   }
 
@@ -608,157 +572,6 @@ export default function WhatsAppConfigPage() {
           </div>
         )}
       </div>
-
-      {/* ── AI Assistance Section ── */}
-      <div style={stagger(3)}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
-            Assistance IA
-          </h2>
-        </div>
-        <div className="rounded-xl border border-border/40 bg-gradient-to-r from-violet-50/50 to-purple-50/50 p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${aiEnabled ? "bg-violet-100" : "bg-gray-100"}`}>
-                <Bot className={`h-5 w-5 ${aiEnabled ? "text-violet-600" : "text-gray-400"}`} />
-              </div>
-              <div>
-                <p className="text-[14px] font-semibold text-gray-900">Agent IA</p>
-                <p className="text-[12px] text-gray-500">
-                  {aiEnabled ? "L'IA répond automatiquement aux messages entrants" : "Activez pour répondre automatiquement via l'IA"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {aiEnabled && (
-                <button
-                  type="button"
-                  className="flex h-8 items-center gap-1.5 rounded-lg border border-violet-200 bg-white px-3 text-[12px] font-medium text-violet-600 transition-colors hover:bg-violet-50"
-                  onClick={() => setAiDialogOpen(true)}
-                >
-                  <Settings className="h-3.5 w-3.5" />
-                  Configurer
-                </button>
-              )}
-              <Switch
-                checked={aiEnabled}
-                onCheckedChange={(checked) => {
-                  setAiEnabled(checked)
-                  if (checked) setAiDialogOpen(true)
-                  else handleSaveAi(false)
-                }}
-              />
-            </div>
-          </div>
-          {aiEnabled && aiInstructions && (
-            <div className="mt-4 rounded-lg bg-white/80 p-3">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Zap className="h-3 w-3 text-violet-500" />
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Instructions</span>
-              </div>
-              <p className="text-[12px] leading-relaxed text-gray-600 line-clamp-3">{aiInstructions}</p>
-            </div>
-          )}
-          {aiEnabled && (
-            <div className="mt-3 flex items-center gap-4 text-[11px] text-gray-400">
-              <span>Modèle : <span className="font-medium text-gray-600">{aiModel}</span></span>
-              <span>Session : <span className="font-medium text-gray-600">{aiTimeline}s</span></span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── AI Config Dialog ── */}
-      {aiDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]" onClick={() => setAiDialogOpen(false)}>
-          <div className="w-full max-w-[640px] max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-7 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100">
-                  <Bot className="h-4.5 w-4.5 text-violet-600" />
-                </div>
-                <div>
-                  <h3 className="text-[15px] font-semibold text-gray-900">Configurer l&apos;agent IA</h3>
-                  <p className="text-[11px] text-gray-400">Personnalisez le comportement de l&apos;assistance automatique</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                onClick={() => setAiDialogOpen(false)}
-              >
-                <XCircle className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-5">
-              {/* Instructions */}
-              <div className="space-y-2">
-                <label className="text-[13px] font-medium text-gray-700">Instructions de l&apos;agent</label>
-                <p className="text-[11px] leading-relaxed text-gray-400">Décrivez le rôle, le ton et les limites de l&apos;IA. Soyez précis pour de meilleurs résultats.</p>
-                <Textarea
-                  value={aiInstructions}
-                  onChange={(e) => setAiInstructions(e.target.value)}
-                  placeholder="Ex: Tu es un assistant commercial pour notre entreprise. Réponds de manière professionnelle et concise aux questions des clients sur nos produits et services. Ne donne jamais d'informations personnelles ou confidentielles..."
-                  className="min-h-[140px] rounded-lg border-gray-200 text-[13px] leading-relaxed placeholder:text-gray-400"
-                />
-              </div>
-
-              {/* Advanced config */}
-              <details className="group rounded-lg border border-gray-200">
-                <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-[13px] font-medium text-gray-600 hover:bg-gray-50">
-                  Configuration avancée
-                  <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </summary>
-                <div className="space-y-3 border-t border-gray-100 p-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[12px] text-gray-500">Modèle</Label>
-                    <select
-                      className="w-full h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px]"
-                      value={aiModel}
-                      onChange={(e) => setAiModel(e.target.value)}
-                    >
-                      <option value="gpt-4o">GPT-4o</option>
-                      <option value="gpt-4o-mini">GPT-4o Mini</option>
-                      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[12px] text-gray-500">Durée session (sec)</Label>
-                    <Input
-                      type="number"
-                      value={aiTimeline}
-                      onChange={(e) => setAiTimeline(e.target.value)}
-                      placeholder="3600"
-                      className="h-9 text-[12px]"
-                    />
-                    <p className="text-[11px] text-gray-400">L&apos;IA garde le contexte de la conversation pendant cette durée.</p>
-                  </div>
-                </div>
-              </details>
-
-              {/* Save button */}
-              <div className="flex justify-end gap-2 pt-1">
-                <Button
-                  variant="outline"
-                  className="h-10 rounded-lg px-4 text-[13px]"
-                  onClick={() => setAiDialogOpen(false)}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  className="h-10 rounded-lg px-6 text-[13px] gap-2 bg-violet-600 hover:bg-violet-700"
-                  onClick={() => handleSaveAi()}
-                  disabled={aiSaving}
-                >
-                  {aiSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  Enregistrer
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Account Detail Dialog ── */}
       <Dialog open={!!selectedAccount} onOpenChange={(open) => { if (!open) setSelectedAccount(null) }}>

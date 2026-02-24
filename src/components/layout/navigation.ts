@@ -12,6 +12,8 @@ import {
   Building2,
   Settings,
   Megaphone,
+  Bot,
+  Receipt,
 } from "lucide-react"
 import { featureFlags } from "@/config/features"
 
@@ -52,9 +54,9 @@ export const navigationSections: NavigationSection[] = [
           { name: "Conversations", href: "/conversations" },
           { name: "Templates", href: "/templates/whatsapp" },
           { name: "Configuration", href: "/whatsapp/config" },
-          { name: "Cr\u00e9dits", href: "/whatsapp/credits" },
         ],
       },
+      { name: "Outils IA", href: "/whatsapp/ai-tools", icon: Bot },
       { name: "Services", href: "/services", icon: Radio, smsOnly: true },
       { name: "SMS Tools", href: "/tools", icon: MessageSquare, smsOnly: true },
     ],
@@ -67,17 +69,20 @@ export const navigationSections: NavigationSection[] = [
       { name: "Tags", href: "/contacts/tags", icon: Tags },
     ],
   },
-  // {
-  //   title: "Automatisation",
-  //   items: [
-  //     { name: "Scenarios", href: "/scenarios", icon: GitBranch },
-  //   ],
-  // },
   {
     title: "Organisation & Gestion",
     icon: Building2,
     items: [
       { name: "Organisation", href: "/organization", icon: Building2 },
+      {
+        name: "Facturation",
+        href: "/whatsapp/credits",
+        icon: Receipt,
+        children: [
+          { name: "Crédits WhatsApp", href: "/whatsapp/credits" },
+          { name: "Crédits IA", href: "/whatsapp/ai-credits" },
+        ],
+      },
       { name: "Paramètres", href: "/settings", icon: Settings },
     ],
   },

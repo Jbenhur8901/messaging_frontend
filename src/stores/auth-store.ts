@@ -3,6 +3,11 @@ import { createJSONStorage, persist } from "zustand/middleware"
 import type { User } from "@/types"
 import { authService } from "@/services/auth"
 import { authStorage } from "@/lib/auth-storage"
+import { useContactsStore } from "./contacts-store"
+import { useConversationsStore } from "./conversations-store"
+import { useCreditsStore } from "./credits-store"
+import { useCreditRequestsStore } from "./credit-requests-store"
+import { useOrganizationStore } from "./organization-store"
 
 interface AuthState {
   user: User | null
@@ -198,6 +203,12 @@ export const useAuthStore = create<AuthState>()(
             sessionStorage.removeItem("mfa_pre_auth_token")
             try { localStorage.removeItem("organization-storage") } catch {}
           }
+          // Reset all stores to prevent data leakage between accounts
+          useContactsStore.getState().reset()
+          useConversationsStore.getState().reset()
+          useCreditsStore.getState().reset()
+          useCreditRequestsStore.getState().reset()
+          useOrganizationStore.getState().reset()
           set({
             user: null,
             apiKey: null,
