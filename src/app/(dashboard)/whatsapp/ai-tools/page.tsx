@@ -38,7 +38,6 @@ import {
   Trash2,
   Database,
   FileText,
-  Link as LinkIcon,
   Search,
   Globe,
   AlertTriangle,
@@ -51,7 +50,9 @@ const stagger = (i: number) => ({
 })
 
 interface VectorStoreFile {
+  id: string
   file_id: string
+  yanola_file_id?: string
   filename: string
 }
 
@@ -60,6 +61,9 @@ interface VectorStore {
   name: string
   files: VectorStoreFile[]
 }
+
+const resolveVectorStoreId = (store: { vector_store_id?: string; id?: string }) =>
+  store.vector_store_id || store.id || ""
 
 export default function AIToolsPage() {
   const { currentOrganization } = useOrganizationStore()
@@ -85,7 +89,6 @@ export default function AIToolsPage() {
   const [newVSName, setNewVSName] = useState("")
   const [uploadDialogVSId, setUploadDialogVSId] = useState<string | null>(null)
   const [uploadFiles, setUploadFiles] = useState<File[]>([])
-  const [uploadUrls, setUploadUrls] = useState("")
   const [isUploading, setIsUploading] = useState(false)
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
   const [deletingVSId, setDeletingVSId] = useState<string | null>(null)
@@ -132,27 +135,31 @@ export default function AIToolsPage() {
       const stores = result.vector_stores || []
       // Load files for each VS in parallel
       const storesWithFiles = await Promise.all(
-        stores.map(async (vs) => {
+        stores.map(async (vs): Promise<VectorStore | null> => {
+          const vectorStoreId = resolveVectorStoreId(vs)
+          if (!vectorStoreId) return null
           try {
-            const filesResult = await aiToolsService.listFiles(vs.vector_store_id)
+            const filesResult = await aiToolsService.listFiles(vectorStoreId)
             return {
-              id: vs.vector_store_id,
-              name: vs.name || vs.vector_store_id,
-              files: (filesResult.files || []).map((f) => ({
+              id: vectorStoreId,
+              name: vs.name || vectorStoreId,
+              files: (filesResult.files || []).map((f): VectorStoreFile => ({
+                id: f.id,
                 file_id: f.file_id || f.id,
+                yanola_file_id: f.yanola_file_id,
                 filename: f.filename,
               })),
             }
           } catch {
             return {
-              id: vs.vector_store_id,
-              name: vs.name || vs.vector_store_id,
+              id: vectorStoreId,
+              name: vs.name || vectorStoreId,
               files: [],
             }
           }
         })
       )
-      setVectorStores(storesWithFiles)
+      setVectorStores(storesWithFiles.filter((store): store is VectorStore => store !== null))
     } catch {
       toast.error("Impossible de charger les Vector Stores")
     }
@@ -184,13 +191,22 @@ export default function AIToolsPage() {
 
   // ── Vector Store Handlers ──
   const handleCreateVectorStore = async () => {
+    const trimmedName = newVSName.trim()
+    if (!trimmedName) {
+      toast.error("Le nom du Vector Store est requis")
+      return
+    }
     setIsCreatingVS(true)
     try {
-      const result = await aiToolsService.createVectorStore(newVSName || undefined)
-      const vsId = result.vector_store_id
+      const result = await aiToolsService.createVectorStore(trimmedName)
+      const vsId = resolveVectorStoreId(result)
+      if (!vsId) {
+        toast.error("Le Vector Store a été créé sans identifiant exploitable")
+        return
+      }
       const newVS: VectorStore = {
         id: vsId,
-        name: newVSName || vsId,
+        name: trimmedName,
         files: [],
       }
       setVectorStores((prev) => [...prev, newVS])
@@ -199,24 +215,28 @@ export default function AIToolsPage() {
       setNewVSName("")
     } catch (error) {
       const apiError = handleApiError(error)
-      toast.error(apiError.message)
+      const suffix = apiError.correlationId ? ` (ref: ${apiError.correlationId})` : ""
+      if (apiError.status === 422) {
+        toast.error("Nom requis ou invalide" + suffix)
+      } else if (apiError.status === 503) {
+        toast.error("Service IA temporairement indisponible, réessayez plus tard" + suffix)
+      } else {
+        toast.error(apiError.message + suffix)
+      }
     } finally {
       setIsCreatingVS(false)
     }
   }
 
   const handleUploadFiles = async (vsId: string) => {
-    if (!uploadFiles.length && !uploadUrls.trim()) {
-      toast.error("Ajoutez des fichiers ou des URLs")
+    if (!uploadFiles.length) {
+      toast.error("Ajoutez au moins un fichier")
       return
     }
     setIsUploading(true)
     try {
-      const result = await aiToolsService.uploadFiles(
-        vsId,
-        uploadFiles.length > 0 ? uploadFiles : undefined,
-        uploadUrls.trim() || undefined
-      )
+      const result = await aiToolsService.uploadFiles(vsId, uploadFiles)
+
       if (result.files && result.files.length > 0) {
         setVectorStores((prev) =>
           prev.map((vs) =>
@@ -226,7 +246,9 @@ export default function AIToolsPage() {
                   files: [
                     ...vs.files,
                     ...result.files!.map((f) => ({
-                      file_id: f.file_id,
+                      id: f.id,
+                      file_id: f.file_id || f.id,
+                      yanola_file_id: f.yanola_file_id,
                       filename: f.filename,
                     })),
                   ],
@@ -238,30 +260,36 @@ export default function AIToolsPage() {
       toast.success("Fichiers ajoutés avec succès")
       setUploadDialogVSId(null)
       setUploadFiles([])
-      setUploadUrls("")
     } catch (error) {
-      const apiError = handleApiError(error)
-      toast.error(apiError.message)
+      if (error instanceof Error && error.message.includes("dépasse")) {
+        toast.error(error.message)
+      } else {
+        const apiError = handleApiError(error)
+        const suffix = apiError.correlationId ? ` (ref: ${apiError.correlationId})` : ""
+        toast.error(apiError.message + suffix)
+      }
     } finally {
       setIsUploading(false)
     }
   }
 
-  const handleDeleteFile = async (vsId: string, fileId: string) => {
-    setDeletingFileId(fileId)
+  const handleDeleteFile = async (vsId: string, file: VectorStoreFile) => {
+    const deleteId = file.yanola_file_id || file.file_id
+    setDeletingFileId(file.file_id)
     try {
-      await aiToolsService.deleteFileFromVectorStore(vsId, fileId)
+      await aiToolsService.deleteFileFromVectorStore(vsId, deleteId)
       setVectorStores((prev) =>
         prev.map((vs) =>
           vs.id === vsId
-            ? { ...vs, files: vs.files.filter((f) => f.file_id !== fileId) }
+            ? { ...vs, files: vs.files.filter((f) => f.file_id !== file.file_id) }
             : vs
         )
       )
       toast.success("Fichier supprimé")
     } catch (error) {
       const apiError = handleApiError(error)
-      toast.error(apiError.message)
+      const suffix = apiError.correlationId ? ` (ref: ${apiError.correlationId})` : ""
+      toast.error(apiError.message + suffix)
     } finally {
       setDeletingFileId(null)
     }
@@ -275,7 +303,8 @@ export default function AIToolsPage() {
       toast.success("Vector Store supprimé")
     } catch (error) {
       const apiError = handleApiError(error)
-      toast.error(apiError.message)
+      const suffix = apiError.correlationId ? ` (ref: ${apiError.correlationId})` : ""
+      toast.error(apiError.message + suffix)
     } finally {
       setDeletingVSId(null)
     }
@@ -554,12 +583,12 @@ export default function AIToolsPage() {
                       {vectorStores.length > 0 ? (
                         <div className="space-y-1.5">
                           <div className="flex flex-wrap gap-1.5">
-                            {vectorStores.map((vs) => {
+                            {vectorStores.map((vs, vsIdx) => {
                               const ids = aiVectorStoreIds.split(",").map((s) => s.trim()).filter(Boolean)
                               const isSelected = ids.includes(vs.id)
                               return (
                                 <button
-                                  key={vs.id}
+                                  key={`${vs.id}-${vsIdx}`}
                                   type="button"
                                   className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
                                     isSelected
@@ -729,7 +758,7 @@ export default function AIToolsPage() {
           <div className="space-y-3">
             {vectorStores.map((vs, i) => (
               <div
-                key={vs.id}
+                key={`${vs.id}-${i}`}
                 className="rounded-xl border border-border/40 p-4"
                 style={stagger(i + 3)}
               >
@@ -753,7 +782,6 @@ export default function AIToolsPage() {
                       onClick={() => {
                         setUploadDialogVSId(vs.id)
                         setUploadFiles([])
-                        setUploadUrls("")
                       }}
                     >
                       <Upload className="h-3 w-3" />
@@ -800,9 +828,9 @@ export default function AIToolsPage() {
                 {/* Files list */}
                 {vs.files.length > 0 ? (
                   <div className="space-y-1 mt-2">
-                    {vs.files.map((file) => (
+                    {vs.files.map((file, fileIdx) => (
                       <div
-                        key={file.file_id}
+                        key={`${file.file_id}-${fileIdx}`}
                         className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-accent/50 transition-colors"
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -820,7 +848,7 @@ export default function AIToolsPage() {
                           className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500 shrink-0"
                           disabled={deletingFileId === file.file_id}
                           onClick={() =>
-                            handleDeleteFile(vs.id, file.file_id)
+                            handleDeleteFile(vs.id, file)
                           }
                         >
                           {deletingFileId === file.file_id ? (
@@ -873,12 +901,13 @@ export default function AIToolsPage() {
             </div>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-[13px]">Nom (optionnel)</Label>
+                <Label className="text-[13px]">Nom</Label>
                 <Input
                   className="h-9 text-[13px]"
                   value={newVSName}
                   onChange={(e) => setNewVSName(e.target.value)}
                   placeholder="Ex: Documentation produit"
+                  autoFocus
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -892,7 +921,7 @@ export default function AIToolsPage() {
                 <Button
                   className="h-9 rounded-lg px-5 text-[13px] gap-2"
                   onClick={handleCreateVectorStore}
-                  disabled={isCreatingVS}
+                  disabled={isCreatingVS || !newVSName.trim()}
                 >
                   {isCreatingVS && (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -929,7 +958,7 @@ export default function AIToolsPage() {
                   Ajouter des documents
                 </h3>
                 <p className="text-[11px] text-gray-400">
-                  Uploadez des fichiers ou ajoutez des URLs
+                  Uploadez des fichiers depuis votre appareil
                 </p>
               </div>
             </div>
@@ -973,20 +1002,6 @@ export default function AIToolsPage() {
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* URL input */}
-              <div className="space-y-1.5">
-                <Label className="text-[13px] flex items-center gap-1.5">
-                  <LinkIcon className="h-3.5 w-3.5" />
-                  URLs (séparées par des virgules)
-                </Label>
-                <Textarea
-                  value={uploadUrls}
-                  onChange={(e) => setUploadUrls(e.target.value)}
-                  placeholder="https://example.com/doc1.pdf, https://example.com/doc2.pdf"
-                  className="min-h-[80px] text-[13px] rounded-lg"
-                />
               </div>
 
               <div className="flex justify-end gap-2 pt-1">

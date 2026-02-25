@@ -1,4 +1,47 @@
-import { api } from "./api"
+import axios from "axios"
+import { authStorage } from "@/lib/auth-storage"
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
+// Helper to get stored API key
+function getStoredApiKey(): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    const storedAuth = authStorage.getItem("auth-storage")
+    if (storedAuth) {
+      const parsed = JSON.parse(storedAuth)
+      const storedKey = parsed.state?.apiKey
+      if (typeof storedKey === "string" && storedKey.length > 0) return storedKey
+    }
+  } catch { /* ignore */ }
+  try {
+    const user = authStorage.getItem("user")
+    if (user) {
+      const parsedUser = JSON.parse(user)
+      const apiKey = parsedUser.api_key
+      if (typeof apiKey === "string") return apiKey
+      if (apiKey && typeof apiKey === "object" && typeof apiKey.key === "string") return apiKey.key
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
+// Dedicated axios instance for vector-store endpoints: X-API-Key only, no JWT
+const vsApi = axios.create({ baseURL: API_BASE_URL })
+
+vsApi.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const apiKey = getStoredApiKey()
+    if (apiKey) {
+      config.headers["X-API-Key"] = apiKey
+    }
+    // No Authorization Bearer header for vector-store endpoints
+  }
+  config.headers["Accept"] = "application/json"
+  return config
+})
+
+// ── Types ──
 
 export interface VectorStoreItem {
   id: string
@@ -14,6 +57,7 @@ export interface VectorStoreItem {
 export interface VectorStoreFileItem {
   id: string
   file_id: string
+  yanola_file_id?: string
   filename: string
   file_size?: number | null
   file_type?: string | null
@@ -30,7 +74,13 @@ export interface VectorStoreResult {
 
 export interface UploadFilesResult {
   success: boolean
-  files?: Array<{ file_id: string; filename: string; [key: string]: unknown }>
+  files?: Array<{
+    id: string
+    file_id: string
+    yanola_file_id?: string
+    filename: string
+    [key: string]: unknown
+  }>
   [key: string]: unknown
 }
 
@@ -40,15 +90,15 @@ export interface Pagination {
   offset: number
 }
 
+// ── Service ──
+
 export const aiToolsService = {
-  // POST /v1/vector-stores
-  async createVectorStore(name?: string): Promise<VectorStoreResult> {
-    const formData = new FormData()
-    if (name) formData.append("name", name)
-    const { data } = await api.post<VectorStoreResult>(
+  // POST /v1/vector-stores  (JSON body — backend generates vector_store_id)
+  async createVectorStore(name: string): Promise<VectorStoreResult> {
+    const { data } = await vsApi.post<VectorStoreResult>(
       "/v1/vector-stores",
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      { name },
+      { headers: { "Content-Type": "application/json" } }
     )
     return data
   },
@@ -58,32 +108,25 @@ export const aiToolsService = {
     limit = 50,
     offset = 0
   ): Promise<{ vector_stores: VectorStoreItem[]; pagination: Pagination }> {
-    const { data } = await api.get<{ vector_stores: VectorStoreItem[]; pagination: Pagination }>(
+    const { data } = await vsApi.get<{ vector_stores: VectorStoreItem[]; pagination: Pagination }>(
       "/v1/vector-stores",
       { params: { limit, offset } }
     )
     return data
   },
 
-  // POST /v1/vector-stores/:id/files
+  // POST /v1/vector-stores/:id/files  (multipart/form-data with repeated `files` fields)
   async uploadFiles(
     vectorStoreId: string,
-    files?: File[],
-    fileUrls?: string
+    files: File[]
   ): Promise<UploadFilesResult> {
     const formData = new FormData()
-    if (files) {
-      for (const file of files) {
-        formData.append("files", file)
-      }
-    }
-    if (fileUrls) {
-      formData.append("file_urls", fileUrls)
-    }
-    const { data } = await api.post<UploadFilesResult>(
+    files.forEach((file) => {
+      formData.append("files", file)
+    })
+    const { data } = await vsApi.post<UploadFilesResult>(
       `/v1/vector-stores/${vectorStoreId}/files`,
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      formData
     )
     return data
   },
@@ -94,7 +137,7 @@ export const aiToolsService = {
     limit = 50,
     offset = 0
   ): Promise<{ files: VectorStoreFileItem[]; pagination: Pagination }> {
-    const { data } = await api.get<{ files: VectorStoreFileItem[]; pagination: Pagination }>(
+    const { data } = await vsApi.get<{ files: VectorStoreFileItem[]; pagination: Pagination }>(
       `/v1/vector-stores/${vectorStoreId}/files`,
       { params: { limit, offset } }
     )
@@ -103,18 +146,18 @@ export const aiToolsService = {
 
   // DELETE /v1/vector-stores/:id
   async deleteVectorStore(vectorStoreId: string): Promise<{ success: boolean }> {
-    const { data } = await api.delete<{ success: boolean }>(
+    const { data } = await vsApi.delete<{ success: boolean }>(
       `/v1/vector-stores/${vectorStoreId}`
     )
     return data
   },
 
-  // DELETE /v1/vector-stores/:vsId/files/:fileId
+  // DELETE /v1/vector-stores/:vsId/files/:fileId  (use yanola_file_id in priority)
   async deleteFileFromVectorStore(
     vectorStoreId: string,
     fileId: string
   ): Promise<{ success: boolean }> {
-    const { data } = await api.delete<{ success: boolean }>(
+    const { data } = await vsApi.delete<{ success: boolean }>(
       `/v1/vector-stores/${vectorStoreId}/files/${fileId}`
     )
     return data

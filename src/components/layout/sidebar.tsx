@@ -380,16 +380,23 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             ) : (
               <div className="space-y-1">
                 <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
-                  <Avatar className="h-3.5 w-3.5 shrink-0">
-                    <AvatarFallback className="bg-accent text-[7px] font-medium text-muted-foreground">
+                  <Avatar className="h-7 w-7 shrink-0">
+                    <AvatarFallback className="bg-accent text-[11px] font-medium text-muted-foreground">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
-                  <p className="truncate text-[12px] font-medium leading-tight min-w-0 flex-1">
-                    {user
-                      ? `${user.first_name} ${user.last_name}`
-                      : "User"}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium leading-tight">
+                      {user
+                        ? `${user.first_name} ${user.last_name}`
+                        : "User"}
+                    </p>
+                    {user?.email && (
+                      <p className="truncate text-[11px] text-muted-foreground leading-tight">
+                        {user.email}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <button
                   type="button"

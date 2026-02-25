@@ -11,22 +11,21 @@ import { authStorage } from "@/lib/auth-storage"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
-import { Loader2, Building2, Plus, Check } from "lucide-react"
+import { Loader2, Plus, ChevronRight, Crown, ShieldCheck, User } from "lucide-react"
 
 const organizationSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
 })
 
 type OrganizationForm = z.infer<typeof organizationSchema>
+
+const roleConfig = {
+  owner: { label: "Propriétaire", icon: Crown, color: "text-amber-500" },
+  admin: { label: "Administrateur", icon: ShieldCheck, color: "text-indigo-500" },
+  member: { label: "Membre", icon: User, color: "text-slate-400" },
+} as const
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -53,7 +52,6 @@ export default function OnboardingPage() {
     try {
       const result = await organizationsService.createOrganization(data.name)
 
-      // Update user with new organization
       if (user && result.organization) {
         const updatedUser = {
           ...user,
@@ -106,113 +104,109 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-10">
-      <div className="mx-auto w-full max-w-2xl space-y-8">
-        <div className="flex flex-col gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">
-              Bienvenue {user?.first_name}
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Selectionnez une organisation pour continuer ou creez-en une nouvelle.
-            </p>
-          </div>
-        </div>
-
-        <Card>
-          <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-[var(--shadow-md)]">
-                <Building2 className="h-8 w-8 text-white" />
-              </div>
-            </div>
-            <CardTitle className="text-2xl font-semibold">Choisir une organisation</CardTitle>
-            <CardDescription>
-              Reprenez là où vous vous êtes arrêté ou créez un nouvel espace.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isLoadingOrganizations ? (
-              <p className="text-sm text-muted-foreground text-center">Chargement des organisations...</p>
-            ) : organizations.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center">
-                Aucune organisation associée à votre compte.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {organizations.map((org) => (
-                  <button
-                    key={org.id}
-                    type="button"
-                    onClick={() => handleSelectOrganization(org.id)}
-                    className="w-full rounded-lg border px-4 py-3 text-left transition hover:bg-muted/60"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{org.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Rôle : {org.role === "owner" ? "Propriétaire" : org.role === "admin" ? "Administrateur" : "Membre"}
-                        </p>
-                      </div>
-                      <Check className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="justify-center">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowCreateForm((prev) => !prev)}
-              disabled={isLoadingOrganizations}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {organizations.length === 0 ? "Créer une organisation" : "Ajouter une organisation"}
-            </Button>
-          </CardFooter>
-        </Card>
-
-        {showCreateForm && (
-          <Card>
-            <CardHeader className="space-y-1 text-center">
-              <CardTitle className="text-2xl font-semibold">Créer votre workspace</CardTitle>
-              <CardDescription>
-                Donnez un nom à votre espace de travail pour commencer.
-              </CardDescription>
-            </CardHeader>
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nom du workspace</Label>
-                  <Input
-                    id="name"
-                    placeholder="Mon entreprise"
-                    {...register("name")}
-                    disabled={isLoading}
-                    autoFocus
-                  />
-                  {errors.name && (
-                    <p className="text-sm text-destructive">
-                      {errors.name.message}
-                    </p>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Vous pourrez inviter des membres de votre équipe plus tard.
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Créer et continuer
-                </Button>
-              </CardFooter>
-            </form>
-          </Card>
-        )}
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="space-y-1.5">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">
+          Bienvenue{user?.first_name ? `, ${user.first_name}` : ""}
+        </h2>
+        <p className="text-[13px] text-muted-foreground">
+          S&eacute;lectionnez une organisation ou cr&eacute;ez-en une nouvelle.
+        </p>
       </div>
+
+      {/* Organization list */}
+      {isLoadingOrganizations ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-[13px] text-muted-foreground">Chargement...</span>
+        </div>
+      ) : organizations.length > 0 ? (
+        <div className="space-y-1.5">
+          {organizations.map((org) => {
+            const role = roleConfig[org.role as keyof typeof roleConfig] || roleConfig.member
+            const RoleIcon = role.icon
+            return (
+              <button
+                key={org.id}
+                type="button"
+                onClick={() => handleSelectOrganization(org.id)}
+                className="group flex w-full items-center gap-3 rounded-lg border border-slate-200/60 bg-white/50 px-3.5 py-3 text-left transition-all hover:border-primary/25 hover:bg-white hover:shadow-[var(--shadow-sm)]"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <RoleIcon className={`h-4 w-4 ${role.color}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-slate-800 truncate">{org.name}</p>
+                  <p className="text-[11px] text-slate-400">{role.label}</p>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="text-center text-[13px] text-muted-foreground py-4">
+          Aucune organisation associ&eacute;e &agrave; votre compte.
+        </p>
+      )}
+
+      {/* Separator + Create button */}
+      {!showCreateForm && (
+        <>
+          <div className="relative">
+            <Separator />
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] text-muted-foreground">
+              ou
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full h-9 text-[13px] rounded-lg"
+            onClick={() => setShowCreateForm(true)}
+            disabled={isLoadingOrganizations}
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Cr&eacute;er une organisation
+          </Button>
+        </>
+      )}
+
+      {/* Create form */}
+      {showCreateForm && (
+        <>
+          <div className="relative">
+            <Separator />
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] text-muted-foreground">
+              {organizations.length > 0 ? "ou créer" : "nouveau workspace"}
+            </span>
+          </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-[13px]">Nom du workspace</Label>
+              <Input
+                id="name"
+                placeholder="Mon entreprise"
+                className="h-9 text-[13px] rounded-lg"
+                {...register("name")}
+                disabled={isLoading}
+                autoFocus
+              />
+              {errors.name && (
+                <p className="text-[12px] text-destructive">{errors.name.message}</p>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground/60">
+              Vous pourrez inviter des membres de votre &eacute;quipe plus tard.
+            </p>
+            <Button type="submit" className="w-full h-9 text-[13px] rounded-lg" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Cr&eacute;er et continuer
+            </Button>
+          </form>
+        </>
+      )}
     </div>
   )
 }

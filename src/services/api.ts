@@ -222,9 +222,10 @@ apiJson.interceptors.response.use(
 
 // Error handler
 export interface APIError {
-  type: "validation" | "auth" | "credits" | "forbidden" | "notFound" | "rateLimit" | "server" | "network"
+  type: "validation" | "auth" | "credits" | "forbidden" | "notFound" | "rateLimit" | "unavailable" | "server" | "network"
   message: string
   status?: number
+  correlationId?: string
 }
 
 export const handleApiError = (error: unknown): APIError => {
@@ -232,7 +233,8 @@ export const handleApiError = (error: unknown): APIError => {
     const { response } = error
 
     if (response) {
-      const { status, data } = response
+      const { status, data, headers } = response
+      const correlationId = headers?.["x-correlation-id"] as string | undefined
       const detail = (data as { detail?: unknown })?.detail
       const detailMessage = (() => {
         if (typeof detail === "string") return detail
@@ -254,23 +256,25 @@ export const handleApiError = (error: unknown): APIError => {
 
       switch (status) {
         case 400:
-          return { type: "validation", message: detailMessage || "Paramètres invalides", status }
+          return { type: "validation", message: detailMessage || "Paramètres invalides", status, correlationId }
         case 401:
-          return { type: "auth", message: "Session expirée, veuillez vous reconnecter", status }
+          return { type: "auth", message: "Session expirée, veuillez vous reconnecter", status, correlationId }
         case 402:
-          return { type: "credits", message: "Crédits insuffisants", status }
+          return { type: "credits", message: "Crédits insuffisants", status, correlationId }
         case 403:
-          return { type: "forbidden", message: detailMessage || "Accès refusé", status }
+          return { type: "forbidden", message: detailMessage || "Accès refusé", status, correlationId }
         case 404:
-          return { type: "notFound", message: "Ressource non trouvée", status }
+          return { type: "notFound", message: "Ressource non trouvée", status, correlationId }
         case 409:
-          return { type: "validation", message: detailMessage || "Cette ressource existe déjà", status }
+          return { type: "validation", message: detailMessage || "Cette ressource existe déjà", status, correlationId }
         case 422:
-          return { type: "validation", message: detailMessage || "Validation échouée", status }
+          return { type: "validation", message: detailMessage || "Validation échouée", status, correlationId }
         case 429:
-          return { type: "rateLimit", message: "Trop de requêtes, réessayez plus tard", status }
+          return { type: "rateLimit", message: "Trop de requêtes, réessayez plus tard", status, correlationId }
+        case 503:
+          return { type: "unavailable", message: detailMessage || "Service temporairement indisponible, réessayez plus tard", status, correlationId }
         default:
-          return { type: "server", message: detailMessage || "Erreur serveur", status }
+          return { type: "server", message: detailMessage || "Erreur serveur", status, correlationId }
       }
     }
   }
