@@ -13,7 +13,7 @@ export default function OnboardingLayout({
         <div className="space-y-8 animate-fade-in">
           <div className="inline-flex items-center gap-3 rounded-full bg-white/60 px-4 py-2 text-[13px] font-medium text-slate-700 shadow-sm backdrop-blur-sm">
             <Image
-              src="/logo-nodes.png"
+              src="https://f005.backblazeb2.com/file/nodes600/logo-nodes.png"
               alt="Nodes"
               width={28}
               height={28}
@@ -66,7 +66,7 @@ export default function OnboardingLayout({
           <div className="w-full max-w-md rounded-xl border border-slate-200/60 bg-white p-6 shadow-[var(--shadow-md)] animate-slide-up">
             <div className="mb-6 flex items-center gap-3 text-foreground">
               <Image
-                src="/logo-nodes.png"
+                src="https://f005.backblazeb2.com/file/nodes600/logo-nodes.png"
                 alt="Flow"
                 width={40}
                 height={40}

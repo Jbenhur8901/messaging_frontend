@@ -14,9 +14,9 @@ export const metadata: Metadata = {
   title: "Flow - SMS Campaign Management",
   description: "Plateforme de gestion de campagnes SMS",
   icons: {
-    icon: "/logo-nodes.png",
-    apple: "/logo-nodes.png",
-    shortcut: "/logo-nodes.png",
+    icon: "https://f005.backblazeb2.com/file/nodes600/logo-nodes.png",
+    apple: "https://f005.backblazeb2.com/file/nodes600/logo-nodes.png",
+    shortcut: "https://f005.backblazeb2.com/file/nodes600/logo-nodes.png",
   },
 }
 
