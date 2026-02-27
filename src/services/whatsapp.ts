@@ -872,11 +872,47 @@ export const whatsappService = {
     limit = 50,
     offset = 0
   ): Promise<{ transactions: WhatsAppCreditTransaction[]; pagination: Pagination }> {
-    const { data } = await api.get<{ transactions: WhatsAppCreditTransaction[]; pagination: Pagination }>(
+    const { data } = await api.get<{
+      transactions: Array<
+        Partial<WhatsAppCreditTransaction> & {
+          type?: string
+          amount_fcfa?: number
+        }
+      >
+      pagination: Pagination
+    }>(
       "/v1/whatsapp/credits/transactions",
       { params: { type, compartment, limit, offset } }
     )
-    return data
+    const normalizedTransactions: WhatsAppCreditTransaction[] = (data.transactions || []).map((tx) => {
+      const normalizedType = tx.transaction_type || tx.type || "purchase"
+      const normalizedAmount =
+        typeof tx.amount === "number"
+          ? tx.amount
+          : typeof tx.amount_fcfa === "number"
+            ? tx.amount_fcfa
+            : 0
+
+      return {
+        id: tx.id || "",
+        transaction_type:
+          normalizedType === "purchase" ||
+          normalizedType === "consumption" ||
+          normalizedType === "refund" ||
+          normalizedType === "expiration"
+            ? normalizedType
+            : "purchase",
+        compartment: tx.compartment || "",
+        amount: normalizedAmount,
+        description: tx.description || "",
+        created_at: tx.created_at || "",
+      }
+    })
+
+    return {
+      transactions: normalizedTransactions,
+      pagination: data.pagination,
+    }
   },
 
   async getWhatsAppUsage(days = 30): Promise<{ period_days: number; total_consumed: number; daily_breakdown: Record<string, number>; by_compartment: Record<string, number> }> {
