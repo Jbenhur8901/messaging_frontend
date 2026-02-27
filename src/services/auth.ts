@@ -1,5 +1,6 @@
 import { api, apiJson } from "./api"
 import { authStorage } from "@/lib/auth-storage"
+import { clearAllCachedContacts } from "@/lib/contacts-cache"
 import type { AuthResponse, User, APIKey, MFAStatus, MFASetupResponse } from "@/types"
 
 export const authService = {
@@ -135,6 +136,7 @@ export const authService = {
         authStorage.removeItem("auth-storage")
         sessionStorage.removeItem("mfa_required")
         sessionStorage.removeItem("mfa_pre_auth_token")
+        clearAllCachedContacts()
       }
     }
   },

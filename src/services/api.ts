@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios"
 import { authStorage } from "@/lib/auth-storage"
+import { clearAllCachedContacts } from "@/lib/contacts-cache"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -62,6 +63,7 @@ function clearAuthAndRedirect() {
   authStorage.removeItem("refresh_token")
   authStorage.removeItem("user")
   authStorage.removeItem("auth-storage")
+  clearAllCachedContacts()
   if (typeof window !== "undefined") {
     window.location.href = "/auth/login"
   }

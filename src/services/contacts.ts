@@ -1,5 +1,6 @@
 import { api, apiJson } from "./api"
 import type { Contact, ContactImportResult, Pagination } from "@/types"
+import { clearAllCachedContacts } from "@/lib/contacts-cache"
 
 export const contactsService = {
   async searchContacts(filters: {
@@ -138,6 +139,7 @@ export const contactsService = {
     }
 
     const { data } = await api.post("/v1/contacts", formData)
+    clearAllCachedContacts()
     return data
   },
 
@@ -169,6 +171,7 @@ export const contactsService = {
     }
 
     const { data } = await api.put(`/v1/contacts/${contactId}`, formData)
+    clearAllCachedContacts()
     return data
   },
 
@@ -177,6 +180,7 @@ export const contactsService = {
       contact_ids: [contactId],
       mode: "hard",
     })
+    clearAllCachedContacts()
     return data
   },
 
@@ -190,6 +194,7 @@ export const contactsService = {
       mode,
       reason,
     })
+    clearAllCachedContacts()
     return data
   },
 
@@ -201,6 +206,7 @@ export const contactsService = {
       contact_ids: contactIds,
       tag_ids: tagIds,
     })
+    clearAllCachedContacts()
     return data
   },
 
@@ -212,16 +218,19 @@ export const contactsService = {
       contact_ids: contactIds,
       tag_ids: tagIds,
     })
+    clearAllCachedContacts()
     return data
   },
 
   async blockContact(contactId: string): Promise<{ success: boolean; message: string }> {
     const { data } = await api.post(`/v1/contacts/${contactId}/block`)
+    clearAllCachedContacts()
     return data
   },
 
   async unblockContact(contactId: string): Promise<{ success: boolean; message: string }> {
     const { data } = await api.post(`/v1/contacts/${contactId}/unblock`)
+    clearAllCachedContacts()
     return data
   },
 
@@ -247,6 +256,7 @@ export const contactsService = {
 
     try {
       const { data } = await apiJson.post<ContactImportResult>(url, payload)
+      clearAllCachedContacts()
       return data
     } catch (error) {
       if (
@@ -267,6 +277,7 @@ export const contactsService = {
           contacts: fallbackContacts,
           tag_ids: tagIds,
         })
+        clearAllCachedContacts()
         return data
       }
       throw error
@@ -285,6 +296,7 @@ export const contactsService = {
         "Content-Type": "multipart/form-data",
       },
     })
+    clearAllCachedContacts()
     return data
   },
 }

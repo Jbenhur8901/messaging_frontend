@@ -10,6 +10,7 @@ import { smsService, contactsService, tagsService, templatesService, messagingSe
 import type { Contact, Tag, Template, SMSAnalysis, MessagingService } from "@/types"
 import { useCreditsStore } from "@/stores"
 import { formatNumber } from "@/lib/utils"
+import { fetchAllContactsPaged, getCachedContacts, setCachedContacts } from "@/lib/contacts-cache"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,6 +45,7 @@ import {
   AlertCircle,
 } from "lucide-react"
 import Link from "next/link"
+import { useOrganizationStore } from "@/stores"
 
 const campaignSchema = z.object({
   campaignName: z.string().min(1, "Nom de campagne requis"),
@@ -57,6 +59,7 @@ type SendMode = "standard" | "templated"
 export default function NewCampaignPage() {
   const router = useRouter()
   const { balance, fetchBalance } = useCreditsStore()
+  const { currentOrganization } = useOrganizationStore()
   const [isLoading, setIsLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
 
@@ -105,32 +108,20 @@ export default function NewCampaignPage() {
           messagingServicesService.list(),
         ])
         const contactsData = await (async () => {
-          const fetchLimit = 200
-          let offset = 0
-          let hasMore = true
-          let all: Contact[] = []
+          const cachedContacts = getCachedContacts(currentOrganization?.id)
+          const allContacts = cachedContacts || (await fetchAllContactsPaged({
+            fetchPage: (limit, offset) => contactsService.getContacts(limit, offset),
+            pageSize: 5000,
+          })).contacts
 
-          while (hasMore) {
-            const result = await contactsService.getContacts(fetchLimit, offset)
-            const pageContacts = result.contacts.filter((contact) => {
-              const deletedAt = (contact as Contact & { deleted_at?: string | null; deletedAt?: string | null })
-              return !deletedAt.deleted_at && !deletedAt.deletedAt
-            })
-            all = [...all, ...pageContacts]
-
-            if (typeof result.pagination?.has_more === "boolean") {
-              hasMore = result.pagination.has_more
-            } else if (typeof result.pagination?.total === "number") {
-              hasMore = all.length < result.pagination.total
-            } else {
-              hasMore = result.contacts.length === fetchLimit
-            }
-
-            offset += fetchLimit
-            if (result.contacts.length === 0) break
+          if (!cachedContacts) {
+            setCachedContacts(allContacts, currentOrganization?.id)
           }
 
-          return all
+          return allContacts.filter((contact) => {
+            const deletedAt = contact as Contact & { deleted_at?: string | null; deletedAt?: string | null }
+            return !deletedAt.deleted_at && !deletedAt.deletedAt
+          })
         })()
         setContacts(contactsData)
         setTags(tagsData.tags)
@@ -147,7 +138,7 @@ export default function NewCampaignPage() {
     }
 
     loadData()
-  }, [])
+  }, [currentOrganization?.id])
 
   // Analyze message (only in standard mode)
   useEffect(() => {

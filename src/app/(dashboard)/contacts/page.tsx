@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { contactsService, tagsService, handleApiError } from "@/services"
 import type { Contact, Tag, Pagination } from "@/types"
 import { formatNumber, formatPhoneNumber } from "@/lib/utils"
+import { fetchAllContactsPaged, getCachedContacts, setCachedContacts } from "@/lib/contacts-cache"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -64,6 +65,7 @@ import {
   Filter,
   ArrowUpDown,
 } from "lucide-react"
+import { useOrganizationStore } from "@/stores"
 
 const stagger = (i: number) => ({
   opacity: 0,
@@ -75,6 +77,7 @@ type TagFilterMode = "include" | "exclude"
 export default function ContactsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { currentOrganization } = useOrganizationStore()
   const isInitialized = useRef(false)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [tags, setTags] = useState<Tag[]>([])
@@ -99,7 +102,7 @@ export default function ContactsPage() {
   const [bulkTagsOpen, setBulkTagsOpen] = useState(false)
   const [bulkTagsMode, setBulkTagsMode] = useState<"add" | "remove">("add")
   const [bulkTagIds, setBulkTagIds] = useState<string[]>([])
-  const limit = 100
+  const limit = 5000
 
   const includedTags = useMemo(
     () => [...tagFilters.entries()].filter(([, mode]) => mode === "include").map(([id]) => id),
@@ -125,35 +128,33 @@ export default function ContactsPage() {
     })
   }
 
-  const loadAllContacts = async () => {
+  const loadAllContacts = async ({ forceRefresh = false }: { forceRefresh?: boolean } = {}) => {
     setIsLoading(true)
     try {
-      const fetchLimit = 200
-      let offset = 0
-      let hasMore = true
-      let all: Contact[] = []
-
-      while (hasMore) {
-        const result = await contactsService.getContacts(fetchLimit, offset)
-        all = [...all, ...result.contacts]
-        const pageLimit =
-          result.pagination?.limit || (result.contacts.length > 0 ? result.contacts.length : fetchLimit)
-
-        if (typeof result.pagination?.has_more === "boolean") {
-          hasMore = result.pagination.has_more
-        } else if (typeof result.pagination?.total === "number") {
-          hasMore = all.length < result.pagination.total
-        } else {
-          hasMore = result.contacts.length === pageLimit
+      if (!forceRefresh) {
+        const cachedContacts = getCachedContacts(currentOrganization?.id)
+        if (cachedContacts) {
+          setContacts(cachedContacts)
+          setPagination({
+            total: cachedContacts.length,
+            limit,
+            offset: 0,
+            has_more: false,
+          })
+          setSelectedContacts([])
+          return
         }
-
-        offset += pageLimit
-        if (result.contacts.length === 0 || pageLimit === 0) break
       }
 
-      setContacts(all)
+      const result = await fetchAllContactsPaged({
+        fetchPage: (pageLimit, offset) => contactsService.getContacts(pageLimit, offset),
+        pageSize: 5000,
+      })
+
+      setContacts(result.contacts)
+      setCachedContacts(result.contacts, currentOrganization?.id)
       setPagination({
-        total: all.length,
+        total: result.contacts.length,
         limit,
         offset: 0,
         has_more: false,
@@ -219,7 +220,7 @@ export default function ContactsPage() {
 
   useEffect(() => {
     loadAllContacts()
-  }, [])
+  }, [currentOrganization?.id])
 
   useEffect(() => {
     setPage(1)
@@ -251,7 +252,7 @@ export default function ContactsPage() {
 
     try {
       await contactsService.bulkDelete([deleteContactId], "hard")
-      await loadAllContacts()
+      await loadAllContacts({ forceRefresh: true })
       toast.success("Contact supprimé")
     } catch (error) {
       const apiError = handleApiError(error)
@@ -270,11 +271,11 @@ export default function ContactsPage() {
         await contactsService.blockContact(contactId)
         toast.success("Contact bloqué")
       }
-      setContacts(
-        contacts.map((c) =>
-          c.id === contactId ? { ...c, is_blocked: !isBlocked } : c
-        )
-      )
+      setContacts((prev) => {
+        const next = prev.map((c) => (c.id === contactId ? { ...c, is_blocked: !isBlocked } : c))
+        setCachedContacts(next, currentOrganization?.id)
+        return next
+      })
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
@@ -295,7 +296,7 @@ export default function ContactsPage() {
       await contactsService.bulkDelete(selectedContacts, "hard", bulkDeleteReason || undefined)
       toast.success(`${selectedContacts.length} contact(s) supprimé(s)`)
       setSelectedContacts([])
-      await loadAllContacts()
+      await loadAllContacts({ forceRefresh: true })
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
@@ -317,7 +318,7 @@ export default function ContactsPage() {
       }
       setBulkTagIds([])
       setSelectedContacts([])
-      await loadAllContacts()
+      await loadAllContacts({ forceRefresh: true })
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)

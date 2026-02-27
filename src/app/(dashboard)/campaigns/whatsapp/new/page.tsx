@@ -6,6 +6,7 @@ import Link from "next/link"
 import { whatsappService, contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
 import type { WhatsAppTemplate, Contact, Tag, CustomField } from "@/types"
 import { uploadMediaToSupabase } from "@/lib/supabase"
+import { fetchAllContactsPaged, getCachedContacts, setCachedContacts } from "@/lib/contacts-cache"
 import { useOrganizationStore } from "@/stores"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -81,7 +82,7 @@ export default function NewWhatsAppCampaignPage() {
   const [creditCheckLoading, setCreditCheckLoading] = useState(false)
 
   const MAX_CONTACTS = Number.MAX_SAFE_INTEGER
-  const CONTACTS_PAGE_SIZE = 100
+  const CONTACTS_PAGE_SIZE = 5000
   const [contactsLoading, setContactsLoading] = useState(false)
   const [contactsLoadedCount, setContactsLoadedCount] = useState(0)
   const [contactsTotalCount, setContactsTotalCount] = useState<number | null>(null)
@@ -113,53 +114,44 @@ export default function NewWhatsAppCampaignPage() {
     setHeaderFile(null)
   }, [selectedTemplateId])
 
-  const fetchContactsPaged = async (
-    fetchPage: (limit: number, offset: number) => Promise<{ contacts: Contact[]; pagination: { total?: number; has_more?: boolean } }>,
-    onProgress: (loaded: number, total: number | null) => void
+  const fetchAllContacts = async (
+    { forceRefresh = false }: { forceRefresh?: boolean } = {}
   ): Promise<{ contacts: Contact[]; total: number | null; truncated: boolean }> => {
-    const allContacts: Contact[] = []
-    let offset = 0
-    let total: number | null = null
-
-    while (allContacts.length < MAX_CONTACTS) {
-      const { contacts: batch, pagination } = await fetchPage(CONTACTS_PAGE_SIZE, offset)
-
-      if (pagination?.total !== undefined && total === null) {
-        total = pagination.total
-      }
-
-      if (!batch || batch.length === 0) break
-
-      allContacts.push(...batch)
-      offset += batch.length
-      onProgress(allContacts.length, total)
-
-      if (pagination?.has_more === false) break
-      if (pagination?.total !== undefined && offset >= pagination.total) break
-      if (batch.length < CONTACTS_PAGE_SIZE) break
-    }
-
-    const truncated = total !== null ? total > MAX_CONTACTS : allContacts.length >= MAX_CONTACTS
-    return { contacts: allContacts.slice(0, MAX_CONTACTS), total, truncated }
-  }
-
-  const fetchAllContacts = async (): Promise<{ contacts: Contact[]; total: number | null; truncated: boolean }> => {
     setContactsLoading(true)
     setContactsLoadedCount(0)
     setContactsTotalCount(null)
     setContactsLimitReached(false)
 
-    const result = await fetchContactsPaged(
-      (limit, offset) => contactsService.getContacts(limit, offset),
-      (loaded, total) => {
-        setContactsLoadedCount(loaded)
-        setContactsTotalCount(total)
+    try {
+      if (!forceRefresh) {
+        const cachedContacts = getCachedContacts(currentOrganization?.id)
+        if (cachedContacts) {
+          setContactsLoadedCount(cachedContacts.length)
+          setContactsTotalCount(cachedContacts.length)
+          return {
+            contacts: cachedContacts,
+            total: cachedContacts.length,
+            truncated: false,
+          }
+        }
       }
-    )
 
-    setContactsLimitReached(result.truncated)
-    setContactsLoading(false)
-    return result
+      const result = await fetchAllContactsPaged({
+        fetchPage: (limit, offset) => contactsService.getContacts(limit, offset),
+        pageSize: CONTACTS_PAGE_SIZE,
+        maxContacts: MAX_CONTACTS,
+        onProgress: (loaded, total) => {
+          setContactsLoadedCount(loaded)
+          setContactsTotalCount(total)
+        },
+      })
+
+      setCachedContacts(result.contacts, currentOrganization?.id)
+      setContactsLimitReached(result.truncated)
+      return result
+    } finally {
+      setContactsLoading(false)
+    }
   }
 
   const fetchContactsByTags = async (
@@ -170,13 +162,15 @@ export default function NewWhatsAppCampaignPage() {
     setTagContactsTotalCount(null)
     setTagContactsLimitReached(false)
 
-    const result = await fetchContactsPaged(
-      (limit, offset) => contactsService.getContactsByTags(tagIds, limit, offset),
-      (loaded, total) => {
+    const result = await fetchAllContactsPaged({
+      fetchPage: (limit, offset) => contactsService.getContactsByTags(tagIds, limit, offset),
+      pageSize: CONTACTS_PAGE_SIZE,
+      maxContacts: MAX_CONTACTS,
+      onProgress: (loaded, total) => {
         setTagContactsLoadedCount(loaded)
         setTagContactsTotalCount(total)
       }
-    )
+    })
 
     setTagContactsLimitReached(result.truncated)
     setTagContactsLoading(false)
@@ -550,7 +544,7 @@ export default function NewWhatsAppCampaignPage() {
 
         if (recipientContacts.length === 0 && recipientMode === "contacts" && selectedContactIds.length > 0) {
           try {
-            const allContactsResult = await fetchAllContacts()
+            const allContactsResult = await fetchAllContacts({ forceRefresh: true })
             setContacts(allContactsResult.contacts)
             recipientContacts = allContactsResult.contacts.filter((c) => selectedContactIds.includes(c.id))
           } catch {
