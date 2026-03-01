@@ -155,7 +155,7 @@ export default function DashboardLayout({
           onSidebarToggle={toggleSidebar}
         />
         <main className={isEditorRoute ? "" : "py-4"}>
-          <div className={isEditorRoute ? "animate-fade-in" : "px-4 sm:px-5 lg:px-6 animate-fade-in"}>
+          <div className={isEditorRoute ? "animate-fade-in" : "animate-fade-in px-4 sm:px-5 lg:px-6"}>
             {children}
           </div>
         </main>

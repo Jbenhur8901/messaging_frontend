@@ -137,7 +137,10 @@ h6 {
 }
 
 .bg-dashboard {
-  background: #ffffff;
+  background:
+    radial-gradient(900px at top left, rgba(255, 255, 255, 0.95), transparent 45%),
+    radial-gradient(700px at top right, rgba(14, 165, 233, 0.08), transparent 35%),
+    linear-gradient(180deg, #f5f8fc 0%, #edf3f9 52%, #e9eff6 100%);
 }
 
 .dark .bg-dashboard {

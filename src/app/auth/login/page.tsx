@@ -67,7 +67,7 @@ export default function LoginPage() {
           Connexion
         </h2>
         <p className="text-[13px] text-muted-foreground">
-          Entrez vos identifiants pour acc&eacute;der &agrave; votre compte.
+          Entrez vos identifiants pour accéder à votre compte.
         </p>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>

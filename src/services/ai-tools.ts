@@ -68,6 +68,21 @@ export interface VectorStoreFileItem {
 
 export interface VectorStoreResult {
   vector_store_id: string
+  id?: string
+  name?: string
+  [key: string]: unknown
+}
+
+interface CreateVectorStoreApiResponse {
+  success?: boolean
+  vector_store?: {
+    id?: string
+    vector_store_id?: string
+    name?: string
+    [key: string]: unknown
+  }
+  vector_store_id?: string
+  id?: string
   name?: string
   [key: string]: unknown
 }
@@ -95,12 +110,26 @@ export interface Pagination {
 export const aiToolsService = {
   // POST /v1/vector-stores  (JSON body — backend generates vector_store_id)
   async createVectorStore(name: string): Promise<VectorStoreResult> {
-    const { data } = await vsApi.post<VectorStoreResult>(
+    const { data } = await vsApi.post<CreateVectorStoreApiResponse>(
       "/v1/vector-stores",
       { name },
       { headers: { "Content-Type": "application/json" } }
     )
-    return data
+
+    const nestedVectorStore = data.vector_store
+    const vectorStoreId =
+      nestedVectorStore?.vector_store_id ||
+      data.vector_store_id ||
+      nestedVectorStore?.id ||
+      data.id
+
+    return {
+      ...data,
+      ...nestedVectorStore,
+      vector_store_id: vectorStoreId || "",
+      id: nestedVectorStore?.id || data.id,
+      name: nestedVectorStore?.name || data.name || name,
+    }
   },
 
   // GET /v1/vector-stores

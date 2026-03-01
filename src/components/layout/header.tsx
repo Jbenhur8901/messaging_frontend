@@ -38,6 +38,7 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
     fetchOrganizations,
     setCurrentOrganization,
   } = useOrganizationStore()
+
   useEffect(() => {
     if (organizations.length === 0) {
       fetchOrganizations()
@@ -61,7 +62,7 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-x-3 bg-white px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-x-3 border-b border-black/5 bg-white/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
       <Button
         variant="ghost"
         size="icon"
@@ -85,7 +86,6 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
       )}
 
       <div className="flex flex-1 items-center justify-end gap-x-2">
-        {/* Organization switcher */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -134,7 +134,6 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Wallet WhatsApp */}
         <div className="hidden items-center gap-1.5 sm:flex">
           <Link
             href="/whatsapp/credits"
