@@ -835,7 +835,7 @@ export const whatsappService = {
     paymentProof?: File
   ): Promise<{ success: boolean; transaction: WhatsAppCreditTransaction }> {
     const formData = new FormData()
-    formData.append("code", code)
+    formData.append("package_code", code)
     formData.append("payment_reference", paymentReference)
     formData.append("payment_method", paymentMethod)
     if (paymentProof) formData.append("payment_proof", paymentProof)

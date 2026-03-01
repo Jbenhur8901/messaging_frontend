@@ -1,6 +1,7 @@
-import { api, apiJson } from "./api"
+import { api, apiJson, buildOrgFormData, getStoredActiveOrgId, withOrgQuery } from "./api"
 import { authStorage } from "@/lib/auth-storage"
 import { clearAllCachedContacts } from "@/lib/contacts-cache"
+import { syncSupabaseSession } from "@/lib/supabase"
 import type { AuthResponse, User, APIKey, MFAStatus, MFASetupResponse } from "@/types"
 
 export const authService = {
@@ -23,29 +24,9 @@ export const authService = {
     const { data } = await api.post<AuthResponse>("/v1/auth/signup", formData)
 
     if (typeof window !== "undefined" && data.session) {
+      await syncSupabaseSession(data.session)
       authStorage.setItem("access_token", data.session.access_token)
       authStorage.setItem("refresh_token", data.session.refresh_token)
-
-      // Create a default API key for the new user
-      try {
-        const keyFormData = new URLSearchParams()
-        keyFormData.append("name", "Clé par défaut")
-        keyFormData.append("environment", "live")
-
-        const keyResponse = await api.post<{
-          success: boolean
-          api_key: string
-          key_id: string
-        }>("/v1/auth/api-keys", keyFormData)
-
-        if (keyResponse.data.success) {
-          // Save API key to user data
-          data.user.api_key = keyResponse.data.api_key
-          data.user.api_key_id = keyResponse.data.key_id
-        }
-      } catch {
-        // Ignore API key creation error at signup.
-      }
 
       authStorage.setItem("user", JSON.stringify(data.user))
     }
@@ -70,6 +51,7 @@ export const authService = {
       }
 
       if (data.session) {
+        await syncSupabaseSession(data.session)
         authStorage.setItem("access_token", data.session.access_token)
         authStorage.setItem("refresh_token", data.session.refresh_token)
       }
@@ -88,35 +70,7 @@ export const authService = {
       }
 
       if (existingApiKey) {
-        // Use existing API key
         data.user.api_key = existingApiKey
-      } else {
-        // Check if user has API keys on server, if not create one automatically
-        try {
-          const keysResponse = await api.get<{ api_keys: Array<{ id: string; key_prefix: string; is_active: boolean }> }>("/v1/auth/api-keys")
-          const activeKeys = keysResponse.data.api_keys.filter(k => k.is_active)
-
-          if (activeKeys.length === 0) {
-            // Create a default API key for the user
-            const keyFormData = new URLSearchParams()
-            keyFormData.append("name", "Clé par défaut")
-            keyFormData.append("environment", "live")
-
-            const keyResponse = await api.post<{
-              success: boolean
-              api_key: string
-              key_id: string
-            }>("/v1/auth/api-keys", keyFormData)
-
-            if (keyResponse.data.success) {
-              // Save API key to user data
-              data.user.api_key = keyResponse.data.api_key
-              data.user.api_key_id = keyResponse.data.key_id
-            }
-          }
-        } catch {
-          // Ignore API key lookup/creation errors at signin.
-        }
       }
 
       authStorage.setItem("user", JSON.stringify(data.user))
@@ -173,6 +127,7 @@ export const authService = {
     }
 
     if (typeof window !== "undefined") {
+      await syncSupabaseSession(data.session)
       authStorage.setItem("access_token", data.session.access_token)
       authStorage.setItem("refresh_token", data.session.refresh_token)
     }
@@ -181,7 +136,7 @@ export const authService = {
   },
 
   // API Keys management
-  async createApiKey(name: string, environment: "live" | "test"): Promise<{
+  async createApiKey(name: string, environment: "live" | "test", orgId?: string): Promise<{
     success: boolean
     api_key: string
     key_id: string
@@ -189,26 +144,29 @@ export const authService = {
     environment: string
     message: string
   }> {
-    const formData = new URLSearchParams()
-    formData.append("name", name)
-    formData.append("environment", environment)
-
-    const { data } = await api.post("/v1/auth/api-keys", formData)
+    const activeOrgId = orgId || getStoredActiveOrgId()
+    const formData = buildOrgFormData({
+      name,
+      environment,
+    }, activeOrgId)
+    const { data } = await api.post("/v1/auth/api-keys", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
     return data
   },
 
-  async listApiKeys(): Promise<{ api_keys: APIKey[] }> {
-    const { data } = await api.get("/v1/auth/api-keys")
+  async listApiKeys(orgId?: string): Promise<{ api_keys: APIKey[] }> {
+    const { data } = await api.get(withOrgQuery("/v1/auth/api-keys", orgId || getStoredActiveOrgId()))
     return data
   },
 
-  async revokeApiKey(keyId: string): Promise<{ success: boolean; message: string }> {
-    const { data } = await api.post(`/v1/auth/api-keys/${keyId}/revoke`)
+  async revokeApiKey(keyId: string, orgId?: string): Promise<{ success: boolean; message: string }> {
+    const { data } = await api.post(withOrgQuery(`/v1/auth/api-keys/${keyId}/revoke`, orgId || getStoredActiveOrgId()))
     return data
   },
 
-  async deleteApiKey(keyId: string): Promise<{ success: boolean; message: string }> {
-    const { data } = await api.delete(`/v1/auth/api-keys/${keyId}`)
+  async deleteApiKey(keyId: string, orgId?: string): Promise<{ success: boolean; message: string }> {
+    const { data } = await api.delete(withOrgQuery(`/v1/auth/api-keys/${keyId}`, orgId || getStoredActiveOrgId()))
     return data
   },
 
@@ -270,6 +228,7 @@ export const authService = {
 
     if (typeof window !== "undefined") {
       if (data.session) {
+        await syncSupabaseSession(data.session)
         authStorage.setItem("access_token", data.session.access_token)
         authStorage.setItem("refresh_token", data.session.refresh_token)
       }

@@ -22,6 +22,13 @@ export interface Organization {
   is_active: boolean
 }
 
+export interface OrganizationSummary {
+  id: string
+  name: string
+  role: "owner" | "admin" | "member" | "viewer"
+  joined_at?: string
+}
+
 export interface Session {
   access_token: string
   refresh_token: string
@@ -434,11 +441,15 @@ export interface OrganizationInvitation {
   organization_name: string
   email: string
   role: OrganizationRole
+  status?: "pending" | "accepted" | "revoked" | "expired"
   expires_at: string
+  created_at?: string
+  token?: string
+  invitation_url?: string
 }
 
 // Credit Request types
-export type PaymentMethod = "cash" | "airtel_money" | "mobile_money"
+export type PaymentMethod = "cash" | "airtel_money" | "mobile_money" | "bank_transfer"
 export type CreditRequestStatus = "pending" | "approved" | "rejected" | "cancelled"
 
 export interface CreditRequest {
@@ -905,11 +916,19 @@ export interface WhatsAppCreditBalance {
 }
 
 export interface WhatsAppCreditPackage {
+  id?: string
   code: string
   name: string
   category: "marketing" | "utility" | "authentication" | "topup"
-  messages_included: number
-  price_fcfa: number
+  messages_included?: number
+  message_count?: number
+  price_fcfa?: number
+  total_price_fcfa?: number
+  unit_price_fcfa?: number
+  discount_percent?: number
+  is_active?: boolean
+  created_at?: string
+  updated_at?: string
   description?: string
 }
 

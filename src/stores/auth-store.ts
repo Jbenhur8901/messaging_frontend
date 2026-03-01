@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
-import type { User } from "@/types"
+import type { OrganizationSummary, User } from "@/types"
 import { authService } from "@/services/auth"
 import { authStorage } from "@/lib/auth-storage"
 import { clearAllCachedContacts } from "@/lib/contacts-cache"
@@ -13,6 +13,8 @@ import { useOrganizationStore } from "./organization-store"
 interface AuthState {
   user: User | null
   apiKey: string | null
+  organizations: OrganizationSummary[]
+  activeOrgId: string | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
@@ -23,6 +25,8 @@ interface AuthState {
   // Actions
   setUser: (user: User | null) => void
   setApiKey: (apiKey: string | null) => void
+  setOrganizations: (organizations: OrganizationSummary[]) => void
+  setActiveOrgId: (activeOrgId: string | null) => void
   setShowMFARecommendation: (show: boolean) => void
   setRequiresMFAVerification: (requires: boolean, preAuthToken?: string) => void
   completeMFA: () => void
@@ -44,6 +48,8 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       apiKey: null,
+      organizations: [],
+      activeOrgId: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -54,6 +60,10 @@ export const useAuthStore = create<AuthState>()(
       setUser: (user) => set({ user, isAuthenticated: !!user }),
 
       setApiKey: (apiKey) => set({ apiKey }),
+
+      setOrganizations: (organizations) => set({ organizations }),
+
+      setActiveOrgId: (activeOrgId) => set({ activeOrgId }),
 
       setShowMFARecommendation: (show) => set({ showMFARecommendation: show }),
 
@@ -124,19 +134,6 @@ export const useAuthStore = create<AuthState>()(
             return { requiresMFA: true, factorId: undefined }
           }
 
-          if (!effectiveApiKey) {
-            try {
-              const createdKey = await authService.createApiKey("Clé par défaut", "live")
-              if (createdKey.success) {
-                effectiveApiKey = createdKey.api_key
-                effectiveUser = { ...response.user, api_key: createdKey.api_key, api_key_id: createdKey.key_id }
-                authStorage.setItem("user", JSON.stringify(effectiveUser))
-              }
-            } catch {
-              // Ignore key creation errors for now
-            }
-          }
-
           // No MFA required, complete login
           // Check if this is first login (user just registered)
           const showMFARecommendation = response.user.is_first_login && !response.user.mfa_enabled
@@ -149,6 +146,8 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: effectiveUser,
             apiKey: effectiveApiKey,
+            organizations: [],
+            activeOrgId: null,
             isAuthenticated: true,
             isLoading: false,
             showMFARecommendation,
@@ -181,6 +180,8 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: { ...response.user, is_first_login: true },
             apiKey,
+            organizations: [],
+            activeOrgId: null,
             isAuthenticated: true,
             isLoading: false,
             showMFARecommendation: true,
@@ -214,6 +215,8 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: null,
             apiKey: null,
+            organizations: [],
+            activeOrgId: null,
             isAuthenticated: false,
             isLoading: false,
             error: null,
@@ -229,6 +232,8 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           set({
             user: null,
+            organizations: [],
+            activeOrgId: null,
             isAuthenticated: false,
             isLoading: false,
           })
@@ -243,6 +248,8 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         apiKey: state.apiKey,
+        organizations: state.organizations,
+        activeOrgId: state.activeOrgId,
         isAuthenticated: state.isAuthenticated,
         // Don't persist MFA verification state - it's only for current session
       }),

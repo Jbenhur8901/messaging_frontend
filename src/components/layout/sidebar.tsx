@@ -12,7 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useAuthStore } from "@/stores"
+import { useAuthStore, useOrganizationStore } from "@/stores"
 import { ChevronDown, LogOut, PanelLeftClose } from "lucide-react"
 import {
   getActiveHref,
@@ -30,7 +30,9 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
   const { user, logout } = useAuthStore()
-  const sections = getFilteredNavigationSections()
+  const { organizations, currentOrganization } = useOrganizationStore()
+  const currentRole = organizations.find((org) => org.id === currentOrganization?.id)?.role
+  const sections = getFilteredNavigationSections(currentRole === "owner")
   const activeHref = getActiveHref(pathname, sections)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
 
@@ -39,6 +41,16 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     const last = user?.last_name?.[0] || ""
     return `${first}${last}`.toUpperCase() || "U"
   }, [user?.first_name, user?.last_name])
+
+  const displayName = useMemo(() => {
+    const fullName = [user?.first_name, user?.last_name]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .join(" ")
+
+    if (fullName) return fullName
+    if (user?.email) return user.email
+    return "Utilisateur"
+  }, [user?.email, user?.first_name, user?.last_name])
 
   const mainSections = sections.filter((s) => s.position !== "bottom")
   const bottomSections = sections.filter((s) => s.position === "bottom")
@@ -354,7 +366,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    {user ? `${user.first_name} ${user.last_name}` : "Profil"}
+                    {user ? displayName : "Profil"}
                   </TooltipContent>
                 </Tooltip>
                 <Tooltip>
@@ -380,7 +392,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium leading-tight">
-                      {user ? `${user.first_name} ${user.last_name}` : "User"}
+                      {user ? displayName : "Utilisateur"}
                     </p>
                     {user?.email && (
                       <p className="truncate text-[11px] text-muted-foreground leading-tight">

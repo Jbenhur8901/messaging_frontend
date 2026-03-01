@@ -1,9 +1,42 @@
 import { createClient } from "@supabase/supabase-js"
+import { authStorage } from "@/lib/auth-storage"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+export async function syncSupabaseSession(session?: {
+  access_token: string
+  refresh_token: string
+} | null) {
+  if (typeof window === "undefined") return
+  if (!session?.access_token || !session.refresh_token) return
+  try {
+    await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    })
+  } catch {
+    // Keep frontend usable even if Supabase session sync fails.
+  }
+}
+
+if (typeof window !== "undefined") {
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (session?.access_token) {
+      authStorage.setItem("access_token", session.access_token)
+    } else {
+      authStorage.removeItem("access_token")
+    }
+
+    if (session?.refresh_token) {
+      authStorage.setItem("refresh_token", session.refresh_token)
+    } else {
+      authStorage.removeItem("refresh_token")
+    }
+  })
+}
 
 const BUCKET = process.env.NEXT_PUBLIC_MEDIA_UPLOAD_BUCKET || "mms-media"
 const MAX_SIZE_MB = Number(process.env.NEXT_PUBLIC_MAX_MEDIA_SIZE_MB || "50")

@@ -76,6 +76,7 @@ const paymentMethodLabels: Record<string, string> = {
   cash: "Espèces",
   airtel_money: "Airtel Money",
   mobile_money: "Mobile Money",
+  bank_transfer: "Virement bancaire",
 }
 
 const PAGE_LIMIT = 50

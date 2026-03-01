@@ -1,6 +1,7 @@
 import { api } from "./api"
 import type {
   Organization,
+  OrganizationSummary,
   OrganizationRole,
   OrganizationMember,
   OrganizationInvitation,
@@ -15,8 +16,13 @@ export const organizationsService = {
     return data
   },
 
-  async getOrganizations(): Promise<{ organizations: (Organization & { role: OrganizationRole; joined_at: string })[] }> {
+  async getOrganizations(): Promise<{ organizations: OrganizationSummary[] }> {
     const { data } = await api.get("/v1/organizations")
+    return data
+  },
+
+  async switchOrganization(orgId: string): Promise<{ success: boolean; organization_id?: string; active_org_id?: string }> {
+    const { data } = await api.post(`/v1/organizations/${orgId}/switch`)
     return data
   },
 

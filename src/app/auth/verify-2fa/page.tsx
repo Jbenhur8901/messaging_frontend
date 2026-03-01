@@ -151,20 +151,6 @@ export default function Verify2FAPage() {
         }
       }
 
-      if (!result.user.api_key) {
-        try {
-          const createdKey = await authService.createApiKey("Clé par défaut", "live")
-          if (createdKey.success) {
-            setApiKey(createdKey.api_key)
-            const updatedUser = { ...result.user, api_key: createdKey.api_key, api_key_id: createdKey.key_id }
-            setUser(updatedUser)
-            authStorage.setItem("user", JSON.stringify(updatedUser))
-          }
-        } catch {
-          // Ignore API key creation errors here
-        }
-      }
-
       completeMFA()
       setVerificationComplete(true)
       resetCooldownState()

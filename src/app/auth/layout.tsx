@@ -21,11 +21,11 @@ export default function AuthLayout({
           </div>
           <div className="space-y-4">
             <h1 className="text-4xl font-semibold leading-tight tracking-tight text-slate-900 md:text-5xl">
-              WhatsApp et SMS, sur une seule plateforme.
+              Une seule plateforme pour lancer, converser et performer.
             </h1>
             <p className="text-[15px] leading-relaxed text-slate-500">
-              Gérez vos campagnes, vos conversations et vos performances dans un
-              espace simple et clair.
+              Orchestrez vos campagnes, activez des agents IA et transformez vos
+              interactions clients en croissance mesurable.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">

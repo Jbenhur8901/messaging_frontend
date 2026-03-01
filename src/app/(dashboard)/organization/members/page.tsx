@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useOrganizationStore, useAuthStore } from "@/stores"
 import type { OrganizationRole } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -48,6 +49,8 @@ import {
   Mail,
   Clock,
   Trash2,
+  Copy,
+  Link2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { formatDate } from "@/lib/utils"
@@ -72,6 +75,8 @@ const roleBadgeVariants: Record<OrganizationRole, "default" | "secondary" | "out
 }
 
 export default function MembersPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuthStore()
   const {
     currentOrganization,
@@ -92,9 +97,12 @@ export default function MembersPage() {
   const [isInviting, setIsInviting] = useState(false)
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null)
   const [isRemoving, setIsRemoving] = useState(false)
+  const [isInviteLinkOpen, setIsInviteLinkOpen] = useState(false)
+  const [generatedInviteLink, setGeneratedInviteLink] = useState("")
+  const [generatedInviteEmail, setGeneratedInviteEmail] = useState("")
 
   const userRole = organizations.find((o) => o.id === currentOrganization?.id)?.role
-  const canManageMembers = userRole === "owner" || userRole === "admin"
+  const canManageMembers = userRole === "owner"
 
   useEffect(() => {
     if (currentOrganization) {
@@ -109,6 +117,19 @@ export default function MembersPage() {
     }
   }, [error, clearError])
 
+  useEffect(() => {
+    if (currentOrganization && userRole && userRole !== "owner") {
+      toast.error("Seul le propriétaire peut gérer les membres de l'organisation")
+      router.replace("/dashboard")
+    }
+  }, [currentOrganization, router, userRole])
+
+  useEffect(() => {
+    if (searchParams.get("invite") === "1" && canManageMembers) {
+      setIsInviteOpen(true)
+    }
+  }, [canManageMembers, searchParams])
+
   const handleInvite = async () => {
     if (!inviteEmail.trim()) {
       toast.error("L'email est requis")
@@ -117,9 +138,25 @@ export default function MembersPage() {
 
     setIsInviting(true)
     try {
-      await inviteMember(inviteEmail.trim(), inviteRole)
-      toast.success("Invitation envoyée")
+      const invitation = await inviteMember(inviteEmail.trim(), inviteRole)
+      const invitationToken =
+        invitation.token ||
+        invitation.invitation_url?.split("/").filter(Boolean).pop() ||
+        ""
+      const invitationLink =
+        typeof window !== "undefined" && invitationToken
+          ? `${window.location.origin}/invite/${invitationToken}`
+          : ""
+
+      setGeneratedInviteLink(invitationLink)
+      setGeneratedInviteEmail(inviteEmail.trim())
+      toast.success(
+        invitationLink
+          ? "Lien d'invitation généré"
+          : "Invitation créée, mais aucun lien n'a été renvoyé par le backend"
+      )
       setIsInviteOpen(false)
+      setIsInviteLinkOpen(Boolean(invitationLink))
       setInviteEmail("")
       setInviteRole("member")
     } catch {
@@ -166,6 +203,21 @@ export default function MembersPage() {
     )
   }
 
+  if (currentOrganization && userRole && userRole !== "owner") {
+    return null
+  }
+
+  const handleCopyInviteLink = async () => {
+    if (!generatedInviteLink) return
+    try {
+      await navigator.clipboard.writeText(generatedInviteLink)
+      toast.success("Lien copié")
+      setIsInviteLinkOpen(false)
+    } catch {
+      toast.error("Impossible de copier le lien")
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -195,7 +247,7 @@ export default function MembersPage() {
               <DialogHeader>
                 <DialogTitle className="text-[15px]">Inviter un membre</DialogTitle>
                 <DialogDescription className="text-[13px]">
-                  Envoyez une invitation par email pour rejoindre l&apos;organisation.
+                  Générez un lien d&apos;invitation à partager avec le futur membre.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-3">
@@ -232,7 +284,7 @@ export default function MembersPage() {
                   Annuler
                 </Button>
                 <Button onClick={handleInvite} disabled={isInviting} className="h-8 text-[13px] rounded-lg">
-                  {isInviting ? "Envoi..." : "Envoyer l'invitation"}
+                  {isInviting ? "Generation..." : "Generer le lien"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -366,6 +418,38 @@ export default function MembersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={isInviteLinkOpen} onOpenChange={setIsInviteLinkOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-[15px]">Lien d&apos;invitation</DialogTitle>
+            <DialogDescription className="text-[13px]">
+              Partage ce lien avec {generatedInviteEmail} pour rejoindre l&apos;organisation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-start gap-3 py-2">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+              <Link2 className="h-4 w-4 text-emerald-700" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-3">
+              <Input
+                value={generatedInviteLink}
+                readOnly
+                className="h-9 rounded-lg text-[12px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInviteLinkOpen(false)} className="h-8 text-[13px] rounded-lg">
+              Fermer
+            </Button>
+            <Button type="button" className="h-8 text-[13px] rounded-lg gap-1.5" onClick={handleCopyInviteLink}>
+              <Copy className="h-3.5 w-3.5" />
+              Copier le lien
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

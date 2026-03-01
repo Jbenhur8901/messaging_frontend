@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { handleApiError } from "@/services"
 import { aiCreditsService } from "@/services/ai-credits"
+import { useOrganizationStore } from "@/stores"
 import type {
   AICreditsBalance,
   AIPackage,
@@ -57,6 +59,18 @@ const formatDate = (iso: string) => {
   })
 }
 
+const AI_PRICING_TIERS = [
+  { min: 1_000, max: 10_000, rate: 5, label: "1 000 à 10 000 messages" },
+  { min: 10_001, max: 25_000, rate: 4, label: "10 001 à 25 000 messages" },
+  { min: 25_001, max: 40_000, rate: 3, label: "25 001 à 40 000 messages" },
+  { min: 40_001, max: Number.POSITIVE_INFINITY, rate: 2, label: "40 001 messages et plus" },
+]
+
+const getAIRate = (messageCount: number) =>
+  AI_PRICING_TIERS.find((tier) => messageCount >= tier.min && messageCount <= tier.max)?.rate ?? 5
+
+const getAITotalPrice = (messageCount: number) => messageCount * getAIRate(messageCount)
+
 const txTypeMeta: Record<
   string,
   { label: string; color: string; bg: string; icon: typeof CreditCard }
@@ -98,6 +112,8 @@ const requestStatusMeta: Record<
 }
 
 export default function AICreditsPage() {
+  const router = useRouter()
+  const { organizations, currentOrganization } = useOrganizationStore()
   const [isLoading, setIsLoading] = useState(true)
   const [balance, setBalance] = useState<AICreditsBalance | null>(null)
   const [packages, setPackages] = useState<AIPackage[]>([])
@@ -124,6 +140,7 @@ export default function AICreditsPage() {
   const [detailRequest, setDetailRequest] = useState<AICreditRequest | null>(null)
 
   const TX_LIMIT = 20
+  const userRole = organizations.find((org) => org.id === currentOrganization?.id)?.role
 
   const loadTransactions = useCallback(async (offset: number) => {
     setTxLoading(true)
@@ -175,11 +192,18 @@ export default function AICreditsPage() {
       }
     }
     loadAll()
-  }, [])
+  }, [currentOrganization?.id])
 
   useEffect(() => {
     if (!isLoading) loadRequests()
-  }, [requestStatusFilter])
+  }, [requestStatusFilter, currentOrganization?.id])
+
+  useEffect(() => {
+    if (currentOrganization && userRole && userRole !== "owner") {
+      toast.error("La facturation est réservée au propriétaire de l'organisation")
+      router.replace("/dashboard")
+    }
+  }, [currentOrganization, router, userRole])
 
   const handleSubmitRequest = async () => {
     if (!selectedPackage) return
@@ -243,6 +267,10 @@ export default function AICreditsPage() {
         <Skeleton className="h-60 w-full rounded-xl" />
       </div>
     )
+  }
+
+  if (currentOrganization && userRole && userRole !== "owner") {
+    return null
   }
 
   const isLowBalance = balance && balance.balance > 0 && balance.balance < 100
@@ -347,9 +375,24 @@ export default function AICreditsPage() {
           </h2>
         </div>
 
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {AI_PRICING_TIERS.map((tier) => (
+            <div
+              key={tier.label}
+              className="rounded-xl border border-blue-200/70 bg-blue-50/50 p-4"
+            >
+              <p className="text-[12px] font-semibold text-slate-900">{tier.label}</p>
+              <p className="mt-1 text-[20px] font-bold text-blue-700">{tier.rate} FCFA</p>
+              <p className="text-[11px] text-slate-500">par message IA</p>
+            </div>
+          ))}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {packages.map((pkg, i) => {
-            const isBest = pkg.discount_percent >= 80
+            const effectiveUnitPrice = getAIRate(pkg.message_count)
+            const effectiveTotalPrice = getAITotalPrice(pkg.message_count)
+            const isBest = effectiveUnitPrice === 2
             return (
               <div
                 key={pkg.id || pkg.code}
@@ -390,13 +433,13 @@ export default function AICreditsPage() {
 
                   <div className="border-t border-border/40 pt-3 mt-3">
                     <p className="text-[16px] font-bold text-foreground">
-                      {formatNumber(pkg.total_price_fcfa)}{" "}
+                      {formatNumber(effectiveTotalPrice)}{" "}
                       <span className="text-[11px] font-normal text-muted-foreground">FCFA</span>
                     </p>
                     <p className={`text-[11px] mt-0.5 ${
                       isBest ? "text-primary font-semibold" : "text-muted-foreground"
                     }`}>
-                      {pkg.unit_price_fcfa} FCFA/msg
+                      {effectiveUnitPrice} FCFA/msg
                     </p>
                   </div>
 
@@ -678,11 +721,11 @@ export default function AICreditsPage() {
                     {selectedPackage.name}
                   </p>
                   <p className="text-[11px] text-gray-500 mt-0.5">
-                    {formatNumber(selectedPackage.message_count)} messages &middot; {selectedPackage.unit_price_fcfa} FCFA/msg
+                    {formatNumber(selectedPackage.message_count)} messages &middot; {getAIRate(selectedPackage.message_count)} FCFA/msg
                   </p>
                 </div>
                 <p className="text-[18px] font-bold text-blue-700">
-                  {formatNumber(selectedPackage.total_price_fcfa)}{" "}
+                  {formatNumber(getAITotalPrice(selectedPackage.message_count))}{" "}
                   <span className="text-[11px] font-normal">FCFA</span>
                 </p>
               </div>
@@ -699,6 +742,7 @@ export default function AICreditsPage() {
                 >
                   <option value="mobile_money">Mobile Money</option>
                   <option value="airtel_money">Airtel Money</option>
+                  <option value="bank_transfer">Virement bancaire</option>
                   <option value="cash">Cash</option>
                 </select>
               </div>
@@ -811,7 +855,13 @@ export default function AICreditsPage() {
                 <div>
                   <p className="text-[11px] text-gray-400 uppercase tracking-wide">Paiement</p>
                   <p className="text-[13px] font-medium">
-                    {detailRequest.payment_method === "mobile_money" ? "Mobile Money" : detailRequest.payment_method === "airtel_money" ? "Airtel Money" : "Cash"}
+                    {detailRequest.payment_method === "mobile_money"
+                      ? "Mobile Money"
+                      : detailRequest.payment_method === "airtel_money"
+                      ? "Airtel Money"
+                      : detailRequest.payment_method === "bank_transfer"
+                      ? "Virement bancaire"
+                      : "Cash"}
                   </p>
                 </div>
                 {detailRequest.payment_reference && (

@@ -1,8 +1,46 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios"
 import { authStorage } from "@/lib/auth-storage"
 import { clearAllCachedContacts } from "@/lib/contacts-cache"
+import { supabase, syncSupabaseSession } from "@/lib/supabase"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
+export const getStoredActiveOrgId = (): string | null => {
+  if (typeof window === "undefined") return null
+  try {
+    const storedAuth = authStorage.getItem("auth-storage")
+    if (!storedAuth) return null
+    const parsed = JSON.parse(storedAuth)
+    const activeOrgId = parsed.state?.activeOrgId
+    return typeof activeOrgId === "string" && activeOrgId.length > 0 ? activeOrgId : null
+  } catch {
+    return null
+  }
+}
+
+export function withOrgQuery(url: string, orgId?: string | null) {
+  if (!orgId) return url
+  const normalized = url.startsWith("http") ? url : `${API_BASE_URL}${url}`
+  const parsed = new URL(normalized)
+  parsed.searchParams.set("org_id", orgId)
+  return normalized.startsWith(API_BASE_URL)
+    ? `${parsed.pathname}${parsed.search}`
+    : parsed.toString()
+}
+
+export function buildOrgFormData(
+  values: Record<string, string | Blob | null | undefined>,
+  orgId?: string | null
+) {
+  const fd = new FormData()
+  if (orgId) fd.append("org_id", orgId)
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== null) {
+      fd.append(key, value)
+    }
+  }
+  return fd
+}
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -40,9 +78,18 @@ const getStoredApiKey = (): string | null => {
   return null
 }
 
-const isAuthEndpoint = (url?: string) => {
+const isApiKeyOnlyEndpoint = (url?: string) => {
   if (!url) return false
-  return url.includes("/v1/auth")
+  return [
+    "/v1/dashboard/",
+    "/v1/credits/balance",
+    "/v1/credits/history",
+    "/v1/credits/usage",
+    "/v1/ai/credits/balance",
+    "/v1/ai/credits/transactions",
+    "/v1/ai/credits/check",
+    "/v1/whatsapp/credits/",
+  ].some((path) => url.includes(path))
 }
 
 // ── Token refresh lock (shared between api and apiJson) ──
@@ -108,6 +155,7 @@ async function handleTokenRefresh(
     )
 
     const newToken = data.session.access_token
+    await syncSupabaseSession(data.session)
     authStorage.setItem("access_token", newToken)
     authStorage.setItem("refresh_token", data.session.refresh_token)
 
@@ -126,16 +174,25 @@ async function handleTokenRefresh(
 
 // Request interceptor to add auth token and set content type
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
-      const token = authStorage.getItem("access_token")
+      let token: string | null = null
+      try {
+        const { data } = await supabase.auth.getSession()
+        token = data.session?.access_token ?? null
+      } catch {
+        token = null
+      }
+      if (!token) {
+        token = authStorage.getItem("access_token")
+      }
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }
 
-      // Also add X-API-Key header if available
+      // Add X-API-Key only to API-key-scoped endpoints.
       const apiKey = getStoredApiKey()
-      if (apiKey && !isAuthEndpoint(config.url)) {
+      if (apiKey && isApiKeyOnlyEndpoint(config.url)) {
         config.headers["X-API-Key"] = apiKey
       }
     }
@@ -188,16 +245,25 @@ export const apiJson = axios.create({
 })
 
 apiJson.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
-      const token = authStorage.getItem("access_token")
+      let token: string | null = null
+      try {
+        const { data } = await supabase.auth.getSession()
+        token = data.session?.access_token ?? null
+      } catch {
+        token = null
+      }
+      if (!token) {
+        token = authStorage.getItem("access_token")
+      }
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }
 
-      // Also add X-API-Key header if available
+      // Add X-API-Key only to API-key-scoped endpoints.
       const apiKey = getStoredApiKey()
-      if (apiKey && !isAuthEndpoint(config.url)) {
+      if (apiKey && isApiKeyOnlyEndpoint(config.url)) {
         config.headers["X-API-Key"] = apiKey
       }
     }

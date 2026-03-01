@@ -1,20 +1,25 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
-import type { Organization, OrganizationMember, OrganizationRole } from "@/types"
+import type {
+  OrganizationInvitation,
+  OrganizationMember,
+  OrganizationRole,
+  OrganizationSummary,
+} from "@/types"
 import { organizationsService } from "@/services/organizations"
 
 interface OrganizationState {
-  currentOrganization: Organization | null
-  organizations: (Organization & { role: OrganizationRole; joined_at: string })[]
+  currentOrganization: OrganizationSummary | null
+  organizations: OrganizationSummary[]
   members: OrganizationMember[]
   isLoading: boolean
   error: string | null
 
   // Actions
-  setCurrentOrganization: (org: Organization | null) => void
+  setCurrentOrganization: (org: OrganizationSummary | null) => void
   fetchOrganizations: () => Promise<void>
   fetchMembers: () => Promise<void>
-  inviteMember: (email: string, role: OrganizationRole) => Promise<void>
+  inviteMember: (email: string, role: OrganizationRole) => Promise<OrganizationInvitation>
   updateMemberRole: (memberId: string, role: OrganizationRole) => Promise<void>
   removeMember: (memberId: string) => Promise<void>
   updateOrganization: (name: string) => Promise<void>
@@ -38,7 +43,15 @@ export const useOrganizationStore = create<OrganizationState>()(
         try {
           const response = await organizationsService.getOrganizations()
           const orgs = response.organizations
-          set({ organizations: orgs, isLoading: false })
+          const currentOrgId = get().currentOrganization?.id
+          const nextCurrentOrganization = currentOrgId
+            ? orgs.find((org) => org.id === currentOrgId) || null
+            : null
+          set({
+            organizations: orgs,
+            currentOrganization: nextCurrentOrganization,
+            isLoading: false,
+          })
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Erreur lors du chargement des organisations",
@@ -69,9 +82,10 @@ export const useOrganizationStore = create<OrganizationState>()(
 
         set({ isLoading: true, error: null })
         try {
-          await organizationsService.inviteMember(org.id, email, role)
+          const response = await organizationsService.inviteMember(org.id, email, role)
           // Refresh members list
           await get().fetchMembers()
+          return response.invitation
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Erreur lors de l'invitation",
@@ -125,7 +139,10 @@ export const useOrganizationStore = create<OrganizationState>()(
         try {
           const response = await organizationsService.updateOrganization(org.id, name)
           set({
-            currentOrganization: response.organization,
+            currentOrganization: {
+              ...org,
+              name: response.organization.name,
+            },
             isLoading: false,
           })
           // Refresh organizations list

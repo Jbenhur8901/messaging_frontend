@@ -5,6 +5,7 @@ import Link from "next/link"
 import { creditsService, whatsappService, handleApiError } from "@/services"
 import { creditRequestsService } from "@/services/credit-requests"
 import { authStorage } from "@/lib/auth-storage"
+import { useOrganizationStore } from "@/stores"
 import type {
   CreditBalance,
   CreditTransaction,
@@ -82,6 +83,7 @@ const requestStatusMeta: Record<
 }
 
 export default function CreditsPage() {
+  const { currentOrganization } = useOrganizationStore()
   const [isLoading, setIsLoading] = useState(true)
   const [balance, setBalance] = useState<CreditBalance | null>(null)
   const [walletBalance, setWalletBalance] = useState<WhatsAppCreditBalance | null>(null)
@@ -170,11 +172,11 @@ export default function CreditsPage() {
       }
     }
     loadAll()
-  }, [])
+  }, [currentOrganization?.id])
 
   useEffect(() => {
     if (!isLoading) loadRequests()
-  }, [requestStatusFilter])
+  }, [requestStatusFilter, currentOrganization?.id])
 
   const handleSubmitRequest = async () => {
     const amountNum = parseInt(requestAmount, 10)

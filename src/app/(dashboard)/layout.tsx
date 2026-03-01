@@ -17,7 +17,17 @@ export default function DashboardLayout({
   const router = useRouter()
   const pathname = usePathname()
   const isEditorRoute = Boolean(pathname?.match(/^\/scenarios\/[^/]+$/))
-  const { user, isAuthenticated, fetchProfile, isLoading, requiresMFAVerification, setUser } = useAuthStore()
+  const {
+    user,
+    isAuthenticated,
+    fetchProfile,
+    isLoading,
+    requiresMFAVerification,
+    setUser,
+    activeOrgId,
+    setActiveOrgId,
+    setOrganizations: setSessionOrganizations,
+  } = useAuthStore()
   const { fetchBalance } = useCreditsStore()
   const { fetchOrganizations, setCurrentOrganization } = useOrganizationStore()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -64,18 +74,35 @@ export default function DashboardLayout({
     await fetchOrganizations()
     const orgState = useOrganizationStore.getState()
     const orgs = orgState.organizations
-    const currentOrg = orgState.currentOrganization
+    setSessionOrganizations(orgs)
 
-    if (orgs.length === 0 && currentUser && !currentUser.organization_id) {
+    if (orgs.length === 0) {
       router.replace("/onboarding")
       return
     }
 
-    if (orgs.length > 0) {
-      const userOrg = currentUser?.organization_id
-        ? orgs.find((org) => org.id === currentUser.organization_id)
-        : null
-      setCurrentOrganization(userOrg || orgs[0])
+    const resolvedActiveOrgId =
+      activeOrgId && orgs.some((org) => org.id === activeOrgId)
+        ? activeOrgId
+        : orgs[0]?.id || null
+    const activeOrganization = orgs.find((org) => org.id === resolvedActiveOrgId) || orgs[0]
+
+    if (!activeOrganization) {
+      router.replace("/onboarding")
+      return
+    }
+
+    setActiveOrgId(activeOrganization.id)
+    setCurrentOrganization(activeOrganization)
+
+    if (currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        organization_id: activeOrganization.id,
+        organization_name: activeOrganization.name,
+      }
+      authStorage.setItem("user", JSON.stringify(updatedUser))
+      setUser(updatedUser)
     }
 
     // User has organization, load balance
@@ -85,9 +112,9 @@ export default function DashboardLayout({
     if (typeof window !== "undefined" && !apiKeyEnsured) {
       const storedUser = authStorage.getItem("user")
       const hasKey = storedUser && JSON.parse(storedUser).api_key
-      if (!hasKey) {
+      if (!hasKey && activeOrganization.id) {
         try {
-          const createdKey = await authService.createApiKey("Clé par défaut", "live")
+          const createdKey = await authService.createApiKey("Clé par défaut", "live", activeOrganization.id)
           if (createdKey.success) {
             const updatedUser = currentUser ? { ...currentUser, api_key: createdKey.api_key, api_key_id: createdKey.key_id } : null
             if (updatedUser) {
@@ -103,7 +130,7 @@ export default function DashboardLayout({
     }
 
     setAuthChecked(true)
-  }, [user, fetchProfile, fetchBalance, router, requiresMFAVerification, isAuthenticated, fetchOrganizations, setCurrentOrganization, apiKeyEnsured, setUser])
+  }, [user, fetchProfile, fetchBalance, router, requiresMFAVerification, isAuthenticated, fetchOrganizations, setCurrentOrganization, apiKeyEnsured, setUser, activeOrgId, setActiveOrgId, setSessionOrganizations])
 
   useEffect(() => {
     checkAuth()

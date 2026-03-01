@@ -1,10 +1,13 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { whatsappService } from "@/services/whatsapp"
 import { handleApiError } from "@/services"
+import { useOrganizationStore } from "@/stores"
 import type {
   WhatsAppCreditBalance,
+  WhatsAppCreditPackage,
   WhatsAppCreditTransaction,
   WhatsAppCreditNotification,
 } from "@/types"
@@ -55,12 +58,25 @@ const formatDate = (iso: string) => {
 
 // ── Bouquets ──
 
-const PACKAGES = {
+const CAT = {
+  marketing: { label: "Marketing", shortLabel: "M", color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-200", iconBg: "bg-violet-100", icon: Megaphone, rate: 18 },
+  utility: { label: "Utility", shortLabel: "U", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", iconBg: "bg-blue-100", icon: Wrench, rate: 6 },
+  authentication: { label: "Auth", shortLabel: "A", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", iconBg: "bg-emerald-100", icon: ShieldCheck, rate: 6 },
+  topup: { label: "Libres", shortLabel: "F", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", iconBg: "bg-amber-100", icon: Zap, rate: 0 },
+} as const
+
+type CatKey = keyof typeof CAT
+
+type PkgItem = { code: string; name: string; messages: number; unitPrice: number; discount: number; totalPrice: number }
+
+const FALLBACK_PACKAGES: Record<CatKey, PkgItem[]> = {
   marketing: [
     { code: "M-500", name: "500 msgs", messages: 500, unitPrice: 18, discount: 0, totalPrice: 9_000 },
     { code: "M-1000", name: "1 000 msgs", messages: 1_000, unitPrice: 18, discount: 0, totalPrice: 18_000 },
-    { code: "M-5000", name: "5 000 msgs", messages: 5_000, unitPrice: 17, discount: 5, totalPrice: 85_000 },
-    { code: "M-10000", name: "10 000 msgs", messages: 10_000, unitPrice: 16, discount: 10, totalPrice: 160_000 },
+    { code: "M-5000", name: "5 000 msgs", messages: 5_000, unitPrice: 18, discount: 0, totalPrice: 90_000 },
+    { code: "M-10000", name: "10 000 msgs", messages: 10_000, unitPrice: 18, discount: 0, totalPrice: 180_000 },
+    { code: "M-25000", name: "25 000 msgs", messages: 25_000, unitPrice: 17, discount: 6, totalPrice: 425_000 },
+    { code: "M-40000", name: "40 000 msgs", messages: 40_000, unitPrice: 16, discount: 11, totalPrice: 640_000 },
   ],
   utility: [
     { code: "U-1000", name: "1 000 msgs", messages: 1_000, unitPrice: 6, discount: 0, totalPrice: 6_000 },
@@ -80,17 +96,6 @@ const PACKAGES = {
   ],
 }
 
-const CAT = {
-  marketing: { label: "Marketing", shortLabel: "M", color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-200", iconBg: "bg-violet-100", icon: Megaphone, rate: 18 },
-  utility: { label: "Utility", shortLabel: "U", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", iconBg: "bg-blue-100", icon: Wrench, rate: 6 },
-  authentication: { label: "Auth", shortLabel: "A", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", iconBg: "bg-emerald-100", icon: ShieldCheck, rate: 6 },
-  topup: { label: "Libres", shortLabel: "F", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", iconBg: "bg-amber-100", icon: Zap, rate: 0 },
-} as const
-
-type CatKey = keyof typeof CAT
-
-type PkgItem = { code: string; name: string; messages: number; unitPrice: number; discount: number; totalPrice: number }
-
 const txTypeMeta: Record<string, { label: string; color: string; bg: string }> = {
   purchase: { label: "Achat", color: "text-blue-700", bg: "bg-blue-50 border-blue-200" },
   consumption: { label: "Consommation", color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
@@ -101,9 +106,12 @@ const txTypeMeta: Record<string, { label: string; color: string; bg: string }> =
 // ── Page ──
 
 export default function WhatsAppCreditsPage() {
+  const router = useRouter()
+  const { organizations, currentOrganization } = useOrganizationStore()
   const [balance, setBalance] = useState<WhatsAppCreditBalance | null>(null)
   const [transactions, setTransactions] = useState<WhatsAppCreditTransaction[]>([])
   const [notifications, setNotifications] = useState<WhatsAppCreditNotification[]>([])
+  const [packagesByCategory, setPackagesByCategory] = useState<Record<CatKey, PkgItem[]>>(FALLBACK_PACKAGES)
   const [isLoading, setIsLoading] = useState(true)
 
   // Purchase dialog state
@@ -130,24 +138,56 @@ export default function WhatsAppCreditsPage() {
   const TX_LIMIT = 20
   const [txTypeFilter, setTxTypeFilter] = useState("all")
   const [txCompartmentFilter, setTxCompartmentFilter] = useState("all")
+  const userRole = organizations.find((org) => org.id === currentOrganization?.id)?.role
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [balanceRes, txRes, notifRes] = await Promise.allSettled([
+      const [balanceRes, txRes, notifRes, marketingRes, utilityRes, authRes, topupRes] = await Promise.allSettled([
         whatsappService.getWhatsAppBalance(),
         whatsappService.getWhatsAppTransactions(),
         whatsappService.getWhatsAppNotifications(),
+        whatsappService.getPackages("marketing"),
+        whatsappService.getPackages("utility"),
+        whatsappService.getPackages("authentication"),
+        whatsappService.getPackages("topup"),
       ])
       if (balanceRes.status === "fulfilled") setBalance(balanceRes.value)
       if (txRes.status === "fulfilled") setTransactions(txRes.value.transactions || [])
       if (notifRes.status === "fulfilled") setNotifications(notifRes.value.notifications || [])
+      const mapPackages = (packages: WhatsAppCreditPackage[] | undefined): PkgItem[] =>
+        (packages || []).map((pkg) => {
+          const messages = pkg.message_count ?? pkg.messages_included ?? 0
+          const totalPrice = pkg.total_price_fcfa ?? pkg.price_fcfa ?? 0
+          const unitPrice = pkg.unit_price_fcfa ?? (messages > 0 ? Math.round(totalPrice / messages) : 0)
+          return {
+            code: pkg.code,
+            name: pkg.name,
+            messages,
+            unitPrice,
+            discount: pkg.discount_percent ? Math.round(pkg.discount_percent) : 0,
+            totalPrice,
+          }
+        })
+      setPackagesByCategory({
+        marketing: marketingRes.status === "fulfilled" ? mapPackages(marketingRes.value.packages) : FALLBACK_PACKAGES.marketing,
+        utility: utilityRes.status === "fulfilled" ? mapPackages(utilityRes.value.packages) : FALLBACK_PACKAGES.utility,
+        authentication: authRes.status === "fulfilled" ? mapPackages(authRes.value.packages) : FALLBACK_PACKAGES.authentication,
+        topup: topupRes.status === "fulfilled" ? mapPackages(topupRes.value.packages) : FALLBACK_PACKAGES.topup,
+      })
     } finally {
       setIsLoading(false)
     }
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  useEffect(() => {
+    if (currentOrganization && userRole && userRole !== "owner") {
+      toast.error("La facturation est réservée au propriétaire de l'organisation")
+      router.replace("/dashboard")
+    }
+  }, [currentOrganization, router, userRole])
 
   const handlePurchase = async () => {
     if (!selectedPkg) return
@@ -238,6 +278,10 @@ export default function WhatsAppCreditsPage() {
         <Skeleton className="h-60 w-full rounded-xl" />
       </div>
     )
+  }
+
+  if (currentOrganization && userRole && userRole !== "owner") {
+    return null
   }
 
   return (
@@ -346,7 +390,7 @@ export default function WhatsAppCreditsPage() {
         </div>
 
         {/* Package grid */}
-        {(Object.entries(PACKAGES) as [CatKey, PkgItem[]][]).map(([catKey, items]) => {
+        {(Object.entries(packagesByCategory) as [CatKey, PkgItem[]][]).map(([catKey, items]) => {
           if (catKey !== activeTab) return null
           const c = CAT[catKey]
           const isTopUp = catKey === "topup"

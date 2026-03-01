@@ -1,4 +1,4 @@
-import { api } from "./api"
+import { api, buildOrgFormData, getStoredActiveOrgId, withOrgQuery } from "./api"
 import type { AICreditRequest, CreditRequestStatus } from "@/types"
 
 export interface AICreditsBalance {
@@ -77,12 +77,13 @@ export const aiCreditsService = {
     paymentMethod: string,
     paymentProof?: File
   ): Promise<AICreditRequest> {
-    const formData = new FormData()
-    formData.append("package_code", packageCode)
-    formData.append("payment_method", paymentMethod)
     const ref = `AI-REQ-${Date.now()}`
-    formData.append("payment_reference", ref)
-    if (paymentProof) formData.append("payment_proof", paymentProof)
+    const formData = buildOrgFormData({
+      package_code: packageCode,
+      payment_method: paymentMethod,
+      payment_reference: ref,
+      payment_proof: paymentProof,
+    }, getStoredActiveOrgId())
     const { data } = await api.post<AICreditRequest>(
       "/v1/ai/credits/request",
       formData,
@@ -101,17 +102,17 @@ export const aiCreditsService = {
     const { data } = await api.get<{
       requests: AICreditRequest[]
       pagination: AITransactionsPagination
-    }>("/v1/ai/credits/requests", { params })
+    }>(withOrgQuery("/v1/ai/credits/requests", getStoredActiveOrgId()), { params })
     return data
   },
 
   async getRequest(requestId: string): Promise<AICreditRequest> {
-    const { data } = await api.get<AICreditRequest>(`/v1/ai/credits/requests/${requestId}`)
+    const { data } = await api.get<AICreditRequest>(withOrgQuery(`/v1/ai/credits/requests/${requestId}`, getStoredActiveOrgId()))
     return data
   },
 
   async cancelRequest(requestId: string): Promise<{ success: boolean }> {
-    const { data } = await api.delete<{ success: boolean }>(`/v1/ai/credits/requests/${requestId}`)
+    const { data } = await api.delete<{ success: boolean }>(withOrgQuery(`/v1/ai/credits/requests/${requestId}`, getStoredActiveOrgId()))
     return data
   },
 }

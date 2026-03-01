@@ -22,6 +22,7 @@ export interface NavigationItem {
   href: string
   icon: ComponentType<{ className?: string }>
   smsOnly?: boolean
+  ownerOnly?: boolean
   children?: Array<{
     name: string
     href: string
@@ -73,11 +74,12 @@ export const navigationSections: NavigationSection[] = [
     title: "Organisation & Gestion",
     icon: Building2,
     items: [
-      { name: "Organisation", href: "/organization", icon: Building2 },
+      { name: "Organisation", href: "/organization", icon: Building2, ownerOnly: true },
       {
         name: "Facturation",
         href: "/whatsapp/credits",
         icon: Receipt,
+        ownerOnly: true,
         children: [
           { name: "Crédits WhatsApp", href: "/whatsapp/credits" },
           { name: "Crédits IA", href: "/whatsapp/ai-credits" },
@@ -88,11 +90,15 @@ export const navigationSections: NavigationSection[] = [
   },
 ]
 
-export const getFilteredNavigationSections = (): NavigationSection[] =>
+export const getFilteredNavigationSections = (isOwner = false): NavigationSection[] =>
   navigationSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => !item.smsOnly || featureFlags.SMS_ENABLED),
+      items: section.items.filter((item) => {
+        if (item.smsOnly && !featureFlags.SMS_ENABLED) return false
+        if (item.ownerOnly && !isOwner) return false
+        return true
+      }),
     }))
     .filter((s) => s.items.length > 0)
 

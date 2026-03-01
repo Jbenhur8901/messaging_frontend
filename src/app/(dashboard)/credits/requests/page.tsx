@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import Link from "next/link"
-import { useCreditRequestsStore } from "@/stores"
+import { useCreditRequestsStore, useOrganizationStore } from "@/stores"
 import type { CreditRequestStatus, PaymentMethod } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -49,9 +49,11 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
   cash: "Espèces",
   airtel_money: "Airtel Money",
   mobile_money: "Mobile Money",
+  bank_transfer: "Virement bancaire",
 }
 
 export default function CreditRequestsPage() {
+  const { currentOrganization } = useOrganizationStore()
   const {
     requests,
     fetchRequests,
@@ -63,7 +65,7 @@ export default function CreditRequestsPage() {
 
   useEffect(() => {
     fetchRequests()
-  }, [fetchRequests])
+  }, [fetchRequests, currentOrganization?.id])
 
   useEffect(() => {
     if (error) {

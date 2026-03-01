@@ -11,7 +11,6 @@ import { authStorage } from "@/lib/auth-storage"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
 import { Loader2, Plus, ChevronRight, Crown, ShieldCheck, User } from "lucide-react"
 
@@ -29,7 +28,7 @@ const roleConfig = {
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { user, setUser } = useAuthStore()
+  const { user, setUser, setOrganizations: setSessionOrganizations, setActiveOrgId } = useAuthStore()
   const {
     organizations,
     fetchOrganizations,
@@ -62,9 +61,15 @@ export default function OnboardingPage() {
         authStorage.setItem("user", JSON.stringify(updatedUser))
       }
       if (result.organization) {
-        setCurrentOrganization(result.organization)
+        setActiveOrgId(result.organization.id)
       }
       await fetchOrganizations()
+      const nextOrganizations = useOrganizationStore.getState().organizations
+      setSessionOrganizations(nextOrganizations)
+      const nextCurrentOrganization = nextOrganizations.find((org) => org.id === result.organization?.id) || null
+      if (nextCurrentOrganization) {
+        setCurrentOrganization(nextCurrentOrganization)
+      }
 
       toast.success("Workspace créé avec succès")
       router.push("/dashboard")
@@ -81,6 +86,10 @@ export default function OnboardingPage() {
   }, [fetchOrganizations])
 
   useEffect(() => {
+    setSessionOrganizations(organizations)
+  }, [organizations, setSessionOrganizations])
+
+  useEffect(() => {
     if (organizations.length === 0) {
       setShowCreateForm(true)
     }
@@ -90,7 +99,10 @@ export default function OnboardingPage() {
     const org = organizations.find((o) => o.id === orgId)
     if (!org) return
 
+    void organizationsService.switchOrganization(orgId).catch(() => null)
     setCurrentOrganization(org)
+    setSessionOrganizations(organizations)
+    setActiveOrgId(org.id)
     if (user) {
       const updatedUser = {
         ...user,
@@ -104,18 +116,16 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="space-y-1.5">
+    <div className="space-y-4">
+      <div className="space-y-1">
         <h2 className="text-xl font-semibold tracking-tight text-foreground">
           Bienvenue{user?.first_name ? `, ${user.first_name}` : ""}
         </h2>
-        <p className="text-[13px] text-muted-foreground">
-          S&eacute;lectionnez une organisation ou cr&eacute;ez-en une nouvelle.
+        <p className="text-[12px] text-muted-foreground">
+          Choisissez une organisation.
         </p>
       </div>
 
-      {/* Organization list */}
       {isLoadingOrganizations ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -151,61 +161,53 @@ export default function OnboardingPage() {
         </p>
       )}
 
-      {/* Separator + Create button */}
       {!showCreateForm && (
-        <>
-          <div className="relative">
-            <Separator />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] text-muted-foreground">
-              ou
-            </span>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-9 text-[13px] rounded-lg"
-            onClick={() => setShowCreateForm(true)}
-            disabled={isLoadingOrganizations}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Cr&eacute;er une organisation
-          </Button>
-        </>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-9 text-[13px] rounded-lg"
+          onClick={() => setShowCreateForm(true)}
+          disabled={isLoadingOrganizations}
+        >
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Nouvelle organisation
+        </Button>
       )}
 
-      {/* Create form */}
       {showCreateForm && (
-        <>
-          <div className="relative">
-            <Separator />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] text-muted-foreground">
-              {organizations.length > 0 ? "ou créer" : "nouveau workspace"}
-            </span>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 rounded-lg border border-slate-200/60 bg-white/50 p-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="name" className="text-[13px]">Nom</Label>
+            <Input
+              id="name"
+              placeholder="Mon entreprise"
+              className="h-9 text-[13px] rounded-lg"
+              {...register("name")}
+              disabled={isLoading}
+              autoFocus
+            />
+            {errors.name && (
+              <p className="text-[12px] text-destructive">{errors.name.message}</p>
+            )}
           </div>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="name" className="text-[13px]">Nom du workspace</Label>
-              <Input
-                id="name"
-                placeholder="Mon entreprise"
-                className="h-9 text-[13px] rounded-lg"
-                {...register("name")}
+          <div className="flex gap-2">
+            {organizations.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 flex-1 text-[13px] rounded-lg"
+                onClick={() => setShowCreateForm(false)}
                 disabled={isLoading}
-                autoFocus
-              />
-              {errors.name && (
-                <p className="text-[12px] text-destructive">{errors.name.message}</p>
-              )}
-            </div>
-            <p className="text-[11px] text-muted-foreground/60">
-              Vous pourrez inviter des membres de votre &eacute;quipe plus tard.
-            </p>
-            <Button type="submit" className="w-full h-9 text-[13px] rounded-lg" disabled={isLoading}>
+              >
+                Annuler
+              </Button>
+            )}
+            <Button type="submit" className="h-9 flex-1 text-[13px] rounded-lg" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Cr&eacute;er et continuer
+              Cr&eacute;er
             </Button>
-          </form>
-        </>
+          </div>
+        </form>
       )}
     </div>
   )

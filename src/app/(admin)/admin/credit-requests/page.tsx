@@ -61,6 +61,7 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
   cash: "Espèces",
   airtel_money: "Airtel Money",
   mobile_money: "Mobile Money",
+  bank_transfer: "Virement bancaire",
 }
 
 export default function AdminCreditRequestsPage() {
