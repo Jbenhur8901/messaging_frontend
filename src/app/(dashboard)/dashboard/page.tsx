@@ -96,7 +96,7 @@ const stagger = (i: number) => ({
 
 export default function DashboardPage() {
   const { currentOrganization } = useOrganizationStore()
-  const { walletBalance, walletTotal } = useCreditsStore()
+  const { walletBalance, walletTotal, fetchBalance } = useCreditsStore()
 
   // ── Shared state ──
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
@@ -121,6 +121,8 @@ export default function DashboardPage() {
       try {
         const PERIOD_DAYS = 14
         const channel = featureFlags.SMS_ENABLED ? undefined : "whatsapp" as const
+
+        await fetchBalance().catch(() => undefined)
 
         // ── Common fetches ──
         const promises: Promise<any>[] = [
@@ -185,7 +187,7 @@ export default function DashboardPage() {
     }
 
     loadData()
-  }, [currentOrganization?.id])
+  }, [currentOrganization?.id, fetchBalance])
 
   /* ── Loading skeleton ── */
   if (isLoading) {
