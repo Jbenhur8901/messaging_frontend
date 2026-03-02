@@ -8,6 +8,8 @@ import type {
 } from "@/types"
 import { organizationsService } from "@/services/organizations"
 
+let fetchOrganizationsPromise: Promise<void> | null = null
+
 interface OrganizationState {
   currentOrganization: OrganizationSummary | null
   organizations: OrganizationSummary[]
@@ -39,25 +41,36 @@ export const useOrganizationStore = create<OrganizationState>()(
       setCurrentOrganization: (org) => set({ currentOrganization: org }),
 
       fetchOrganizations: async () => {
-        set({ isLoading: true, error: null })
-        try {
-          const response = await organizationsService.getOrganizations()
-          const orgs = response.organizations
-          const currentOrgId = get().currentOrganization?.id
-          const nextCurrentOrganization = currentOrgId
-            ? orgs.find((org) => org.id === currentOrgId) || null
-            : null
-          set({
-            organizations: orgs,
-            currentOrganization: nextCurrentOrganization,
-            isLoading: false,
-          })
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : "Erreur lors du chargement des organisations",
-            isLoading: false,
-          })
+        if (fetchOrganizationsPromise) {
+          return fetchOrganizationsPromise
         }
+
+        set({ isLoading: true, error: null })
+        fetchOrganizationsPromise = (async () => {
+          try {
+            const response = await organizationsService.getOrganizations()
+            const orgs = response.organizations
+            const currentOrgId = get().currentOrganization?.id
+            const nextCurrentOrganization = currentOrgId
+              ? orgs.find((org) => org.id === currentOrgId) || null
+              : null
+            set({
+              organizations: orgs,
+              currentOrganization: nextCurrentOrganization,
+              isLoading: false,
+            })
+          } catch (error) {
+            set({
+              error: error instanceof Error ? error.message : "Erreur lors du chargement des organisations",
+              isLoading: false,
+            })
+            throw error
+          } finally {
+            fetchOrganizationsPromise = null
+          }
+        })()
+
+        return fetchOrganizationsPromise
       },
 
       fetchMembers: async () => {

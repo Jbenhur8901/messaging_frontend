@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { dashboardService, whatsappService, creditsService } from "@/services"
-import type { DashboardOverview, DailyStat, Broadcast, WhatsAppStats, WhatsAppCreditBalance } from "@/types"
+import { dashboardService, whatsappService } from "@/services"
+import type { DashboardOverview, DailyStat, Broadcast, WhatsAppStats } from "@/types"
 import { formatNumber } from "@/lib/utils"
 import { authStorage } from "@/lib/auth-storage"
 import { Card, CardContent } from "@/components/ui/card"
@@ -31,7 +31,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
-import { useOrganizationStore } from "@/stores"
+import { useCreditsStore, useOrganizationStore } from "@/stores"
 import { featureFlags } from "@/config/features"
 
 const getStoredApiKey = () => {
@@ -96,11 +96,11 @@ const stagger = (i: number) => ({
 
 export default function DashboardPage() {
   const { currentOrganization } = useOrganizationStore()
+  const { walletBalance, walletTotal } = useCreditsStore()
 
   // ── Shared state ──
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
   const [recentBroadcasts, setRecentBroadcasts] = useState<Broadcast[]>([])
-  const [walletBalance, setWalletBalance] = useState<WhatsAppCreditBalance | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   // ── WhatsApp state ──
@@ -126,15 +126,12 @@ export default function DashboardPage() {
         const promises: Promise<any>[] = [
           dashboardService.getDailyStats(PERIOD_DAYS, channel).catch(() => null),        // 0
           dashboardService.getRecentBroadcasts(5, channel).catch(() => ({ broadcasts: [] })), // 1
-          whatsappService.getWhatsAppBalance().catch(() => null),                         // 2
-          whatsappService.getStats(PERIOD_DAYS).catch(() => null),                        // 3
         ]
 
         // ── SMS-only fetches (only when SMS is enabled) ──
         if (featureFlags.SMS_ENABLED) {
           promises.push(
-            dashboardService.getOverview("sms").catch(() => null),                        // 4
-            creditsService.getBalance().catch(() => null),                                // 5
+            dashboardService.getOverview("sms").catch(() => null),                        // 2
           )
         }
 
@@ -142,8 +139,6 @@ export default function DashboardPage() {
 
         const statsData = results[0]
         const broadcastsData = results[1]
-        const walletBalanceData = results[2]
-        const whatsappStatsData = results[3]
 
         // ── Broadcasts ──
         setRecentBroadcasts(broadcastsData.broadcasts || [])
@@ -169,17 +164,17 @@ export default function DashboardPage() {
           }
         }
 
-        // WhatsApp KPIs fallback
-        if (whatsappStatsData && !statsData?.whatsapp_totals) {
-          setWhatsappStats({ ...whatsappStatsData, period_days: PERIOD_DAYS })
+        // WhatsApp KPIs fallback only when daily-stats does not provide totals
+        if (!statsData?.whatsapp_totals) {
+          const whatsappStatsData = await whatsappService.getStats(PERIOD_DAYS).catch(() => null)
+          if (whatsappStatsData) {
+            setWhatsappStats({ ...whatsappStatsData, period_days: PERIOD_DAYS })
+          }
         }
-
-        // ── Wallet ──
-        if (walletBalanceData) setWalletBalance(walletBalanceData)
 
         // ── SMS-only processing ──
         if (featureFlags.SMS_ENABLED) {
-          const overviewData = results[4] as DashboardOverview | null
+          const overviewData = results[2] as DashboardOverview | null
           if (overviewData) setOverview(overviewData)
         }
       } catch (error) {
@@ -221,10 +216,6 @@ export default function DashboardPage() {
     total_messages: 0, delivered: 0, read: 0, failed: 0,
     delivery_rate: 0, read_rate: 0, period_days: 14,
   }
-
-  const walletTotal = walletBalance
-    ? walletBalance.marketing.available + walletBalance.utility.available + walletBalance.authentication.available + walletBalance.free.available
-    : 0
 
   const deliveryRate = Number.isFinite(whatsappSummary.delivery_rate) ? whatsappSummary.delivery_rate : 0
   const readRate = Number.isFinite(whatsappSummary.read_rate) ? whatsappSummary.read_rate : 0

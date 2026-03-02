@@ -78,18 +78,28 @@ const getStoredApiKey = (): string | null => {
   return null
 }
 
+const API_KEY_ONLY_PATTERNS = [
+  /^\/v1\/dashboard(?:\/|$)/,
+  /^\/v1\/messages(?:\/|$)/,
+  /^\/v1\/broadcasts(?:\/|$)/,
+  /^\/v1\/templates(?:\/|$)/,
+  /^\/v1\/tags(?:\/|$)/,
+  /^\/v1\/custom-fields(?:\/|$)/,
+  /^\/v1\/contacts(?:\/|$)/,
+  /^\/v1\/messaging-services(?:\/|$)/,
+  /^\/v1\/tracking(?:\/|$)/,
+  /^\/v1\/media\/upload(?:\/|$)/,
+  /^\/v1\/credits\/(?:balance|recharge|history|usage)(?:\/|$)/,
+  /^\/v1\/ai\/credits\/(?:balance|packages|transactions|check)(?:\/|$)/,
+  /^\/v1\/sms\/estimate(?:\/|$)/,
+  /^\/v1\/whatsapp(?:\/|$)/,
+  /^\/v1\/vector-stores(?:\/|$)/,
+]
+
 const isApiKeyOnlyEndpoint = (url?: string) => {
   if (!url) return false
-  return [
-    "/v1/dashboard/",
-    "/v1/credits/balance",
-    "/v1/credits/history",
-    "/v1/credits/usage",
-    "/v1/ai/credits/balance",
-    "/v1/ai/credits/transactions",
-    "/v1/ai/credits/check",
-    "/v1/whatsapp/credits/",
-  ].some((path) => url.includes(path))
+  const path = url.startsWith("http") ? new URL(url).pathname : url.split("?")[0]
+  return API_KEY_ONLY_PATTERNS.some((pattern) => pattern.test(path))
 }
 
 // ── Token refresh lock (shared between api and apiJson) ──
@@ -176,23 +186,28 @@ async function handleTokenRefresh(
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
+      const apiKeyOnly = isApiKeyOnlyEndpoint(config.url)
       let token: string | null = null
-      try {
-        const { data } = await supabase.auth.getSession()
-        token = data.session?.access_token ?? null
-      } catch {
-        token = null
-      }
-      if (!token) {
-        token = authStorage.getItem("access_token")
-      }
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
+      if (!apiKeyOnly) {
+        try {
+          const { data } = await supabase.auth.getSession()
+          token = data.session?.access_token ?? null
+        } catch {
+          token = null
+        }
+        if (!token) {
+          token = authStorage.getItem("access_token")
+        }
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`
+        }
+      } else if (config.headers.Authorization) {
+        delete config.headers.Authorization
       }
 
       // Add X-API-Key only to API-key-scoped endpoints.
       const apiKey = getStoredApiKey()
-      if (apiKey && isApiKeyOnlyEndpoint(config.url)) {
+      if (apiKey && apiKeyOnly) {
         config.headers["X-API-Key"] = apiKey
       }
     }
@@ -227,6 +242,10 @@ api.interceptors.response.use(
       }
     }
 
+    if (isApiKeyOnlyEndpoint(originalRequest.url)) {
+      return Promise.reject(error)
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
       return handleTokenRefresh(originalRequest, api)
@@ -247,23 +266,28 @@ export const apiJson = axios.create({
 apiJson.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
+      const apiKeyOnly = isApiKeyOnlyEndpoint(config.url)
       let token: string | null = null
-      try {
-        const { data } = await supabase.auth.getSession()
-        token = data.session?.access_token ?? null
-      } catch {
-        token = null
-      }
-      if (!token) {
-        token = authStorage.getItem("access_token")
-      }
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
+      if (!apiKeyOnly) {
+        try {
+          const { data } = await supabase.auth.getSession()
+          token = data.session?.access_token ?? null
+        } catch {
+          token = null
+        }
+        if (!token) {
+          token = authStorage.getItem("access_token")
+        }
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`
+        }
+      } else if (config.headers.Authorization) {
+        delete config.headers.Authorization
       }
 
       // Add X-API-Key only to API-key-scoped endpoints.
       const apiKey = getStoredApiKey()
-      if (apiKey && isApiKeyOnlyEndpoint(config.url)) {
+      if (apiKey && apiKeyOnly) {
         config.headers["X-API-Key"] = apiKey
       }
     }
@@ -277,6 +301,10 @@ apiJson.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean
+    }
+
+    if (isApiKeyOnlyEndpoint(originalRequest.url)) {
+      return Promise.reject(error)
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {

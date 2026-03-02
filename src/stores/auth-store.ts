@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
+import axios from "axios"
 import type { OrganizationSummary, User } from "@/types"
 import { authService } from "@/services/auth"
 import { authStorage } from "@/lib/auth-storage"
@@ -229,14 +230,23 @@ export const useAuthStore = create<AuthState>()(
         try {
           const user = await authService.getProfile()
           set({ user, isAuthenticated: true, isLoading: false })
-        } catch {
+        } catch (error) {
+          const status = axios.isAxiosError(error) ? error.response?.status : undefined
+          if (status === 401 || status === 403) {
+            set({
+              user: null,
+              organizations: [],
+              activeOrgId: null,
+              isAuthenticated: false,
+              isLoading: false,
+            })
+            return
+          }
           set({
-            user: null,
-            organizations: [],
-            activeOrgId: null,
-            isAuthenticated: false,
+            error: error instanceof Error ? error.message : "Erreur lors du chargement du profil",
             isLoading: false,
           })
+          throw error
         }
       },
 

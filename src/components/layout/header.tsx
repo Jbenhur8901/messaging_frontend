@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuthStore, useCreditsStore, useOrganizationStore } from "@/stores"
@@ -40,18 +40,11 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
   const {
     organizations,
     currentOrganization,
-    fetchOrganizations,
     setCurrentOrganization,
   } = useOrganizationStore()
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(false)
   const currentRole = organizations.find((org) => org.id === currentOrganization?.id)?.role
   const isOwner = currentRole === "owner"
-
-  useEffect(() => {
-    if (organizations.length === 0) {
-      fetchOrganizations()
-    }
-  }, [organizations.length, fetchOrganizations])
 
   const handleOrganizationChange = async (orgId: string) => {
     if (orgId === activeOrgId || isSwitchingOrg) return

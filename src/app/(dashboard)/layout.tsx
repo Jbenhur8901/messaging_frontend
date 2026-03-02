@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
+import axios from "axios"
 import { useAuthStore, useCreditsStore, useOrganizationStore } from "@/stores"
 import { authService } from "@/services"
 import { Sidebar, Header, MobileNav } from "@/components/layout"
@@ -35,8 +36,12 @@ export default function DashboardLayout({
   const [isReady, setIsReady] = useState(false)
   const [apiKeyEnsured, setApiKeyEnsured] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const authCheckStartedRef = useRef(false)
 
   const checkAuth = useCallback(async () => {
+    if (authCheckStartedRef.current) return
+    authCheckStartedRef.current = true
+
     // Check if we have a token
     const token = authStorage.getItem("access_token")
     const mfaRequired =
@@ -60,12 +65,17 @@ export default function DashboardLayout({
         await fetchProfile()
         const storedUser = authStorage.getItem("user")
         currentUser = storedUser ? JSON.parse(storedUser) : null
-      } catch {
-        // Token is invalid, redirect to login
-        authStorage.removeItem("access_token")
-        authStorage.removeItem("refresh_token")
-        authStorage.removeItem("user")
-        router.replace("/auth/login")
+      } catch (error) {
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined
+        if (status === 401 || status === 403) {
+          authStorage.removeItem("access_token")
+          authStorage.removeItem("refresh_token")
+          authStorage.removeItem("user")
+          router.replace("/auth/login")
+          return
+        }
+
+        authCheckStartedRef.current = false
         return
       }
     }

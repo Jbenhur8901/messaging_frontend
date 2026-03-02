@@ -17,7 +17,6 @@ export default function OrganizationPage() {
   const {
     currentOrganization,
     organizations,
-    fetchOrganizations,
     updateOrganization,
     isLoading,
     error,
@@ -27,10 +26,6 @@ export default function OrganizationPage() {
   const [name, setName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const userRole = organizations.find((o) => o.id === currentOrganization?.id)?.role
-
-  useEffect(() => {
-    fetchOrganizations()
-  }, [fetchOrganizations])
 
   useEffect(() => {
     if (currentOrganization) {
