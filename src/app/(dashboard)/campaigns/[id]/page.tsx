@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 import {
   Table,
   TableBody,
@@ -27,8 +28,6 @@ import {
   XCircle,
   Clock,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react"
 
 const STATUS_LABELS: Record<string, string> = {
@@ -307,24 +306,7 @@ export default function CampaignDetailPage() {
               <p className="text-sm text-muted-foreground">
                 Page {page} sur {totalPages}
               </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
             </div>
           )}
         </CardContent>

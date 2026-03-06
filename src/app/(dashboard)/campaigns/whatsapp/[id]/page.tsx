@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 import { toast } from "sonner"
 import {
   ArrowLeft,
@@ -21,8 +22,6 @@ import {
   XCircle,
   Clock,
   Users,
-  ChevronLeft,
-  ChevronRight,
   Download,
 } from "lucide-react"
 
@@ -421,26 +420,12 @@ export default function WhatsAppCampaignDetailPage() {
                 <span className="text-[12px] text-muted-foreground">
                   {messages.length} message{messages.length > 1 ? "s" : ""} · Page {msgPage + 1} / {totalMsgPages}
                 </span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    disabled={msgPage === 0}
-                    onClick={() => setMsgPage(msgPage - 1)}
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    disabled={msgPage >= totalMsgPages - 1}
-                    onClick={() => setMsgPage(msgPage + 1)}
-                  >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                <PaginationControls
+                  page={msgPage + 1}
+                  totalPages={totalMsgPages}
+                  onPageChange={(nextPage) => setMsgPage(nextPage - 1)}
+                  compact
+                />
               </div>
             )}
           </>

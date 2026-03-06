@@ -45,3 +45,18 @@ export const trackContactImportJob = (job: TrackedContactImportJob) => {
   writeJobs(next)
 }
 
+export const untrackContactImportJob = (importId: string) => {
+  const existing = readJobs()
+  writeJobs(existing.filter((item) => item.import_id !== importId))
+}
+
+export const clearTrackedContactImportJobs = (organizationId?: string | null) => {
+  if (!organizationId) {
+    writeJobs([])
+    return
+  }
+  const existing = readJobs()
+  writeJobs(
+    existing.filter((item) => item.organization_id && item.organization_id !== organizationId)
+  )
+}

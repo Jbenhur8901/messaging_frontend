@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 import { toast } from "sonner"
 import {
   Loader2,
@@ -25,8 +26,6 @@ import {
   Sparkles,
   Zap,
   TrendingUp,
-  ChevronLeft,
-  ChevronRight,
   XCircle,
   AlertTriangle,
   CreditCard,
@@ -296,20 +295,6 @@ export default function AICreditsPage() {
       toast.error(apiError.message)
     } finally {
       setCancellingId(null)
-    }
-  }
-
-  const handlePrevPage = () => {
-    const newOffset = Math.max(0, txOffset - TX_LIMIT)
-    setTxOffset(newOffset)
-    loadTransactions(newOffset)
-  }
-
-  const handleNextPage = () => {
-    if (pagination?.has_more) {
-      const newOffset = txOffset + TX_LIMIT
-      setTxOffset(newOffset)
-      loadTransactions(newOffset)
     }
   }
 
@@ -675,14 +660,17 @@ export default function AICreditsPage() {
                 <p className="text-[11px] text-muted-foreground">
                   {txOffset + 1}–{Math.min(txOffset + TX_LIMIT, pagination.total)} sur {formatNumber(pagination.total)}
                 </p>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" disabled={txOffset === 0 || txLoading} onClick={handlePrevPage}>
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" disabled={!pagination.has_more || txLoading} onClick={handleNextPage}>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                <PaginationControls
+                  page={Math.floor(txOffset / TX_LIMIT) + 1}
+                  totalPages={Math.max(1, Math.ceil(pagination.total / TX_LIMIT))}
+                  onPageChange={(nextPage) => {
+                    const newOffset = (nextPage - 1) * TX_LIMIT
+                    setTxOffset(newOffset)
+                    loadTransactions(newOffset)
+                  }}
+                  disabled={txLoading}
+                  compact
+                />
               </div>
             )}
           </div>

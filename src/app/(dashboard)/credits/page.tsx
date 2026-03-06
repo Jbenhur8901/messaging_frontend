@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 import { toast } from "sonner"
 import {
   Loader2,
@@ -28,8 +29,6 @@ import {
   CreditCard,
   TrendingUp,
   TrendingDown,
-  ChevronLeft,
-  ChevronRight,
   XCircle,
   AlertTriangle,
   History,
@@ -221,21 +220,6 @@ export default function CreditsPage() {
       toast.error(apiError.message)
     } finally {
       setCancellingId(null)
-    }
-  }
-
-  const handlePrevPage = () => {
-    const newPage = Math.max(1, txPage - 1)
-    setTxPage(newPage)
-    loadTransactions(newPage)
-  }
-
-  const handleNextPage = () => {
-    const totalPages = txPagination ? Math.ceil(txPagination.total / TX_LIMIT) : 1
-    if (txPage < totalPages) {
-      const newPage = txPage + 1
-      setTxPage(newPage)
-      loadTransactions(newPage)
     }
   }
 
@@ -674,14 +658,16 @@ export default function CreditsPage() {
                 <p className="text-[11px] text-muted-foreground">
                   Page {txPage} sur {totalPages}
                 </p>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" disabled={txPage === 1 || txLoading} onClick={handlePrevPage}>
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" disabled={txPage >= totalPages || txLoading} onClick={handleNextPage}>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                <PaginationControls
+                  page={txPage}
+                  totalPages={totalPages}
+                  onPageChange={(nextPage) => {
+                    setTxPage(nextPage)
+                    loadTransactions(nextPage)
+                  }}
+                  disabled={txLoading}
+                  compact
+                />
               </div>
             )}
           </div>

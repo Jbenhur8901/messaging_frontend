@@ -14,6 +14,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 import {
   Dialog,
   DialogContent,
@@ -57,8 +58,6 @@ import {
   CheckCircle,
   Upload,
   Download,
-  ChevronLeft,
-  ChevronRight,
   Check,
   X,
   RotateCcw,
@@ -102,6 +101,7 @@ export default function ContactsPage() {
   const [bulkTagsOpen, setBulkTagsOpen] = useState(false)
   const [bulkTagsMode, setBulkTagsMode] = useState<"add" | "remove">("add")
   const [bulkTagIds, setBulkTagIds] = useState<string[]>([])
+  const contactsFetchSize = 5000
   const contactsPerPage = 100
 
   const includedTags = useMemo(
@@ -130,10 +130,24 @@ export default function ContactsPage() {
 
   const loadAllContacts = async ({ forceRefresh = false }: { forceRefresh?: boolean } = {}) => {
     setIsLoading(true)
+    let hasRenderedBatch = false
     try {
       const result = await fetchAllContactsPaged({
         fetchPage: (pageLimit, offset) => contactsService.getContacts(pageLimit, offset),
-        pageSize: contactsPerPage,
+        onBatch: (batchContacts) => {
+          setContacts(batchContacts)
+          setPagination({
+            total: batchContacts.length,
+            limit: contactsPerPage,
+            offset: 0,
+            has_more: true,
+          })
+          if (!hasRenderedBatch) {
+            hasRenderedBatch = true
+            setIsLoading(false)
+          }
+        },
+        pageSize: contactsFetchSize,
       })
 
       setContacts(result.contacts)
@@ -161,7 +175,9 @@ export default function ContactsPage() {
         }
       }
     } finally {
-      setIsLoading(false)
+      if (!hasRenderedBatch) {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -944,24 +960,7 @@ export default function ContactsPage() {
               <p className="text-[12px] text-muted-foreground">
                 Page {page} sur {totalPages} ({filteredContacts.length} contacts)
               </p>
-              <div className="flex gap-1.5">
-                <Button
-                  variant="outline"
-                  className="h-7 w-7 p-0 rounded-lg"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-7 w-7 p-0 rounded-lg"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} compact />
             </div>
           )}
         </>

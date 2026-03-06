@@ -12,7 +12,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Eye, RefreshCw, MessageSquareMore, AlertTriangle, Settings, ChevronLeft, ChevronRight } from "lucide-react"
+import { PaginationControls } from "@/components/ui/pagination-controls"
+import { Plus, Eye, RefreshCw, MessageSquareMore, AlertTriangle, Settings } from "lucide-react"
 import { featureFlags } from "@/config/features"
 
 /* ── Stagger animation ── */
@@ -310,26 +311,13 @@ export default function WhatsAppCampaignsPage() {
               <span className="text-[12px] text-muted-foreground">
                 {pagination?.total ?? 0} campagne{(pagination?.total ?? 0) > 1 ? "s" : ""} · Page {page + 1} / {totalPages}
               </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  disabled={page === 0 || isLoading}
-                  onClick={() => handlePageChange(page - 1)}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  disabled={page >= totalPages - 1 || isLoading}
-                  onClick={() => handlePageChange(page + 1)}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <PaginationControls
+                page={page + 1}
+                totalPages={totalPages}
+                onPageChange={(nextPage) => handlePageChange(nextPage - 1)}
+                disabled={isLoading}
+                compact
+              />
             </div>
           )}
         </div>

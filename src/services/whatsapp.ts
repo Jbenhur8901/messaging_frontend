@@ -39,6 +39,8 @@ import type {
 const PAYMENT_PROOF_MAX_MB = 5
 const PAYMENT_PROOF_MAX_BYTES = PAYMENT_PROOF_MAX_MB * 1024 * 1024
 const ALLOWED_PAYMENT_PROOF_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+const stripBearerPrefix = (value: string): string =>
+  value.replace(/^\s*bearer\s*:/i, "").trim()
 
 const assertValidPaymentProof = (file: File) => {
   if (!ALLOWED_PAYMENT_PROOF_TYPES.has(file.type)) {
@@ -262,8 +264,13 @@ export const whatsappService = {
     }>,
     callbackUrl?: string
   ): Promise<WhatsAppBroadcastResult> {
+    const normalizedRecipients = recipients
+      .map(stripBearerPrefix)
+      .map((recipient) => recipient.trim())
+      .filter(Boolean)
+
     const formData = new URLSearchParams()
-    formData.append("recipients", recipients.join(","))
+    formData.append("recipients", normalizedRecipients.join(","))
     formData.append("template_name", templateName)
     formData.append("language_code", language)
     if (campaignName) {
@@ -303,9 +310,19 @@ export const whatsappService = {
       }>
     }>
   }): Promise<WhatsAppBroadcastResult> {
+    const normalizedPayload = {
+      ...payload,
+      recipients: payload.recipients
+        .map((recipient) => ({
+          ...recipient,
+          phone: stripBearerPrefix(recipient.phone),
+        }))
+        .filter((recipient) => recipient.phone.trim().length > 0),
+    }
+
     const { data } = await apiJson.post<WhatsAppBroadcastResult>(
       "/v1/whatsapp/broadcasts/personalized",
-      payload
+      normalizedPayload
     )
     return data
   },
@@ -317,9 +334,17 @@ export const whatsappService = {
     campaign_name?: string
     callback_url?: string
   }): Promise<WhatsAppBroadcastResult> {
+    const normalizedPayload = {
+      ...payload,
+      recipients: payload.recipients
+        .map(stripBearerPrefix)
+        .map((recipient) => recipient.trim())
+        .filter(Boolean),
+    }
+
     const { data } = await apiJson.post<WhatsAppBroadcastResult>(
       "/v1/whatsapp/broadcasts/json",
-      payload
+      normalizedPayload
     )
     return data
   },

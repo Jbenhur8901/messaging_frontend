@@ -86,11 +86,13 @@ export const clearAllCachedContacts = (): void => {
 export const fetchAllContactsPaged = async ({
   fetchPage,
   onProgress,
+  onBatch,
   pageSize = 5000,
   maxContacts = Number.MAX_SAFE_INTEGER,
 }: {
   fetchPage: (limit: number, offset: number) => Promise<ContactsPageResult>
   onProgress?: (loaded: number, total: number | null) => void
+  onBatch?: (contacts: Contact[], total: number | null) => void
   pageSize?: number
   maxContacts?: number
 }): Promise<{ contacts: Contact[]; total: number | null; truncated: boolean }> => {
@@ -127,6 +129,7 @@ export const fetchAllContactsPaged = async ({
     offset += pageLimit
 
     onProgress?.(allContacts.length, total)
+    onBatch?.([...allContacts], total)
 
     if (typeof total === "number" && allContacts.length >= total) break
     if (typeof pagination?.total === "number" && offset >= pagination.total) break

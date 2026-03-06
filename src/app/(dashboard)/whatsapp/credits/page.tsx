@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 import { toast } from "sonner"
 import {
   Wallet,
@@ -27,8 +28,6 @@ import {
   Bell,
   Loader2,
   CreditCard,
-  ChevronLeft,
-  ChevronRight,
   XCircle,
   History,
   Upload,
@@ -631,14 +630,7 @@ export default function WhatsAppCreditsPage() {
                 <p className="text-[11px] text-muted-foreground">
                   Page {txPage} sur {totalTxPages} ({filteredTx.length} transactions)
                 </p>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" disabled={txPage === 1} onClick={() => setTxPage((p) => Math.max(1, p - 1))}>
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" disabled={txPage >= totalTxPages} onClick={() => setTxPage((p) => Math.min(totalTxPages, p + 1))}>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                <PaginationControls page={txPage} totalPages={totalTxPages} onPageChange={setTxPage} compact />
               </div>
             )}
           </div>

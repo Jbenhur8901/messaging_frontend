@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 import {
   Table,
   TableBody,
@@ -40,8 +41,6 @@ import {
   Clock,
   Filter,
   FileImage,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -325,14 +324,11 @@ export default function AdminAICreditRequestsPage() {
               <p className="text-sm text-muted-foreground">
                 {offset + 1}–{Math.min(offset + PAGE_LIMIT, total)} sur {total}
               </p>
-              <div className="flex items-center gap-1.5">
-                <Button variant="outline" size="sm" disabled={offset === 0} onClick={() => loadRequests(Math.max(0, offset - PAGE_LIMIT))}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" disabled={offset + PAGE_LIMIT >= total} onClick={() => loadRequests(offset + PAGE_LIMIT)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              <PaginationControls
+                page={Math.floor(offset / PAGE_LIMIT) + 1}
+                totalPages={Math.max(1, Math.ceil(total / PAGE_LIMIT))}
+                onPageChange={(nextPage) => loadRequests((nextPage - 1) * PAGE_LIMIT)}
+              />
             </div>
           )}
         </CardContent>

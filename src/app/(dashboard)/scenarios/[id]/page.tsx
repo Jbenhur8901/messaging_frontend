@@ -2323,9 +2323,12 @@ export default function ScenarioBuilderPage({ params }: { params: Promise<{ id: 
                               value={typeof floatingActionNode.config.ai_model === "string" ? floatingActionNode.config.ai_model : "gpt-4o"}
                               onChange={(e) => updateNodeById(floatingActionNode.id, (n) => ({ ...n, config: { ...n.config, ai_model: e.target.value } }))}
                             >
-                              <option value="gpt-4o">GPT-4o</option>
+                              <option value="gpt-5-mini">GPT-5 Mini</option>
+                              <option value="gpt-5-nano">GPT-5 Nano</option>
+                              <option value="o4-mini">o4 Mini</option>
+                              <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
                               <option value="gpt-4o-mini">GPT-4o Mini</option>
-                              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                              <option value="gpt-4o">GPT-4o</option>
                             </select>
                           </div>
                           <div className="space-y-1.5">

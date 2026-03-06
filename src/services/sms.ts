@@ -12,6 +12,9 @@ import type {
   NonGSMCharacter,
 } from "@/types"
 
+const stripBearerPrefix = (value: string): string =>
+  value.replace(/^\s*bearer\s*:/i, "").trim()
+
 export const smsService = {
   // Single SMS
   async sendSMS(to: string, body: string, mediaUrl?: string): Promise<MessageResult> {
@@ -51,8 +54,13 @@ export const smsService = {
     mediaUrl?: string,
     messagingServiceSid?: string
   ): Promise<BroadcastResult> {
+    const normalizedRecipients = recipients
+      .map(stripBearerPrefix)
+      .map((recipient) => recipient.trim())
+      .filter(Boolean)
+
     const formData = new URLSearchParams()
-    formData.append("recipients", recipients.join(","))
+    formData.append("recipients", normalizedRecipients.join(","))
     formData.append("body", body)
     if (campaignName) {
       formData.append("campaign_name", campaignName)
@@ -74,8 +82,13 @@ export const smsService = {
     campaignName?: string,
     mediaUrl?: string
   ): Promise<BroadcastResult> {
+    const normalizedRecipients = recipients
+      .map(stripBearerPrefix)
+      .map((recipient) => recipient.trim())
+      .filter(Boolean)
+
     const { data } = await apiJson.post<BroadcastResult>("/v1/broadcasts/json", {
-      recipients,
+      recipients: normalizedRecipients,
       body,
       campaign_name: campaignName,
       media_url: mediaUrl,
@@ -90,8 +103,13 @@ export const smsService = {
     campaignName?: string,
     messagingServiceSid?: string
   ): Promise<TemplatedBroadcastResult> {
+    const normalizedContactIds = contactIds
+      .map(stripBearerPrefix)
+      .map((id) => id.trim())
+      .filter(Boolean)
+
     const formData = new URLSearchParams()
-    formData.append("contact_ids", contactIds.join(","))
+    formData.append("contact_ids", normalizedContactIds.join(","))
     formData.append("template_id", templateId)
     if (campaignName) {
       formData.append("campaign_name", campaignName)

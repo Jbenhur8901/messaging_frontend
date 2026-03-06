@@ -82,7 +82,7 @@ export default function AIToolsPage() {
   const [aiVectorStoreIds, setAiVectorStoreIds] = useState("")
   const [aiSaving, setAiSaving] = useState(false)
 
-  // ── Vector Store state ──
+  // ── Base de connaissance state ──
   const [vectorStores, setVectorStores] = useState<VectorStore[]>([])
   const [isCreatingVS, setIsCreatingVS] = useState(false)
   const [createVSDialogOpen, setCreateVSDialogOpen] = useState(false)
@@ -94,7 +94,7 @@ export default function AIToolsPage() {
   const [deletingVSId, setDeletingVSId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Load AI config + Vector Stores ──
+  // ── Load AI config + bases de connaissance ──
   useEffect(() => {
     loadAll()
   }, [currentOrganization?.id])
@@ -161,7 +161,7 @@ export default function AIToolsPage() {
       )
       setVectorStores(storesWithFiles.filter((store): store is VectorStore => store !== null))
     } catch {
-      toast.error("Impossible de charger les Vector Stores")
+      toast.error("Impossible de charger les bases de connaissance")
     }
   }
 
@@ -189,11 +189,11 @@ export default function AIToolsPage() {
     }
   }
 
-  // ── Vector Store Handlers ──
+  // ── Handlers base de connaissance ──
   const handleCreateVectorStore = async () => {
     const trimmedName = newVSName.trim()
     if (!trimmedName) {
-      toast.error("Le nom du Vector Store est requis")
+      toast.error("Le nom de la base de connaissance est requis")
       return
     }
     setIsCreatingVS(true)
@@ -201,7 +201,7 @@ export default function AIToolsPage() {
       const result = await aiToolsService.createVectorStore(trimmedName)
       const vsId = resolveVectorStoreId(result)
       if (!vsId) {
-        toast.error("Le Vector Store a été créé sans identifiant exploitable")
+        toast.error("La base de connaissance a été créée sans identifiant exploitable")
         return
       }
       const newVS: VectorStore = {
@@ -210,7 +210,7 @@ export default function AIToolsPage() {
         files: [],
       }
       setVectorStores((prev) => [...prev, newVS])
-      toast.success("Vector Store créé")
+      toast.success("Base de connaissance créée")
       setCreateVSDialogOpen(false)
       setNewVSName("")
     } catch (error) {
@@ -300,7 +300,7 @@ export default function AIToolsPage() {
     try {
       await aiToolsService.deleteVectorStore(vsId)
       setVectorStores((prev) => prev.filter((vs) => vs.id !== vsId))
-      toast.success("Vector Store supprimé")
+      toast.success("Base de connaissance supprimée")
     } catch (error) {
       const apiError = handleApiError(error)
       const suffix = apiError.correlationId ? ` (ref: ${apiError.correlationId})` : ""
@@ -474,7 +474,7 @@ export default function AIToolsPage() {
               )}
               {aiTools.includes("file_search") && aiVectorStoreIds && (
                 <span>
-                  Vector Stores :{" "}
+                  Bases de connaissance :{" "}
                   <span className="font-medium text-gray-600 font-mono">{aiVectorStoreIds}</span>
                 </span>
               )}
@@ -569,7 +569,7 @@ export default function AIToolsPage() {
                         <span className="text-[13px] font-medium text-gray-700">file_search</span>
                       </div>
                       <p className="text-[11px] text-gray-400 mt-0.5">
-                        Recherche dans les fichiers d&apos;un Vector Store OpenAI.
+                        Recherche dans les fichiers d&apos;une base de connaissance.
                       </p>
                     </div>
                   </label>
@@ -578,7 +578,7 @@ export default function AIToolsPage() {
                   {aiTools.includes("file_search") && (
                     <div className="ml-8 space-y-1.5">
                       <Label className="text-[12px] text-gray-500">
-                        Vector Store IDs (séparés par des virgules)
+                        IDs des bases de connaissance (séparés par des virgules)
                       </Label>
                       {vectorStores.length > 0 ? (
                         <div className="space-y-1.5">
@@ -625,7 +625,7 @@ export default function AIToolsPage() {
                         />
                       )}
                       <p className="text-[10px] text-gray-400">
-                        Sélectionnez parmi vos Vector Stores ou entrez les IDs manuellement.
+                        Sélectionnez parmi vos bases de connaissance ou entrez les IDs manuellement.
                       </p>
                     </div>
                   )}
@@ -681,9 +681,12 @@ export default function AIToolsPage() {
                       value={aiModel}
                       onChange={(e) => setAiModel(e.target.value)}
                     >
-                      <option value="gpt-4o">GPT-4o</option>
+                      <option value="gpt-5-mini">GPT-5 Mini</option>
+                      <option value="gpt-5-nano">GPT-5 Nano</option>
+                      <option value="o4-mini">o4 Mini</option>
+                      <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
                       <option value="gpt-4o-mini">GPT-4o Mini</option>
-                      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                      <option value="gpt-4o">GPT-4o</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
@@ -726,11 +729,11 @@ export default function AIToolsPage() {
         </div>
       )}
 
-      {/* ── Section 2: Vector Stores ── */}
+      {/* ── Section 2: Bases de connaissance ── */}
       <div style={stagger(2)}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
-            Vector Stores
+            Bases de connaissance
           </h2>
           <Button
             size="sm"
@@ -738,7 +741,7 @@ export default function AIToolsPage() {
             onClick={() => setCreateVSDialogOpen(true)}
           >
             <Plus className="h-3.5 w-3.5" />
-            Créer un Vector Store
+            Créer une base de connaissance
           </Button>
         </div>
 
@@ -747,10 +750,10 @@ export default function AIToolsPage() {
             <CardContent className="flex flex-col items-center justify-center py-12 gap-2">
               <Database className="h-8 w-8 text-muted-foreground/40" />
               <p className="text-[13px] text-muted-foreground">
-                Aucun Vector Store créé
+                Aucune base de connaissance créée
               </p>
               <p className="text-[11px] text-muted-foreground/60">
-                Créez un Vector Store pour stocker vos documents et enrichir les réponses de l&apos;IA.
+                Créez une base de connaissance pour stocker vos documents et enrichir les réponses de l&apos;IA.
               </p>
             </CardContent>
           </Card>
@@ -805,10 +808,10 @@ export default function AIToolsPage() {
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>
-                            Supprimer ce Vector Store ?
+                            Supprimer cette base de connaissance ?
                           </AlertDialogTitle>
                           <AlertDialogDescription>
-                            Le Vector Store &quot;{vs.name}&quot; et tous ses fichiers
+                            La base de connaissance &quot;{vs.name}&quot; et tous ses fichiers
                             seront définitivement supprimés.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -862,7 +865,7 @@ export default function AIToolsPage() {
                   </div>
                 ) : (
                   <p className="text-[11px] text-muted-foreground/60 mt-2">
-                    Aucun fichier. Ajoutez des documents pour enrichir ce Vector Store.
+                    Aucun fichier. Ajoutez des documents pour enrichir cette base de connaissance.
                   </p>
                 )}
               </div>
@@ -871,7 +874,7 @@ export default function AIToolsPage() {
         )}
       </div>
 
-      {/* ── Create Vector Store Dialog ── */}
+      {/* ── Create Knowledge Base Dialog ── */}
       {createVSDialogOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
@@ -892,7 +895,7 @@ export default function AIToolsPage() {
               </div>
               <div>
                 <h3 className="text-[15px] font-semibold text-gray-900">
-                  Créer un Vector Store
+                  Créer une base de connaissance
                 </h3>
                 <p className="text-[11px] text-gray-400">
                   Donnez un nom à votre base de connaissances
@@ -987,7 +990,7 @@ export default function AIToolsPage() {
                   {uploadFiles.length > 0 ? (
                     <div className="text-center">
                       <p className="text-[13px] font-medium text-gray-700">
-                        {uploadFiles.length} fichier{uploadFiles.length > 1 ? "s" : ""} sélectionné{uploadFiles.length > 1 ? "s" : ""}
+                        Fichiers sélectionnés
                       </p>
                       <p className="text-[11px] text-gray-400 mt-0.5">
                         {uploadFiles.map((f) => f.name).join(", ")}

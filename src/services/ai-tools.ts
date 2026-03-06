@@ -1,4 +1,4 @@
-import { apiJson } from "./api"
+import { api, apiJson } from "./api"
 
 // Dedicated API instance for vector-store endpoints (Bearer auth via global interceptors).
 const vsApi = apiJson
@@ -111,15 +111,34 @@ export const aiToolsService = {
     vectorStoreId: string,
     files: File[]
   ): Promise<UploadFilesResult> {
-    const formData = new FormData()
-    files.forEach((file) => {
-      formData.append("files", file)
-    })
-    const { data } = await vsApi.post<UploadFilesResult>(
-      `/v1/vector-stores/${vectorStoreId}/files`,
-      formData
-    )
-    return data
+    const endpoint = `/v1/vector-stores/${vectorStoreId}/files`
+    const buildFormData = (fieldName: "files" | "file"): FormData => {
+      const formData = new FormData()
+      files.forEach((file) => {
+        formData.append(fieldName, file)
+      })
+      return formData
+    }
+
+    try {
+      // Use `api` (no forced JSON content-type) so browser sets multipart boundary.
+      const { data } = await api.post<UploadFilesResult>(endpoint, buildFormData("files"))
+      return data
+    } catch (error) {
+      const detail = (
+        error as { response?: { data?: { detail?: unknown } } }
+      )?.response?.data?.detail
+      const detailText = typeof detail === "string" ? detail.toLowerCase() : ""
+      const missingBinary =
+        detailText.includes("aucun fichier binaire fourni multipart") ||
+        detailText.includes("no multipart binary file provided")
+
+      // Backward compatibility: some backends expect `file` instead of `files`.
+      if (!missingBinary) throw error
+
+      const { data } = await api.post<UploadFilesResult>(endpoint, buildFormData("file"))
+      return data
+    }
   },
 
   // GET /v1/vector-stores/:id/files
