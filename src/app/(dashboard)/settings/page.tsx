@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useAuthStore } from "@/stores"
 import { authService, handleApiError } from "@/services"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ import {
   EyeOff,
   Loader2,
   Shield,
+  ListChecks,
 } from "lucide-react"
 
 export default function SettingsPage() {
@@ -77,6 +79,19 @@ export default function SettingsPage() {
             <Label className="text-[13px]">Email</Label>
             <Input value={user?.email || ""} disabled className="h-9 text-[13px] rounded-lg" />
           </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <ListChecks className="h-3.5 w-3.5 text-muted-foreground" />
+            <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Exportation</h2>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Suivez l&apos;avancement des jobs d&apos;importation.</p>
+          <Link href="/settings/exportation">
+            <Button variant="outline" className="h-8 text-[13px] rounded-lg">
+              Ouvrir le suivi des jobs
+            </Button>
+          </Link>
         </div>
 
         <div className="space-y-4">

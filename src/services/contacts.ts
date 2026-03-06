@@ -2,6 +2,32 @@ import { api, apiJson } from "./api"
 import type { Contact, ContactImportResult, Pagination } from "@/types"
 import { clearAllCachedContacts } from "@/lib/contacts-cache"
 
+export interface ContactImportStartResponse {
+  success: boolean
+  import_id: string
+  status?: string
+  message?: string
+}
+
+export interface ContactImportStatusResponse {
+  success?: boolean
+  import_id: string
+  organization_id?: string
+  status: "queued" | "processing" | "completed" | "failed"
+  total: number | null
+  processed: number | null
+  imported: number | null
+  updated: number | null
+  skipped: number | null
+  failed: number | null
+  imported_count?: number | null
+  updated_count?: number | null
+  skipped_count?: number | null
+  failed_count?: number | null
+  errors?: (string | { row?: number; error?: string })[]
+  error?: string
+}
+
 export const contactsService = {
   async searchContacts(filters: {
     q?: string
@@ -284,19 +310,33 @@ export const contactsService = {
     }
   },
 
-  async importContactsCsv(file: File, tagIds?: string[]): Promise<ContactImportResult> {
+  async importContactsCsv(
+    file: File,
+    tagIds?: string[],
+    callbackUrl?: string
+  ): Promise<ContactImportStartResponse> {
     const formData = new FormData()
     formData.append("file", file)
     if (tagIds && tagIds.length > 0) {
       formData.append("tag_ids", tagIds.join(","))
     }
+    if (callbackUrl) {
+      formData.append("callback_url", callbackUrl)
+    }
 
-    const { data } = await api.post<ContactImportResult>("/v1/contacts/import", formData, {
+    const { data } = await api.post<ContactImportStartResponse>("/v1/contacts/import", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     })
-    clearAllCachedContacts()
+    return data
+  },
+
+  async getContactImportStatus(importId: string): Promise<ContactImportStatusResponse> {
+    const { data } = await api.get<ContactImportStatusResponse>(`/v1/contacts/imports/${importId}`)
+    if (data.status === "completed") {
+      clearAllCachedContacts()
+    }
     return data
   },
 }

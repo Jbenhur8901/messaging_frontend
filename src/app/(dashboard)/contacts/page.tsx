@@ -133,7 +133,7 @@ export default function ContactsPage() {
     try {
       const result = await fetchAllContactsPaged({
         fetchPage: (pageLimit, offset) => contactsService.getContacts(pageLimit, offset),
-        pageSize: 5000,
+        pageSize: contactsPerPage,
       })
 
       setContacts(result.contacts)

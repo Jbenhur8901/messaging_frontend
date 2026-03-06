@@ -85,7 +85,15 @@ export const navigationSections: NavigationSection[] = [
           { name: "Crédits IA", href: "/whatsapp/ai-credits" },
         ],
       },
-      { name: "Paramètres", href: "/settings", icon: Settings },
+      {
+        name: "Paramètres",
+        href: "/settings",
+        icon: Settings,
+        children: [
+          { name: "Compte", href: "/settings" },
+          { name: "Exportation", href: "/settings/exportation" },
+        ],
+      },
     ],
   },
 ]

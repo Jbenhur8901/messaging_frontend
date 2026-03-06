@@ -6,11 +6,10 @@ import Link from "next/link"
 import Papa from "papaparse"
 import { contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
 import type { Tag, ContactImportResult, CustomField } from "@/types"
+import { trackContactImportJob } from "@/lib/contact-import-jobs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Select,
   SelectContent,
@@ -37,6 +36,7 @@ import {
   ArrowRight,
   X,
 } from "lucide-react"
+import { useOrganizationStore } from "@/stores"
 
 // Champs cibles pour le mapping
 const TARGET_FIELDS = [
@@ -108,6 +108,7 @@ const isIsoDateLike = (value: string) =>
 
 export default function ImportContactsPage() {
   const router = useRouter()
+  const { currentOrganization } = useOrganizationStore()
   const [isLoading, setIsLoading] = useState(false)
   const [tags, setTags] = useState<Tag[]>([])
   const [globalCustomFields, setGlobalCustomFields] = useState<CustomField[]>([])
@@ -125,9 +126,7 @@ export default function ImportContactsPage() {
   const [step, setStep] = useState<"upload" | "mapping" | "result">("upload")
   const [updateExisting, setUpdateExisting] = useState(false)
   const [localErrors, setLocalErrors] = useState<LocalImportError[]>([])
-
-  // JSON import
-  const [jsonData, setJsonData] = useState("")
+  const [importProgress, setImportProgress] = useState<{ processed: number; total: number } | null>(null)
 
   useEffect(() => {
     const loadData = async () => {
@@ -434,6 +433,7 @@ export default function ImportContactsPage() {
     }
 
     setIsLoading(true)
+    setImportProgress({ processed: 0, total: contacts.length })
     try {
       const aggregatedCustomFields = contacts.reduce<Record<string, unknown>>((acc, contact) => {
         if (contact.custom_fields) {
@@ -445,19 +445,45 @@ export default function ImportContactsPage() {
         await customFieldsService.validateCustomFields(aggregatedCustomFields)
       }
 
-      const importResult = await contactsService.importContactsJson(
-        contacts,
-        selectedTags.length > 0 ? selectedTags : undefined,
-        updateExisting
+      const csvRows = contacts.map((contact) => ({
+        phone_number: contact.phone_number,
+        first_name: contact.first_name || "",
+        last_name: contact.last_name || "",
+        email: contact.email || "",
+        ...(contact.custom_fields || {}),
+      }))
+      const csvContent = Papa.unparse(csvRows)
+      const mappedCsvFile = new File(
+        ["\uFEFF" + csvContent],
+        `contacts_mapped_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`,
+        { type: "text/csv;charset=utf-8;" }
       )
-      setResult(importResult)
-      setStep("result")
 
-      if (importResult.imported > 0) {
-        toast.success(`${importResult.imported} contacts importés`)
-      } else if (importResult.failed > 0) {
-        toast.error(`Import terminé avec ${importResult.failed} erreurs`)
+      const callbackUrl =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/api/webhooks/contacts-import`
+          : undefined
+
+      const startResponse = await contactsService.importContactsCsv(
+        mappedCsvFile,
+        selectedTags.length > 0 ? selectedTags : undefined,
+        callbackUrl
+      )
+
+      if (!startResponse.import_id) {
+        throw new Error("import_id manquant dans la réponse")
       }
+
+      trackContactImportJob({
+        import_id: startResponse.import_id,
+        created_at: new Date().toISOString(),
+        file_name: mappedCsvFile.name,
+        organization_id: currentOrganization?.id,
+        source: "csv",
+      })
+
+      toast.success("Import démarré. Redirection vers le suivi des jobs.")
+      router.push("/settings/exportation")
     } catch (error) {
       const apiError = handleApiError(error)
       if (apiError.message.includes("Custom fields invalides")) {
@@ -465,67 +491,7 @@ export default function ImportContactsPage() {
       }
       toast.error(apiError.message)
     } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleJsonImport = async () => {
-    setLocalErrors([])
-    if (!jsonData.trim()) {
-      toast.error("Veuillez entrer des données JSON")
-      return
-    }
-
-    let contacts
-    try {
-      contacts = JSON.parse(jsonData)
-      if (!Array.isArray(contacts)) {
-        throw new Error("Le JSON doit être un tableau")
-      }
-    } catch {
-      toast.error("Format JSON invalide")
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      const normalizedContacts = contacts.map((contact) => {
-        if (contact && typeof contact === "object" && typeof contact.phone_number === "string") {
-          return {
-            ...contact,
-            phone_number: normalizePhoneNumber(contact.phone_number),
-          }
-        }
-        return contact
-      })
-
-      const validationErrors = validateContactsForImport(
-        normalizedContacts as Array<{ phone_number: string; custom_fields?: Record<string, unknown> }>
-      )
-      if (validationErrors.length > 0) {
-        setLocalErrors(validationErrors)
-        toast.error("Erreurs de validation locale détectées")
-        setIsLoading(false)
-        return
-      }
-
-      const importResult = await contactsService.importContactsJson(
-        normalizedContacts,
-        selectedTags.length > 0 ? selectedTags : undefined,
-        updateExisting
-      )
-      setResult(importResult)
-      setStep("result")
-
-      if (importResult.imported > 0) {
-        toast.success(`${importResult.imported} contacts importés`)
-      } else if (importResult.failed > 0) {
-        toast.error(`Import terminé avec ${importResult.failed} erreurs`)
-      }
-    } catch (error) {
-      const apiError = handleApiError(error)
-      toast.error(apiError.message)
-    } finally {
+      setImportProgress(null)
       setIsLoading(false)
     }
   }
@@ -537,8 +503,8 @@ export default function ImportContactsPage() {
     setCustomFieldNames({})
     setResult(null)
     setLocalErrors([])
+    setImportProgress(null)
     setStep("upload")
-    setJsonData("")
   }
 
   // ── Écran de résultat ──
@@ -860,7 +826,9 @@ export default function ImportContactsPage() {
             </Button>
             <Button onClick={handleImport} disabled={!isMappingValid || isLoading} className="h-8 text-[13px] rounded-lg gap-1.5">
               {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Importer {transformData().length} contacts
+              {isLoading && importProgress
+                ? `Import en cours (${importProgress.processed}/${importProgress.total})`
+                : "Importer"}
             </Button>
           </div>
         </div>
@@ -880,150 +848,68 @@ export default function ImportContactsPage() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Importer des contacts</h1>
           <p className="text-[13px] text-muted-foreground mt-0.5">
-            Importez vos contacts depuis un fichier CSV ou JSON.
+            Importez vos contacts depuis un fichier CSV.
           </p>
         </div>
       </div>
 
       <div className="max-w-2xl">
-        <Tabs defaultValue="csv">
-          <TabsList className="h-9">
-            <TabsTrigger value="csv" className="text-[13px] px-4">Fichier CSV</TabsTrigger>
-            <TabsTrigger value="json" className="text-[13px] px-4">JSON</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="csv" className="mt-5 space-y-4">
-            <div>
-              <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Import CSV</h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Glissez votre fichier CSV — les colonnes seront détectées automatiquement
-                (supporte les séparateurs &quot;,&quot; et &quot;;&quot;)
-              </p>
-            </div>
-
-            <p className="text-[11px] text-muted-foreground">
-              Format attendu pour le numéro: international (ex. +33612345678). Les numéros sans
-              &quot;+&quot; seront automatiquement préfixés.
+        <div className="mt-5 space-y-4">
+          <div>
+            <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Import CSV</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Glissez votre fichier CSV — les colonnes seront détectées automatiquement
+              (supporte les séparateurs &quot;,&quot; et &quot;;&quot;)
             </p>
+          </div>
 
-            <div
-              className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
-                dragActive
-                  ? "border-primary bg-primary/5"
-                  : "border-border/40 bg-muted/30"
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <Upload className="h-6 w-6 mx-auto text-muted-foreground/60 mb-3" />
-              <p className="text-[13px] text-muted-foreground mb-2">
-                Glissez-déposez votre fichier CSV ici, ou
-              </p>
-              <label htmlFor="file-upload">
-                <Button variant="outline" asChild className="h-8 text-[13px] rounded-lg">
-                  <span>Parcourir</span>
-                </Button>
-                <input
-                  id="file-upload"
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </label>
-            </div>
+          <p className="text-[11px] text-muted-foreground">
+            Format attendu pour le numéro: international (ex. +33612345678). Les numéros sans
+            &quot;+&quot; seront automatiquement préfixés.
+          </p>
 
-            {file && !csvData && (
-              <div className="flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
+          <div
+            className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+              dragActive
+                ? "border-primary bg-primary/5"
+                : "border-border/40 bg-muted/30"
+            }`}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <Upload className="h-6 w-6 mx-auto text-muted-foreground/60 mb-3" />
+            <p className="text-[13px] text-muted-foreground mb-2">
+              Glissez-déposez votre fichier CSV ici, ou
+            </p>
+            <label htmlFor="file-upload">
+              <Button variant="outline" asChild className="h-8 text-[13px] rounded-lg">
+                <span>Parcourir</span>
+              </Button>
+              <input
+                id="file-upload"
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {file && (
+            <div className="flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
+              <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <span className="flex-1 truncate text-[13px]">{file.name}</span>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="json" className="mt-5 space-y-4">
-            <div>
-              <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Import JSON</h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Format: [{`{`}&quot;phone_number&quot;: &quot;+33...&quot;, &quot;first_name&quot;: &quot;...&quot;{`}`}]
-              </p>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span className="text-[12px] text-muted-foreground">
+                Analyse du CSV et ouverture de l&apos;étape de mapping...
+              </span>
             </div>
-
-            <p className="text-[11px] text-muted-foreground">
-              Format attendu pour le numéro: international (ex. +33612345678). Les numéros sans
-              &quot;+&quot; seront automatiquement préfixés.
-            </p>
-
-            <Textarea
-              placeholder={`[\n  {"phone_number": "+33612345678", "first_name": "Jean", "last_name": "Dupont"},\n  {"phone_number": "+33698765432", "first_name": "Marie"}\n]`}
-              className="h-48 font-mono text-[12px] rounded-lg"
-              value={jsonData}
-              onChange={(e) => setJsonData(e.target.value)}
-            />
-
-            {localErrors.length > 0 && (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3">
-                <p className="mb-2 text-[12px] font-medium text-destructive">
-                  Erreurs locales détectées ({localErrors.length})
-                </p>
-                <ul className="max-h-40 space-y-1 overflow-y-auto text-[12px]">
-                  {localErrors.slice(0, 20).map((error, i) => (
-                    <li key={`${error.row}-${i}`}>
-                      Ligne {error.row}: {error.error}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Tags pour JSON */}
-            <div className="space-y-3">
-              <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Tags à appliquer</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {tags.map((tag) => (
-                  <Badge
-                    key={tag.id}
-                    variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                    className="cursor-pointer text-[10px] h-6 transition-colors duration-200"
-                    style={{
-                      backgroundColor: selectedTags.includes(tag.id)
-                        ? tag.color
-                        : undefined,
-                      borderColor: tag.color,
-                      color: selectedTags.includes(tag.id) ? "#fff" : tag.color,
-                    }}
-                    onClick={() => {
-                      if (selectedTags.includes(tag.id)) {
-                        setSelectedTags(selectedTags.filter((id) => id !== tag.id))
-                      } else {
-                        setSelectedTags([...selectedTags, tag.id])
-                      }
-                    }}
-                  >
-                    {tag.name}
-                  </Badge>
-                ))}
-                {tags.length === 0 && (
-                  <p className="text-[13px] text-muted-foreground">
-                    Aucun tag disponible
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <Button
-              className="w-full h-8 text-[13px] rounded-lg gap-1.5"
-              onClick={handleJsonImport}
-              disabled={!jsonData.trim() || isLoading}
-            >
-              {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Importer
-            </Button>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
     </div>
   )
