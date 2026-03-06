@@ -1,6 +1,6 @@
 import type { Contact } from "@/types"
 
-const CONTACTS_CACHE_PREFIX = "contacts-cache:v1:"
+const CONTACTS_CACHE_PREFIX = "contacts-cache:v2:"
 const DEFAULT_SCOPE = "global"
 
 type CachedContactsPayload = {
@@ -113,13 +113,14 @@ export const fetchAllContactsPaged = async ({
       typeof pagination?.limit === "number" && pagination.limit > 0
         ? pagination.limit
         : batch.length
+    const expectedBatchSize = Math.min(pageSize, pageLimit)
     offset += pageLimit
 
     onProgress?.(allContacts.length, total)
 
     if (pagination?.has_more === false) break
     if (typeof pagination?.total === "number" && offset >= pagination.total) break
-    if (batch.length < pageSize) break
+    if (batch.length < expectedBatchSize) break
   }
 
   const truncated = total !== null ? total > maxContacts : allContacts.length >= maxContacts

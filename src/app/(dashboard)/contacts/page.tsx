@@ -102,7 +102,7 @@ export default function ContactsPage() {
   const [bulkTagsOpen, setBulkTagsOpen] = useState(false)
   const [bulkTagsMode, setBulkTagsMode] = useState<"add" | "remove">("add")
   const [bulkTagIds, setBulkTagIds] = useState<string[]>([])
-  const limit = 5000
+  const contactsPerPage = 100
 
   const includedTags = useMemo(
     () => [...tagFilters.entries()].filter(([, mode]) => mode === "include").map(([id]) => id),
@@ -131,21 +131,6 @@ export default function ContactsPage() {
   const loadAllContacts = async ({ forceRefresh = false }: { forceRefresh?: boolean } = {}) => {
     setIsLoading(true)
     try {
-      if (!forceRefresh) {
-        const cachedContacts = getCachedContacts(currentOrganization?.id)
-        if (cachedContacts) {
-          setContacts(cachedContacts)
-          setPagination({
-            total: cachedContacts.length,
-            limit,
-            offset: 0,
-            has_more: false,
-          })
-          setSelectedContacts([])
-          return
-        }
-      }
-
       const result = await fetchAllContactsPaged({
         fetchPage: (pageLimit, offset) => contactsService.getContacts(pageLimit, offset),
         pageSize: 5000,
@@ -155,12 +140,26 @@ export default function ContactsPage() {
       setCachedContacts(result.contacts, currentOrganization?.id)
       setPagination({
         total: result.contacts.length,
-        limit,
+        limit: contactsPerPage,
         offset: 0,
         has_more: false,
       })
       setSelectedContacts([])
     } catch (error) {
+      if (!forceRefresh) {
+        const cachedContacts = getCachedContacts(currentOrganization?.id)
+        if (cachedContacts) {
+          setContacts(cachedContacts)
+          setPagination({
+            total: cachedContacts.length,
+            limit: contactsPerPage,
+            offset: 0,
+            has_more: false,
+          })
+          setSelectedContacts([])
+          toast.error("API indisponible, affichage des contacts en cache")
+        }
+      }
     } finally {
       setIsLoading(false)
     }
@@ -212,7 +211,7 @@ export default function ContactsPage() {
     if (offsetParam) {
       const offset = Number(offsetParam)
       if (!Number.isNaN(offset)) {
-        setPage(Math.floor(offset / limit) + 1)
+        setPage(Math.floor(offset / contactsPerPage) + 1)
       }
     }
     isInitialized.current = true
@@ -394,8 +393,8 @@ export default function ContactsPage() {
     if (createdBefore) params.set("created_before", createdBefore)
     if (sortBy) params.set("sort_by", sortBy)
     if (sortOrder) params.set("sort_order", sortOrder)
-    params.set("limit", String(limit))
-    params.set("offset", String((page - 1) * limit))
+    params.set("limit", String(contactsPerPage))
+    params.set("offset", String((page - 1) * contactsPerPage))
     const query = params.toString()
     router.replace(query ? `/contacts?${query}` : "/contacts")
   }, [
@@ -516,11 +515,11 @@ export default function ContactsPage() {
     sortOrder,
   ])
 
-  const totalPages = Math.max(1, Math.ceil(filteredContacts.length / limit))
+  const totalPages = Math.max(1, Math.ceil(filteredContacts.length / contactsPerPage))
 
   const pagedContacts = useMemo(() => {
-    const start = (page - 1) * limit
-    return filteredContacts.slice(start, start + limit)
+    const start = (page - 1) * contactsPerPage
+    return filteredContacts.slice(start, start + contactsPerPage)
   }, [filteredContacts, page])
 
   const getInitials = (contact: Contact) => {
