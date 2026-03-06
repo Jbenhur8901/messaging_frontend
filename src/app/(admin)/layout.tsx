@@ -75,8 +75,8 @@ export default function AdminLayout({
 
         {/* Mobile Menu */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetContent side="left" className="w-64 p-0">
-            <AdminSidebar />
+          <SheetContent side="left" className="w-72 p-0">
+            <AdminSidebar mobile />
           </SheetContent>
         </Sheet>
 

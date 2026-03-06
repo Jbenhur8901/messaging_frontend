@@ -56,6 +56,20 @@ const formatDate = (iso: string) => {
   })
 }
 
+const PAYMENT_PROOF_MAX_MB = 5
+const PAYMENT_PROOF_MAX_BYTES = PAYMENT_PROOF_MAX_MB * 1024 * 1024
+const ALLOWED_PAYMENT_PROOF_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+
+const validatePaymentProofFile = (file: File): string | null => {
+  if (!ALLOWED_PAYMENT_PROOF_TYPES.has(file.type)) {
+    return "Format invalide. Utilisez JPEG, PNG ou WEBP."
+  }
+  if (file.size > PAYMENT_PROOF_MAX_BYTES) {
+    return `Fichier trop volumineux. Taille max: ${PAYMENT_PROOF_MAX_MB} MB.`
+  }
+  return null
+}
+
 // ── Bouquets ──
 
 const CAT = {
@@ -191,13 +205,22 @@ export default function WhatsAppCreditsPage() {
 
   const handlePurchase = async () => {
     if (!selectedPkg) return
+    if (!paymentProof) {
+      toast.error("La preuve de paiement est obligatoire")
+      return
+    }
+    const paymentProofError = validatePaymentProofFile(paymentProof)
+    if (paymentProofError) {
+      toast.error(paymentProofError)
+      return
+    }
     setIsPurchasing(true)
     try {
       await whatsappService.purchasePackage(
         selectedPkg.item.code,
         paymentRef,
         paymentMethod,
-        paymentProof || undefined
+        paymentProof
       )
       toast.success("Demande envoyée avec succès !")
       closePurchaseDialog()
@@ -212,13 +235,19 @@ export default function WhatsAppCreditsPage() {
   const handleTopUp = async () => {
     const amount = Number(topUpAmount)
     if (!amount) { toast.error("Montant requis"); return }
+    if (!topUpProof) { toast.error("La preuve de paiement est obligatoire"); return }
+    const topUpProofError = validatePaymentProofFile(topUpProof)
+    if (topUpProofError) {
+      toast.error(topUpProofError)
+      return
+    }
     setIsTopping(true)
     try {
       await whatsappService.topUpCredits(
         amount,
         topUpRef,
         undefined,
-        topUpProof || undefined
+        topUpProof
       )
       toast.success("Recharge effectuée !")
       closeTopUpDialog()
@@ -701,14 +730,22 @@ export default function WhatsAppCreditsPage() {
 
               {/* Payment proof */}
               <div className="space-y-1.5">
-                <Label className="text-[13px]">Preuve de paiement</Label>
+                <Label className="text-[13px]">Preuve de paiement *</Label>
                 <input
                   ref={purchaseFileRef}
                   type="file"
-                  accept="image/*,.pdf"
+                  accept="image/jpeg,image/png,image/webp"
                   className="hidden"
                   onChange={(e) => {
-                    if (e.target.files?.[0]) setPaymentProof(e.target.files[0])
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const paymentProofError = validatePaymentProofFile(file)
+                    if (paymentProofError) {
+                      toast.error(paymentProofError)
+                      e.currentTarget.value = ""
+                      return
+                    }
+                    setPaymentProof(file)
                   }}
                 />
                 <div
@@ -732,7 +769,7 @@ export default function WhatsAppCreditsPage() {
                         Capture d&apos;écran ou reçu de paiement
                       </p>
                       <p className="text-[10px] text-gray-300 mt-0.5">
-                        Image ou PDF
+                        JPEG, PNG ou WEBP (max 5 MB)
                       </p>
                     </div>
                   )}
@@ -750,7 +787,7 @@ export default function WhatsAppCreditsPage() {
                 <Button
                   className="h-9 rounded-lg px-5 text-[13px] gap-2"
                   onClick={handlePurchase}
-                  disabled={isPurchasing}
+                  disabled={isPurchasing || !paymentProof}
                 >
                   {isPurchasing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Envoyer la demande
@@ -829,14 +866,22 @@ export default function WhatsAppCreditsPage() {
 
               {/* Payment proof */}
               <div className="space-y-1.5">
-                <Label className="text-[13px]">Preuve de paiement</Label>
+                <Label className="text-[13px]">Preuve de paiement *</Label>
                 <input
                   ref={topUpFileRef}
                   type="file"
-                  accept="image/*,.pdf"
+                  accept="image/jpeg,image/png,image/webp"
                   className="hidden"
                   onChange={(e) => {
-                    if (e.target.files?.[0]) setTopUpProof(e.target.files[0])
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const topUpProofError = validatePaymentProofFile(file)
+                    if (topUpProofError) {
+                      toast.error(topUpProofError)
+                      e.currentTarget.value = ""
+                      return
+                    }
+                    setTopUpProof(file)
                   }}
                 />
                 <div
@@ -860,7 +905,7 @@ export default function WhatsAppCreditsPage() {
                         Capture d&apos;écran ou reçu de paiement
                       </p>
                       <p className="text-[10px] text-gray-300 mt-0.5">
-                        Image ou PDF
+                        JPEG, PNG ou WEBP (max 5 MB)
                       </p>
                     </div>
                   )}
@@ -878,7 +923,7 @@ export default function WhatsAppCreditsPage() {
                 <Button
                   className="h-9 rounded-lg px-5 text-[13px] gap-2"
                   onClick={handleTopUp}
-                  disabled={isTopping || !topUpAmount}
+                  disabled={isTopping || !topUpAmount || !topUpProof}
                 >
                   {isTopping && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Envoyer la demande

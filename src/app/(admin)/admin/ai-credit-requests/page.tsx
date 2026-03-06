@@ -123,6 +123,11 @@ export default function AdminAICreditRequestsPage() {
   const handleAction = async () => {
     if (!selectedRequest || !action) return
 
+    if (action === "approve" && !selectedRequest.payment_proof_url) {
+      toast.error("Impossible d'approuver sans preuve de paiement")
+      return
+    }
+
     if (action === "reject" && note.trim().length < 5) {
       toast.error("Le motif doit contenir au moins 5 caractères")
       return
@@ -293,6 +298,8 @@ export default function AdminAICreditRequestsPage() {
                           <Button
                             size="sm"
                             variant="default"
+                            disabled={!request.payment_proof_url}
+                            title={!request.payment_proof_url ? "Preuve de paiement requise pour approuver" : undefined}
                             onClick={() => openActionDialog(request, "approve")}
                           >
                             <CheckCircle className="h-4 w-4" />

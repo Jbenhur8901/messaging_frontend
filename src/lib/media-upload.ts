@@ -23,38 +23,11 @@ export const uploadMediaToBackend = async (file: File): Promise<MediaUploadRespo
   formData.append("file", file)
 
   const token = authStorage.getItem("access_token")
-  let apiKey: string | null = null
-  try {
-    const storedAuth = authStorage.getItem("auth-storage")
-    if (storedAuth) {
-      const parsed = JSON.parse(storedAuth)
-      const storedKey = parsed.state?.apiKey
-      if (typeof storedKey === "string") apiKey = storedKey
-    }
-  } catch {
-    // ignore
-  }
-  if (!apiKey) {
-    try {
-      const user = authStorage.getItem("user")
-      if (user) {
-        const parsedUser = JSON.parse(user)
-        const storedKey = parsedUser.api_key
-        if (typeof storedKey === "string") apiKey = storedKey
-        if (storedKey && typeof storedKey === "object" && typeof storedKey.key === "string") {
-          apiKey = storedKey.key
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
 
-  const response = await fetch(`${API_BASE_URL}/v1/whatsapp/media/upload`, {
+  const response = await fetch(`${API_BASE_URL}/v1/app/whatsapp/media/upload`, {
     method: "POST",
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(apiKey ? { "X-API-Key": apiKey } : {}),
     },
     body: formData,
   })

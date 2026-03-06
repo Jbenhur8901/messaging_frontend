@@ -4,6 +4,11 @@ import { clearAllCachedContacts } from "@/lib/contacts-cache"
 import { syncSupabaseSession } from "@/lib/supabase"
 import type { AuthResponse, User, APIKey, MFAStatus, MFASetupResponse } from "@/types"
 
+const sanitizeUserForStorage = (user: User): User => {
+  const { api_key: _apiKey, ...rest } = user as User & { api_key?: unknown }
+  return rest as User
+}
+
 export const authService = {
   async signup(
     email: string,
@@ -28,7 +33,7 @@ export const authService = {
       authStorage.setItem("access_token", data.session.access_token)
       authStorage.setItem("refresh_token", data.session.refresh_token)
 
-      authStorage.setItem("user", JSON.stringify(data.user))
+      authStorage.setItem("user", JSON.stringify(sanitizeUserForStorage(data.user)))
     }
 
     return data
@@ -56,24 +61,7 @@ export const authService = {
         authStorage.setItem("refresh_token", data.session.refresh_token)
       }
 
-      // Check if we already have an API key stored locally
-      const storedAuth = authStorage.getItem("auth-storage")
-      let existingApiKey: string | null = null
-
-      if (storedAuth) {
-        try {
-          const parsed = JSON.parse(storedAuth)
-          existingApiKey = parsed.state?.apiKey || null
-        } catch {
-          // Ignore parse errors
-        }
-      }
-
-      if (existingApiKey) {
-        data.user.api_key = existingApiKey
-      }
-
-      authStorage.setItem("user", JSON.stringify(data.user))
+      authStorage.setItem("user", JSON.stringify(sanitizeUserForStorage(data.user)))
     }
 
     return data
@@ -233,6 +221,9 @@ export const authService = {
         authStorage.setItem("refresh_token", data.session.refresh_token)
       }
       sessionStorage.removeItem("mfa_pre_auth_token")
+      if (data.user) {
+        authStorage.setItem("user", JSON.stringify(sanitizeUserForStorage(data.user)))
+      }
     }
 
     return data

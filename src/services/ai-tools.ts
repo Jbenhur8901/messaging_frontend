@@ -1,45 +1,7 @@
-import axios from "axios"
-import { authStorage } from "@/lib/auth-storage"
+import { apiJson } from "./api"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-
-// Helper to get stored API key
-function getStoredApiKey(): string | null {
-  if (typeof window === "undefined") return null
-  try {
-    const storedAuth = authStorage.getItem("auth-storage")
-    if (storedAuth) {
-      const parsed = JSON.parse(storedAuth)
-      const storedKey = parsed.state?.apiKey
-      if (typeof storedKey === "string" && storedKey.length > 0) return storedKey
-    }
-  } catch { /* ignore */ }
-  try {
-    const user = authStorage.getItem("user")
-    if (user) {
-      const parsedUser = JSON.parse(user)
-      const apiKey = parsedUser.api_key
-      if (typeof apiKey === "string") return apiKey
-      if (apiKey && typeof apiKey === "object" && typeof apiKey.key === "string") return apiKey.key
-    }
-  } catch { /* ignore */ }
-  return null
-}
-
-// Dedicated axios instance for vector-store endpoints: X-API-Key only, no JWT
-const vsApi = axios.create({ baseURL: API_BASE_URL })
-
-vsApi.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const apiKey = getStoredApiKey()
-    if (apiKey) {
-      config.headers["X-API-Key"] = apiKey
-    }
-    // No Authorization Bearer header for vector-store endpoints
-  }
-  config.headers["Accept"] = "application/json"
-  return config
-})
+// Dedicated API instance for vector-store endpoints (Bearer auth via global interceptors).
+const vsApi = apiJson
 
 // ── Types ──
 

@@ -184,13 +184,17 @@ export default function CreditsPage() {
       toast.error("Veuillez entrer un montant valide")
       return
     }
+    if (!paymentProof) {
+      toast.error("La preuve de paiement est obligatoire")
+      return
+    }
     setIsSubmitting(true)
     try {
       await creditRequestsService.createRequest(
         amountNum,
         paymentMethod as "mobile_money" | "airtel_money" | "cash",
         paymentReference || undefined,
-        paymentProof || undefined
+        paymentProof
       )
       toast.success("Demande envoyée ! Elle sera traitée par un administrateur.")
       setRequestDialogOpen(false)
@@ -768,7 +772,7 @@ export default function CreditsPage() {
 
               {/* Payment reference */}
               <div className="space-y-1.5">
-                <Label className="text-[13px]">Référence de paiement (optionnel)</Label>
+                <Label className="text-[13px]">Référence de paiement</Label>
                 <Input
                   value={paymentReference}
                   onChange={(e) => setPaymentReference(e.target.value)}
@@ -779,7 +783,7 @@ export default function CreditsPage() {
 
               {/* Payment proof */}
               <div className="space-y-1.5">
-                <Label className="text-[13px]">Preuve de paiement</Label>
+                <Label className="text-[13px]">Preuve de paiement *</Label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -844,7 +848,7 @@ export default function CreditsPage() {
                 <Button
                   className="h-9 rounded-lg px-5 text-[13px] gap-2"
                   onClick={handleSubmitRequest}
-                  disabled={isSubmitting || !requestAmount}
+                  disabled={isSubmitting || !requestAmount || !paymentProof}
                 >
                   {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Envoyer la demande

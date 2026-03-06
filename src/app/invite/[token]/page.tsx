@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { invitationsService } from "@/services"
+import { handleApiError } from "@/services/api"
 import { useAuthStore } from "@/stores"
 import type { OrganizationInvitation, OrganizationRole } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
@@ -66,7 +67,8 @@ export default function InvitePage() {
         router.push("/organization")
       }, 2000)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erreur lors de l'acceptation")
+      const apiError = handleApiError(err)
+      toast.error(apiError.message || "Erreur lors de l'acceptation")
     } finally {
       setIsAccepting(false)
     }

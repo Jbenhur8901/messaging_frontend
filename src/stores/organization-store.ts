@@ -7,6 +7,7 @@ import type {
   OrganizationSummary,
 } from "@/types"
 import { organizationsService } from "@/services/organizations"
+import { getStoredActiveOrgId, handleApiError } from "@/services/api"
 
 let fetchOrganizationsPromise: Promise<void> | null = null
 
@@ -51,17 +52,20 @@ export const useOrganizationStore = create<OrganizationState>()(
             const response = await organizationsService.getOrganizations()
             const orgs = response.organizations
             const currentOrgId = get().currentOrganization?.id
-            const nextCurrentOrganization = currentOrgId
-              ? orgs.find((org) => org.id === currentOrgId) || null
-              : null
+            const storedActiveOrgId = getStoredActiveOrgId()
+            const preferredOrgId = currentOrgId || storedActiveOrgId
+            const nextCurrentOrganization = preferredOrgId
+              ? orgs.find((org) => org.id === preferredOrgId) || orgs[0] || null
+              : orgs[0] || null
             set({
               organizations: orgs,
               currentOrganization: nextCurrentOrganization,
               isLoading: false,
             })
           } catch (error) {
+            const apiError = handleApiError(error)
             set({
-              error: error instanceof Error ? error.message : "Erreur lors du chargement des organisations",
+              error: apiError.message || "Erreur lors du chargement des organisations",
               isLoading: false,
             })
             throw error
@@ -82,8 +86,12 @@ export const useOrganizationStore = create<OrganizationState>()(
           const response = await organizationsService.getMembers(org.id)
           set({ members: response.members, isLoading: false })
         } catch (error) {
+          const apiError = handleApiError(error)
+          const message = apiError.type === "forbidden"
+            ? "Permission refusée: seuls les propriétaires peuvent consulter les membres."
+            : apiError.message
           set({
-            error: error instanceof Error ? error.message : "Erreur lors du chargement des membres",
+            error: message || "Erreur lors du chargement des membres",
             isLoading: false,
           })
         }
@@ -100,8 +108,12 @@ export const useOrganizationStore = create<OrganizationState>()(
           await get().fetchMembers()
           return response.invitation
         } catch (error) {
+          const apiError = handleApiError(error)
+          const message = apiError.type === "forbidden"
+            ? "Permission refusée: seuls les propriétaires peuvent inviter un membre."
+            : apiError.message
           set({
-            error: error instanceof Error ? error.message : "Erreur lors de l'invitation",
+            error: message || "Erreur lors de l'invitation",
             isLoading: false,
           })
           throw error
@@ -118,8 +130,12 @@ export const useOrganizationStore = create<OrganizationState>()(
           // Refresh members list
           await get().fetchMembers()
         } catch (error) {
+          const apiError = handleApiError(error)
+          const message = apiError.type === "forbidden"
+            ? "Permission refusée: seuls les propriétaires peuvent changer le rôle d'un membre."
+            : apiError.message
           set({
-            error: error instanceof Error ? error.message : "Erreur lors de la modification du rôle",
+            error: message || "Erreur lors de la modification du rôle",
             isLoading: false,
           })
           throw error
@@ -136,8 +152,12 @@ export const useOrganizationStore = create<OrganizationState>()(
           // Refresh members list
           await get().fetchMembers()
         } catch (error) {
+          const apiError = handleApiError(error)
+          const message = apiError.type === "forbidden"
+            ? "Permission refusée: seuls les propriétaires peuvent supprimer un membre."
+            : apiError.message
           set({
-            error: error instanceof Error ? error.message : "Erreur lors de la suppression du membre",
+            error: message || "Erreur lors de la suppression du membre",
             isLoading: false,
           })
           throw error
@@ -161,8 +181,12 @@ export const useOrganizationStore = create<OrganizationState>()(
           // Refresh organizations list
           await get().fetchOrganizations()
         } catch (error) {
+          const apiError = handleApiError(error)
+          const message = apiError.type === "forbidden"
+            ? "Permission refusée: seuls les propriétaires peuvent modifier l'organisation."
+            : apiError.message
           set({
-            error: error instanceof Error ? error.message : "Erreur lors de la modification",
+            error: message || "Erreur lors de la modification",
             isLoading: false,
           })
           throw error

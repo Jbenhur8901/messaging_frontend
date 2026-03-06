@@ -34,36 +34,6 @@ import {
 import { useCreditsStore, useOrganizationStore } from "@/stores"
 import { featureFlags } from "@/config/features"
 
-const getStoredApiKey = () => {
-  if (typeof window === "undefined") return null
-  try {
-    const storedAuth = authStorage.getItem("auth-storage")
-    if (storedAuth) {
-      const parsed = JSON.parse(storedAuth)
-      const storedKey = parsed.state?.apiKey
-      if (typeof storedKey === "string" && storedKey.length > 0) {
-        return storedKey
-      }
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  try {
-    const user = authStorage.getItem("user")
-    if (user) {
-      const parsedUser = JSON.parse(user)
-      const apiKey = parsedUser.api_key
-      if (typeof apiKey === "string") return apiKey
-      if (apiKey && typeof apiKey === "object" && typeof apiKey.key === "string") {
-        return apiKey.key
-      }
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return null
-}
-
 /* ── SMS-only helpers ── */
 const calculateBroadcastTotals = (broadcasts: Broadcast[]) =>
   broadcasts.reduce(
@@ -112,8 +82,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadData = async () => {
       const token = authStorage.getItem("access_token")
-      const apiKey = getStoredApiKey()
-      if (!token && !apiKey) {
+      if (!token) {
         setIsLoading(false)
         return
       }

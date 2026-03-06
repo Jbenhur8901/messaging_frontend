@@ -38,9 +38,9 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen bg-auth">
       <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 gap-10 px-6 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-        <div className="space-y-8 text-white">
-          <div className="inline-flex items-center gap-3 rounded-full bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-primary">
+        <div className="space-y-8 text-foreground">
+          <div className="inline-flex items-center gap-3 rounded-full border border-border/70 bg-card/80 px-4 py-2 text-sm font-medium backdrop-blur">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
               <Shield className="h-4 w-4" />
             </span>
             Console d&apos;administration
@@ -49,29 +49,29 @@ export default function AdminLoginPage() {
             <h1 className="text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
               Pilotez la plateforme avec précision.
             </h1>
-            <p className="text-lg text-white/80">
+            <p className="text-lg text-muted-foreground">
               Supervisez les organisations, les crédits et la conformité dans un
               espace sécurisé.
             </p>
           </div>
-          <div className="grid gap-4 text-sm text-white/80 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="grid gap-4 text-sm text-muted-foreground sm:grid-cols-2">
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4">
               Monitoring des demandes en temps réel.
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4">
               Contrôle d&apos;accès et traçabilité.
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4">
               Audit des organisations.
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4">
               Processus sécurisé et centralisé.
             </div>
           </div>
         </div>
 
         <div className="flex justify-center lg:justify-end">
-          <div className="w-full max-w-md rounded-xl border border-white/10 bg-white/90 p-6 shadow-[var(--shadow-md)] backdrop-blur">
+          <div className="w-full max-w-md rounded-xl border border-border/70 bg-card/90 p-6 shadow-[var(--shadow-md)] backdrop-blur">
             <div className="mb-6 flex items-center gap-2 text-foreground">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[var(--shadow-sm)]">
                 <Shield className="h-5 w-5" />

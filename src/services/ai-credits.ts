@@ -1,5 +1,21 @@
+import axios from "axios"
 import { api, buildOrgFormData, getStoredActiveOrgId, withOrgQuery } from "./api"
 import type { AICreditRequest, CreditRequestStatus } from "@/types"
+
+const PAYMENT_PROOF_MAX_MB = 5
+const PAYMENT_PROOF_MAX_BYTES = PAYMENT_PROOF_MAX_MB * 1024 * 1024
+const ALLOWED_PAYMENT_PROOF_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+
+const assertValidPaymentProof = (file: File) => {
+  if (!ALLOWED_PAYMENT_PROOF_TYPES.has(file.type)) {
+    throw new Error("Format invalide. Utilisez JPEG, PNG ou WEBP.")
+  }
+  if (file.size > PAYMENT_PROOF_MAX_BYTES) {
+    throw new Error(`Fichier trop volumineux. Taille max: ${PAYMENT_PROOF_MAX_MB} MB.`)
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export interface AICreditsBalance {
   balance: number
@@ -40,7 +56,7 @@ export interface AICreditsCheck {
 }
 
 export const aiCreditsService = {
-  // ── Balance & Packages (X-API-Key) ──
+  // ── Balance & Packages ──
 
   async getBalance(): Promise<AICreditsBalance> {
     const { data } = await api.get<AICreditsBalance>("/v1/ai/credits/balance")
@@ -77,19 +93,39 @@ export const aiCreditsService = {
     paymentMethod: string,
     paymentProof?: File
   ): Promise<AICreditRequest> {
+    if (!paymentProof) {
+      throw new Error("La preuve de paiement est obligatoire.")
+    }
+    assertValidPaymentProof(paymentProof)
     const ref = `AI-REQ-${Date.now()}`
-    const formData = buildOrgFormData({
+    const buildPayload = () => buildOrgFormData({
       package_code: packageCode,
       payment_method: paymentMethod,
       payment_reference: ref,
       payment_proof: paymentProof,
     }, getStoredActiveOrgId())
-    const { data } = await api.post<AICreditRequest>(
-      "/v1/ai/credits/request",
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    )
-    return data
+    try {
+      const { data } = await api.post<AICreditRequest>(
+        "/v1/ai/credits/request",
+        buildPayload(),
+        { headers: { "Content-Type": "multipart/form-data" } }
+      )
+      return data
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined
+      if (status !== 502) throw error
+
+      // One automatic retry on transient gateway errors (e.g., tunnel instability)
+      const retryDelayMs = 500 + Math.floor(Math.random() * 501)
+      await sleep(retryDelayMs)
+
+      const { data } = await api.post<AICreditRequest>(
+        "/v1/ai/credits/request",
+        buildPayload(),
+        { headers: { "Content-Type": "multipart/form-data" } }
+      )
+      return data
+    }
   },
 
   async listRequests(

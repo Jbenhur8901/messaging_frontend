@@ -18,7 +18,11 @@ const navigation = [
   { name: "Organisations", href: "/admin/organizations", icon: Building2 },
 ]
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  mobile?: boolean
+}
+
+export function AdminSidebar({ mobile = false }: AdminSidebarProps) {
   const pathname = usePathname()
   const activeHref = navigation.reduce<string | null>((current, item) => {
     const matches = pathname === item.href || pathname.startsWith(item.href + "/")
@@ -28,7 +32,12 @@ export function AdminSidebar() {
   }, null)
 
   return (
-    <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
+    <aside
+      className={cn(
+        "flex w-full flex-col",
+        mobile ? "h-full" : "hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64"
+      )}
+    >
       <div className="flex grow flex-col gap-y-6 overflow-y-auto border-r border-border/60 bg-background/85 px-6 pb-6 pt-4 backdrop-blur">
         <div className="flex h-12 shrink-0 items-center">
           <Link href="/admin/dashboard" className="flex items-center gap-3">

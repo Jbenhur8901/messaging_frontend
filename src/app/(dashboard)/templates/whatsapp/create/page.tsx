@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { whatsappService, handleApiError } from "@/services"
 import { useOrganizationStore } from "@/stores"
-import { uploadMediaToBackend } from "@/lib/media-upload"
 import { cn } from "@/lib/utils"
 import { WhatsAppTemplatePreview } from "@/components/whatsapp/whatsapp-template-card"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -27,6 +26,7 @@ type ButtonType = "QUICK_REPLY" | "URL" | "PHONE_NUMBER"
 type HeaderFormat = "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT"
 
 const BODY_VARIABLE_REGEX = /\{\{\s*(\d+)\s*\}\}/g
+const ACCEPTED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 
 const extractBodyVariableIndexes = (value: string): number[] => {
   const found = new Set<number>()
@@ -205,8 +205,8 @@ export default function WhatsAppTemplateCreatePage() {
   }
 
   const handleHeaderMediaUpload = useCallback(async (file: File) => {
-    if (headerFormat === "IMAGE" && !file.type.startsWith("image/")) {
-      toast.error("Veuillez sélectionner une image (JPG, PNG, WEBP)")
+    if (headerFormat === "IMAGE" && !ACCEPTED_IMAGE_MIME_TYPES.has(file.type)) {
+      toast.error("Format non supporté. Utilisez JPG, PNG ou WEBP")
       return
     }
     if (headerFormat === "DOCUMENT" && file.type !== "application/pdf") {
@@ -223,8 +223,12 @@ export default function WhatsAppTemplateCreatePage() {
     setIsUploadingHeader(true)
 
     try {
-      const result = await uploadMediaToBackend(file)
-      setHeaderMediaUrl(result.file_handle)
+      const result = await whatsappService.uploadMedia(file)
+      const headerHandle = result.file_handle || result.media_id
+      if (!headerHandle) {
+        throw new Error("Aucun identifiant média retourné")
+      }
+      setHeaderMediaUrl(headerHandle)
       toast.success("Média uploadé")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur lors de l'upload")

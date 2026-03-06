@@ -11,6 +11,12 @@ import { useCreditsStore } from "./credits-store"
 import { useCreditRequestsStore } from "./credit-requests-store"
 import { useOrganizationStore } from "./organization-store"
 
+const sanitizeUser = (user: User | null): User | null => {
+  if (!user) return null
+  const { api_key: _apiKey, ...rest } = user as User & { api_key?: unknown }
+  return rest as User
+}
+
 interface AuthState {
   user: User | null
   apiKey: string | null
@@ -46,7 +52,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       apiKey: null,
       organizations: [],
@@ -58,7 +64,10 @@ export const useAuthStore = create<AuthState>()(
       requiresMFAVerification: false,
       mfaPreAuthToken: null,
 
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      setUser: (user) => {
+        const safeUser = sanitizeUser(user)
+        set({ user: safeUser, isAuthenticated: !!safeUser })
+      },
 
       setApiKey: (apiKey) => set({ apiKey }),
 
@@ -107,15 +116,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null })
         try {
           const response = await authService.signin(email, password)
-          let effectiveUser = response.user
-          let effectiveApiKey = (() => {
-            const key = response.user.api_key as unknown
-            if (typeof key === "string") return key
-            if (key && typeof key === "object" && typeof (key as { key?: string }).key === "string") {
-              return (key as { key: string }).key
-            }
-            return get().apiKey
-          })()
+          let effectiveUser = sanitizeUser(response.user)
 
           if (response.mfa_required) {
             set({
@@ -123,8 +124,8 @@ export const useAuthStore = create<AuthState>()(
               requiresMFAVerification: true,
               mfaPreAuthToken: response.pre_auth_token || null,
               // Store user temporarily but not authenticated yet
-              user: effectiveUser,
-              apiKey: effectiveApiKey,
+              user: sanitizeUser(effectiveUser),
+              apiKey: null,
             })
             if (typeof window !== "undefined") {
               sessionStorage.setItem("mfa_required", "1")
@@ -145,8 +146,8 @@ export const useAuthStore = create<AuthState>()(
           }
 
           set({
-            user: effectiveUser,
-            apiKey: effectiveApiKey,
+            user: sanitizeUser(effectiveUser),
+            apiKey: null,
             organizations: [],
             activeOrgId: null,
             isAuthenticated: true,
@@ -174,13 +175,10 @@ export const useAuthStore = create<AuthState>()(
             lastName,
             organizationName || ""
           )
-          // Store API key if returned
-          const apiKey = response.user.api_key || null
-          // Show MFA recommendation for new users
 
           set({
-            user: { ...response.user, is_first_login: true },
-            apiKey,
+            user: sanitizeUser({ ...response.user, is_first_login: true }),
+            apiKey: null,
             organizations: [],
             activeOrgId: null,
             isAuthenticated: true,
@@ -222,6 +220,9 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
           })
+          if (typeof window !== "undefined") {
+            window.location.replace("/auth/login")
+          }
         }
       },
 
@@ -229,7 +230,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true })
         try {
           const user = await authService.getProfile()
-          set({ user, isAuthenticated: true, isLoading: false })
+          set({ user: sanitizeUser(user), isAuthenticated: true, isLoading: false })
         } catch (error) {
           const status = axios.isAxiosError(error) ? error.response?.status : undefined
           if (status === 401 || status === 403) {
@@ -257,7 +258,6 @@ export const useAuthStore = create<AuthState>()(
       storage: createJSONStorage(() => authStorage),
       partialize: (state) => ({
         user: state.user,
-        apiKey: state.apiKey,
         organizations: state.organizations,
         activeOrgId: state.activeOrgId,
         isAuthenticated: state.isAuthenticated,

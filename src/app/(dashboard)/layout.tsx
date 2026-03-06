@@ -4,11 +4,11 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import axios from "axios"
 import { useAuthStore, useCreditsStore, useOrganizationStore } from "@/stores"
-import { authService } from "@/services"
 import { Sidebar, Header, MobileNav } from "@/components/layout"
 import { MFARecommendationDialog } from "@/components/mfa-recommendation-dialog"
 import { Loader2 } from "lucide-react"
 import { authStorage } from "@/lib/auth-storage"
+import { organizationsService } from "@/services/organizations"
 
 export default function DashboardLayout({
   children,
@@ -34,7 +34,6 @@ export default function DashboardLayout({
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
   const [isReady, setIsReady] = useState(false)
-  const [apiKeyEnsured, setApiKeyEnsured] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const authCheckStartedRef = useRef(false)
 
@@ -91,15 +90,33 @@ export default function DashboardLayout({
       return
     }
 
-    const resolvedActiveOrgId =
-      activeOrgId && orgs.some((org) => org.id === activeOrgId)
-        ? activeOrgId
-        : orgs[0]?.id || null
-    const activeOrganization = orgs.find((org) => org.id === resolvedActiveOrgId) || orgs[0]
+    let activeOrganization = orgs.find((org) => org.id === activeOrgId) || orgs[0]
 
     if (!activeOrganization) {
       router.replace("/onboarding")
       return
+    }
+
+    try {
+      await organizationsService.switchOrganization(activeOrganization.id)
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined
+      if (status === 403 || status === 404) {
+        await fetchOrganizations()
+        const refreshedOrgs = useOrganizationStore.getState().organizations
+        setSessionOrganizations(refreshedOrgs)
+        if (refreshedOrgs.length === 0) {
+          router.replace("/onboarding")
+          return
+        }
+        activeOrganization = refreshedOrgs[0]
+        try {
+          await organizationsService.switchOrganization(activeOrganization.id)
+        } catch {
+          router.replace("/onboarding")
+          return
+        }
+      }
     }
 
     setActiveOrgId(activeOrganization.id)
@@ -119,28 +136,8 @@ export default function DashboardLayout({
     fetchBalance()
     setIsReady(true)
 
-    if (typeof window !== "undefined" && !apiKeyEnsured) {
-      const storedUser = authStorage.getItem("user")
-      const hasKey = storedUser && JSON.parse(storedUser).api_key
-      if (!hasKey && activeOrganization.id) {
-        try {
-          const createdKey = await authService.createApiKey("Clé par défaut", "live", activeOrganization.id)
-          if (createdKey.success) {
-            const updatedUser = currentUser ? { ...currentUser, api_key: createdKey.api_key, api_key_id: createdKey.key_id } : null
-            if (updatedUser) {
-              authStorage.setItem("user", JSON.stringify(updatedUser))
-              setUser(updatedUser)
-            }
-          }
-        } catch {
-          // Ignore API key creation errors silently
-        }
-      }
-      setApiKeyEnsured(true)
-    }
-
     setAuthChecked(true)
-  }, [user, fetchProfile, fetchBalance, router, requiresMFAVerification, isAuthenticated, fetchOrganizations, setCurrentOrganization, apiKeyEnsured, setUser, activeOrgId, setActiveOrgId, setSessionOrganizations])
+  }, [user, fetchProfile, fetchBalance, router, requiresMFAVerification, isAuthenticated, fetchOrganizations, setCurrentOrganization, setUser, activeOrgId, setActiveOrgId, setSessionOrganizations])
 
   useEffect(() => {
     checkAuth()

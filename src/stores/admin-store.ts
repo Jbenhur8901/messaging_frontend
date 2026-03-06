@@ -72,6 +72,9 @@ export const useAdminStore = create<AdminState>()(
             isLoading: false,
             error: null,
           })
+          if (typeof window !== "undefined") {
+            window.location.replace("/admin/login")
+          }
         }
       },
 

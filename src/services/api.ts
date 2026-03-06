@@ -5,6 +5,58 @@ import { supabase, syncSupabaseSession } from "@/lib/supabase"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
+const APP_NAMESPACE_PREFIXES = [
+  "/v1/contacts",
+  "/v1/custom-fields",
+  "/v1/dashboard",
+  "/v1/tags",
+  "/v1/vector-stores",
+  "/v1/whatsapp",
+  "/v1/ai/credits/balance",
+  "/v1/ai/credits/check",
+  "/v1/ai/credits/transactions",
+] as const
+
+const APP_NAMESPACE_EXCLUSIONS = new Set([
+  "/v1/whatsapp/credits/packages",
+  "/v1/ai/credits/packages",
+])
+
+const isPrefixMatch = (pathname: string, prefix: string): boolean =>
+  pathname === prefix || pathname.startsWith(`${prefix}/`)
+
+const shouldUseAppNamespace = (pathname: string): boolean => {
+  if (
+    pathname.startsWith("/v1/app/") ||
+    pathname.startsWith("/v1/integrations/") ||
+    pathname.startsWith("/v1/admin/") ||
+    pathname.startsWith("/v1/auth/") ||
+    pathname.startsWith("/v1/organizations/") ||
+    pathname.startsWith("/v1/invitations/")
+  ) {
+    return false
+  }
+
+  if (APP_NAMESPACE_EXCLUSIONS.has(pathname)) {
+    return false
+  }
+
+  return APP_NAMESPACE_PREFIXES.some((prefix) => isPrefixMatch(pathname, prefix))
+}
+
+const withAppNamespace = (url?: string): string | undefined => {
+  if (!url) return url
+  const isAbsolute = /^https?:\/\//i.test(url)
+  const parsed = new URL(url, API_BASE_URL)
+  if (!shouldUseAppNamespace(parsed.pathname)) {
+    return url
+  }
+
+  parsed.pathname = parsed.pathname.replace(/^\/v1\//, "/v1/app/")
+  if (isAbsolute) return parsed.toString()
+  return `${parsed.pathname}${parsed.search}`
+}
+
 export const getStoredActiveOrgId = (): string | null => {
   if (typeof window === "undefined") return null
   try {
@@ -45,62 +97,6 @@ export function buildOrgFormData(
 export const api = axios.create({
   baseURL: API_BASE_URL,
 })
-
-// Helper function to get API key from auth storage
-const getStoredApiKey = (): string | null => {
-  if (typeof window === "undefined") return null
-  try {
-    const storedAuth = authStorage.getItem("auth-storage")
-    if (storedAuth) {
-      const parsed = JSON.parse(storedAuth)
-      const storedKey = parsed.state?.apiKey
-      if (typeof storedKey === "string" && storedKey.length > 0) {
-        return storedKey
-      }
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  try {
-    const user = authStorage.getItem("user")
-    if (user) {
-      const parsedUser = JSON.parse(user)
-      const apiKey = parsedUser.api_key
-      if (typeof apiKey === "string") return apiKey
-      if (apiKey && typeof apiKey === "object" && typeof apiKey.key === "string") {
-        return apiKey.key
-      }
-      return null
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return null
-}
-
-const API_KEY_ONLY_PATTERNS = [
-  /^\/v1\/dashboard(?:\/|$)/,
-  /^\/v1\/messages(?:\/|$)/,
-  /^\/v1\/broadcasts(?:\/|$)/,
-  /^\/v1\/templates(?:\/|$)/,
-  /^\/v1\/tags(?:\/|$)/,
-  /^\/v1\/custom-fields(?:\/|$)/,
-  /^\/v1\/contacts(?:\/|$)/,
-  /^\/v1\/messaging-services(?:\/|$)/,
-  /^\/v1\/tracking(?:\/|$)/,
-  /^\/v1\/media\/upload(?:\/|$)/,
-  /^\/v1\/credits\/(?:balance|recharge|history|usage)(?:\/|$)/,
-  /^\/v1\/ai\/credits\/(?:balance|packages|transactions|check)(?:\/|$)/,
-  /^\/v1\/sms\/estimate(?:\/|$)/,
-  /^\/v1\/whatsapp(?:\/|$)/,
-  /^\/v1\/vector-stores(?:\/|$)/,
-]
-
-const isApiKeyOnlyEndpoint = (url?: string) => {
-  if (!url) return false
-  const path = url.startsWith("http") ? new URL(url).pathname : url.split("?")[0]
-  return API_KEY_ONLY_PATTERNS.some((pattern) => pattern.test(path))
-}
 
 // ── Token refresh lock (shared between api and apiJson) ──
 let isRefreshing = false
@@ -185,30 +181,21 @@ async function handleTokenRefresh(
 // Request interceptor to add auth token and set content type
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    if (typeof window !== "undefined") {
-      const apiKeyOnly = isApiKeyOnlyEndpoint(config.url)
-      let token: string | null = null
-      if (!apiKeyOnly) {
-        try {
-          const { data } = await supabase.auth.getSession()
-          token = data.session?.access_token ?? null
-        } catch {
-          token = null
-        }
-        if (!token) {
-          token = authStorage.getItem("access_token")
-        }
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
-        }
-      } else if (config.headers.Authorization) {
-        delete config.headers.Authorization
-      }
+    config.url = withAppNamespace(config.url)
 
-      // Add X-API-Key only to API-key-scoped endpoints.
-      const apiKey = getStoredApiKey()
-      if (apiKey && apiKeyOnly) {
-        config.headers["X-API-Key"] = apiKey
+    if (typeof window !== "undefined") {
+      let token: string | null = null
+      try {
+        const { data } = await supabase.auth.getSession()
+        token = data.session?.access_token ?? null
+      } catch {
+        token = null
+      }
+      if (!token) {
+        token = authStorage.getItem("access_token")
+      }
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
       }
     }
     // Set Content-Type for POST/PUT/PATCH requests only (skip FormData)
@@ -242,10 +229,6 @@ api.interceptors.response.use(
       }
     }
 
-    if (isApiKeyOnlyEndpoint(originalRequest.url)) {
-      return Promise.reject(error)
-    }
-
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
       return handleTokenRefresh(originalRequest, api)
@@ -265,30 +248,21 @@ export const apiJson = axios.create({
 
 apiJson.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    if (typeof window !== "undefined") {
-      const apiKeyOnly = isApiKeyOnlyEndpoint(config.url)
-      let token: string | null = null
-      if (!apiKeyOnly) {
-        try {
-          const { data } = await supabase.auth.getSession()
-          token = data.session?.access_token ?? null
-        } catch {
-          token = null
-        }
-        if (!token) {
-          token = authStorage.getItem("access_token")
-        }
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
-        }
-      } else if (config.headers.Authorization) {
-        delete config.headers.Authorization
-      }
+    config.url = withAppNamespace(config.url)
 
-      // Add X-API-Key only to API-key-scoped endpoints.
-      const apiKey = getStoredApiKey()
-      if (apiKey && apiKeyOnly) {
-        config.headers["X-API-Key"] = apiKey
+    if (typeof window !== "undefined") {
+      let token: string | null = null
+      try {
+        const { data } = await supabase.auth.getSession()
+        token = data.session?.access_token ?? null
+      } catch {
+        token = null
+      }
+      if (!token) {
+        token = authStorage.getItem("access_token")
+      }
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
       }
     }
     return config
@@ -301,10 +275,6 @@ apiJson.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean
-    }
-
-    if (isApiKeyOnlyEndpoint(originalRequest.url)) {
-      return Promise.reject(error)
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {

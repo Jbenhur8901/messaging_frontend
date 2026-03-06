@@ -8,40 +8,62 @@ type StorageKey =
   | "admin_token"
   | "admin_user"
 
-const migrateToLocal = (key: string): string | null => {
+const readFromSessionFirst = (key: string): string | null => {
   if (!isBrowser()) return null
-  const localValue = localStorage.getItem(key)
-  if (localValue !== null) return localValue
-  // Migrate from sessionStorage if still there
   const sessionValue = sessionStorage.getItem(key)
-  if (sessionValue !== null) {
-    localStorage.setItem(key, sessionValue)
-    sessionStorage.removeItem(key)
-    return sessionValue
+  if (sessionValue !== null) return sessionValue
+  const localValue = localStorage.getItem(key)
+  if (localValue !== null) {
+    // Migrate old localStorage values to sessionStorage.
+    sessionStorage.setItem(key, localValue)
+    localStorage.removeItem(key)
+    return localValue
   }
   return null
 }
 
 const COOKIE_KEYS: ReadonlySet<string> = new Set(["access_token", "admin_token"])
+const SENSITIVE_KEYS: ReadonlyArray<StorageKey> = [
+  "access_token",
+  "refresh_token",
+  "user",
+  "auth-storage",
+  "admin_token",
+  "admin_user",
+]
+
+if (isBrowser()) {
+  for (const key of SENSITIVE_KEYS) {
+    const value = localStorage.getItem(key)
+    if (value !== null && sessionStorage.getItem(key) === null) {
+      sessionStorage.setItem(key, value)
+      localStorage.removeItem(key)
+    } else if (value !== null) {
+      localStorage.removeItem(key)
+    }
+  }
+}
 
 export const authStorage = {
-  getItem: (key: StorageKey | string): string | null => migrateToLocal(key),
+  getItem: (key: StorageKey | string): string | null => readFromSessionFirst(key),
   setItem: (key: StorageKey | string, value: string): void => {
     if (!isBrowser()) return
-    localStorage.setItem(key, value)
-    sessionStorage.removeItem(key)
+    sessionStorage.setItem(key, value)
+    localStorage.removeItem(key)
     // Sync to cookie so the Next.js middleware can read it
     if (COOKIE_KEYS.has(key)) {
-      document.cookie = `${key}=${value}; path=/; SameSite=Lax; max-age=86400`
+      const secure = window.location.protocol === "https:" ? "; Secure" : ""
+      document.cookie = `${key}=${encodeURIComponent(value)}; path=/; SameSite=Strict; max-age=43200${secure}`
     }
   },
   removeItem: (key: StorageKey | string): void => {
     if (!isBrowser()) return
-    localStorage.removeItem(key)
     sessionStorage.removeItem(key)
+    localStorage.removeItem(key)
     // Clear cookie
     if (COOKIE_KEYS.has(key)) {
-      document.cookie = `${key}=; path=/; max-age=0`
+      const secure = window.location.protocol === "https:" ? "; Secure" : ""
+      document.cookie = `${key}=; path=/; SameSite=Strict; max-age=0${secure}`
     }
   },
 }

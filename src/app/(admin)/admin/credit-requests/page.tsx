@@ -80,6 +80,7 @@ export default function AdminCreditRequestsPage() {
   const [action, setAction] = useState<"approve" | "reject" | null>(null)
   const [note, setNote] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const selectedRequestData = creditRequests.find((request) => request.id === selectedRequest)
 
   useEffect(() => {
     fetchCreditRequests(statusFilter === "all" ? undefined : statusFilter)
@@ -94,6 +95,11 @@ export default function AdminCreditRequestsPage() {
 
   const handleAction = async () => {
     if (!selectedRequest || !action) return
+
+    if (action === "approve" && !selectedRequestData?.payment_proof_url) {
+      toast.error("Impossible d'approuver sans preuve de paiement")
+      return
+    }
 
     if (action === "reject" && !note.trim()) {
       toast.error("Le motif de rejet est requis")
@@ -257,6 +263,8 @@ export default function AdminCreditRequestsPage() {
                           <Button
                             size="sm"
                             variant="default"
+                            disabled={!request.payment_proof_url}
+                            title={!request.payment_proof_url ? "Preuve de paiement requise pour approuver" : undefined}
                             onClick={() => openDialog(request.id, "approve")}
                           >
                             <CheckCircle className="h-4 w-4" />

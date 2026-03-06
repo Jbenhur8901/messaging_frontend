@@ -25,7 +25,6 @@ export default function Verify2FAPage() {
     completeMFA,
     isAuthenticated,
     requiresMFAVerification,
-    setApiKey,
     setUser,
   } = useAuthStore()
 
@@ -142,15 +141,8 @@ export default function Verify2FAPage() {
       }
 
       authStorage.setItem("user", JSON.stringify(result.user))
-      if (result.user?.api_key) {
-        const key = result.user.api_key as unknown
-        if (typeof key === "string") {
-          setApiKey(key)
-        } else if (key && typeof key === "object" && typeof (key as { key?: string }).key === "string") {
-          setApiKey((key as { key: string }).key)
-        }
-      }
 
+      setUser(result.user)
       completeMFA()
       setVerificationComplete(true)
       resetCooldownState()

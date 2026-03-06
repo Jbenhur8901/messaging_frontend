@@ -49,6 +49,30 @@ const stagger = (i: number) => ({
 const formatNumber = (n: number) =>
   new Intl.NumberFormat("fr-FR").format(n)
 
+const toFiniteNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
+const resolveCreditsAmount = (request: AICreditRequest): number => {
+  const direct = toFiniteNumber(request.credits_amount)
+  if (direct !== null) return direct
+  const codeMatch = request.package_code?.match(/(\d+)/)
+  const fromCode = codeMatch ? Number(codeMatch[1]) : NaN
+  if (Number.isFinite(fromCode)) return fromCode
+  return 0
+}
+
+const resolveTotalPrice = (request: AICreditRequest): number => {
+  const direct = toFiniteNumber(request.total_price_fcfa)
+  if (direct !== null) return direct
+  return resolveCreditsAmount(request) * AI_UNIT_PRICE_FCFA
+}
+
 const formatDate = (iso: string) => {
   const d = new Date(iso)
   return d.toLocaleDateString("fr-FR", {
@@ -59,17 +83,37 @@ const formatDate = (iso: string) => {
   })
 }
 
-const AI_PRICING_TIERS = [
-  { min: 1_000, max: 10_000, rate: 5, label: "1 000 à 10 000 messages" },
-  { min: 10_001, max: 25_000, rate: 4, label: "10 001 à 25 000 messages" },
-  { min: 25_001, max: 40_000, rate: 3, label: "25 001 à 40 000 messages" },
-  { min: 40_001, max: Number.POSITIVE_INFINITY, rate: 2, label: "40 001 messages et plus" },
-]
+const PAYMENT_PROOF_MAX_MB = 5
+const PAYMENT_PROOF_MAX_BYTES = PAYMENT_PROOF_MAX_MB * 1024 * 1024
+const ALLOWED_PAYMENT_PROOF_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+const AI_UNIT_PRICE_FCFA = 3
+const ALLOWED_AI_PACKAGE_CODES = ["AI-1000", "AI-5000", "AI-10000", "AI-25000"] as const
+const ALLOWED_AI_PACKAGE_CODE_SET = new Set<string>(ALLOWED_AI_PACKAGE_CODES)
+const ALLOWED_AI_PACKAGE_ORDER = new Map<string, number>(ALLOWED_AI_PACKAGE_CODES.map((code, index) => [code, index]))
 
-const getAIRate = (messageCount: number) =>
-  AI_PRICING_TIERS.find((tier) => messageCount >= tier.min && messageCount <= tier.max)?.rate ?? 5
+const validatePaymentProofFile = (file: File): string | null => {
+  if (!ALLOWED_PAYMENT_PROOF_TYPES.has(file.type)) {
+    return "Format invalide. Utilisez JPEG, PNG ou WEBP."
+  }
+  if (file.size > PAYMENT_PROOF_MAX_BYTES) {
+    return `Fichier trop volumineux. Taille max: ${PAYMENT_PROOF_MAX_MB} MB.`
+  }
+  return null
+}
 
-const getAITotalPrice = (messageCount: number) => messageCount * getAIRate(messageCount)
+const resolvePackageMessages = (code?: string, fallback?: number): number => {
+  if (code && ALLOWED_AI_PACKAGE_CODE_SET.has(code) && typeof fallback === "number" && Number.isFinite(fallback)) {
+    return fallback
+  }
+  if (typeof fallback === "number" && Number.isFinite(fallback)) return fallback
+  return 0
+}
+
+const resolvePackageUnitPrice = (pkg: Pick<AIPackage, "unit_price_fcfa">): number =>
+  toFiniteNumber(pkg.unit_price_fcfa) ?? AI_UNIT_PRICE_FCFA
+
+const resolvePackageTotalPrice = (pkg: Pick<AIPackage, "message_count" | "total_price_fcfa" | "unit_price_fcfa">): number =>
+  toFiniteNumber(pkg.total_price_fcfa) ?? (resolvePackageMessages(undefined, pkg.message_count) * resolvePackageUnitPrice(pkg))
 
 const txTypeMeta: Record<
   string,
@@ -206,13 +250,27 @@ export default function AICreditsPage() {
   }, [currentOrganization, router, userRole])
 
   const handleSubmitRequest = async () => {
+    if (isSubmitting) return
     if (!selectedPackage) return
+    if (!ALLOWED_AI_PACKAGE_CODE_SET.has(selectedPackage.code)) {
+      toast.error("Pack invalide. Veuillez sélectionner un pack autorisé.")
+      return
+    }
+    if (!paymentProof) {
+      toast.error("La preuve de paiement est obligatoire")
+      return
+    }
+    const paymentProofError = validatePaymentProofFile(paymentProof)
+    if (paymentProofError) {
+      toast.error(paymentProofError)
+      return
+    }
     setIsSubmitting(true)
     try {
       await aiCreditsService.createRequest(
         selectedPackage.code,
         paymentMethod,
-        paymentProof || undefined
+        paymentProof
       )
       toast.success("Demande envoyée ! Elle sera traitée par un administrateur.")
       setRequestDialogOpen(false)
@@ -276,6 +334,9 @@ export default function AICreditsPage() {
   const isLowBalance = balance && balance.balance > 0 && balance.balance < 100
   const isEmptyBalance = balance && balance.balance === 0
   const pendingRequests = requests.filter((r) => r.status === "pending")
+  const displayPackages: AIPackage[] = packages
+    .filter((pkg) => ALLOWED_AI_PACKAGE_CODE_SET.has(pkg.code))
+    .sort((a, b) => (ALLOWED_AI_PACKAGE_ORDER.get(a.code) ?? 999) - (ALLOWED_AI_PACKAGE_ORDER.get(b.code) ?? 999))
 
   return (
     <div className="space-y-6">
@@ -375,53 +436,18 @@ export default function AICreditsPage() {
           </h2>
         </div>
 
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {AI_PRICING_TIERS.map((tier) => (
-            <div
-              key={tier.label}
-              className="rounded-xl border border-blue-200/70 bg-blue-50/50 p-4"
-            >
-              <p className="text-[12px] font-semibold text-slate-900">{tier.label}</p>
-              <p className="mt-1 text-[20px] font-bold text-blue-700">{tier.rate} FCFA</p>
-              <p className="text-[11px] text-slate-500">par message IA</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {packages.map((pkg, i) => {
-            const effectiveUnitPrice = getAIRate(pkg.message_count)
-            const effectiveTotalPrice = getAITotalPrice(pkg.message_count)
-            const isBest = effectiveUnitPrice === 2
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {displayPackages.map((pkg, i) => {
             return (
               <div
                 key={pkg.id || pkg.code}
-                className={`relative rounded-xl border p-4 transition-all hover:shadow-md cursor-pointer ${
-                  isBest
-                    ? "border-blue-300 bg-gradient-to-b from-blue-50 to-sky-50/50 ring-1 ring-blue-200"
-                    : "border-border/40 bg-white hover:border-border"
-                }`}
+                className="relative rounded-xl border p-4 transition-all hover:shadow-md cursor-pointer border-border/40 bg-white hover:border-border"
                 style={stagger(i + 3)}
                 onClick={() => {
                   setSelectedPackage(pkg)
                   setRequestDialogOpen(true)
                 }}
               >
-                {isBest && (
-                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-[10px] px-2 py-0.5 font-semibold">
-                      Meilleur prix
-                    </Badge>
-                  </div>
-                )}
-                {pkg.discount_percent > 0 && !isBest && (
-                  <div className="absolute -top-2 right-3">
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-semibold text-emerald-700 bg-emerald-50 border-emerald-200">
-                      -{pkg.discount_percent}%
-                    </Badge>
-                  </div>
-                )}
-
                 <div className="text-center space-y-2 pt-1">
                   <p className="text-[12px] font-semibold text-muted-foreground">
                     {pkg.code}
@@ -433,13 +459,11 @@ export default function AICreditsPage() {
 
                   <div className="border-t border-border/40 pt-3 mt-3">
                     <p className="text-[16px] font-bold text-foreground">
-                      {formatNumber(effectiveTotalPrice)}{" "}
+                      {formatNumber(resolvePackageTotalPrice(pkg))}{" "}
                       <span className="text-[11px] font-normal text-muted-foreground">FCFA</span>
                     </p>
-                    <p className={`text-[11px] mt-0.5 ${
-                      isBest ? "text-primary font-semibold" : "text-muted-foreground"
-                    }`}>
-                      {effectiveUnitPrice} FCFA/msg
+                    <p className="text-[11px] mt-0.5 text-muted-foreground">
+                      {resolvePackageUnitPrice(pkg)} FCFA/msg
                     </p>
                   </div>
 
@@ -512,6 +536,8 @@ export default function AICreditsPage() {
             {requests.map((req) => {
               const meta = requestStatusMeta[req.status] || requestStatusMeta.pending
               const StatusIcon = meta.icon
+              const creditsAmount = resolveCreditsAmount(req)
+              const totalPrice = resolveTotalPrice(req)
               return (
                 <div
                   key={req.id}
@@ -528,7 +554,7 @@ export default function AICreditsPage() {
                           {req.package_name || req.package_code}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          {formatNumber(req.credits_amount)} crédits &middot; {formatNumber(req.total_price_fcfa)} FCFA &middot; {formatDate(req.created_at)}
+                          {formatNumber(creditsAmount)} crédits &middot; {formatNumber(totalPrice)} FCFA &middot; {formatDate(req.created_at)}
                         </p>
                       </div>
                     </div>
@@ -721,11 +747,11 @@ export default function AICreditsPage() {
                     {selectedPackage.name}
                   </p>
                   <p className="text-[11px] text-gray-500 mt-0.5">
-                    {formatNumber(selectedPackage.message_count)} messages &middot; {getAIRate(selectedPackage.message_count)} FCFA/msg
+                    {formatNumber(resolvePackageMessages(selectedPackage.code, selectedPackage.message_count))} messages &middot; {resolvePackageUnitPrice(selectedPackage)} FCFA/msg
                   </p>
                 </div>
                 <p className="text-[18px] font-bold text-blue-700">
-                  {formatNumber(getAITotalPrice(selectedPackage.message_count))}{" "}
+                  {formatNumber(resolvePackageTotalPrice(selectedPackage))}{" "}
                   <span className="text-[11px] font-normal">FCFA</span>
                 </p>
               </div>
@@ -749,14 +775,22 @@ export default function AICreditsPage() {
 
               {/* Payment proof */}
               <div className="space-y-1.5">
-                <Label className="text-[13px]">Preuve de paiement</Label>
+                <Label className="text-[13px]">Preuve de paiement *</Label>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*,.pdf"
+                  accept="image/jpeg,image/png,image/webp"
                   className="hidden"
                   onChange={(e) => {
-                    if (e.target.files?.[0]) setPaymentProof(e.target.files[0])
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const paymentProofError = validatePaymentProofFile(file)
+                    if (paymentProofError) {
+                      toast.error(paymentProofError)
+                      e.currentTarget.value = ""
+                      return
+                    }
+                    setPaymentProof(file)
                   }}
                 />
                 <div
@@ -780,7 +814,7 @@ export default function AICreditsPage() {
                         Capture d&apos;écran ou reçu de paiement
                       </p>
                       <p className="text-[10px] text-gray-300 mt-0.5">
-                        Image ou PDF
+                        JPEG, PNG ou WEBP (max 5 MB)
                       </p>
                     </div>
                   )}
@@ -802,7 +836,7 @@ export default function AICreditsPage() {
                 <Button
                   className="h-9 rounded-lg px-5 text-[13px] gap-2"
                   onClick={handleSubmitRequest}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !paymentProof}
                 >
                   {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Envoyer la demande
@@ -846,11 +880,11 @@ export default function AICreditsPage() {
                 </div>
                 <div>
                   <p className="text-[11px] text-gray-400 uppercase tracking-wide">Crédits</p>
-                  <p className="text-[13px] font-medium">{formatNumber(detailRequest.credits_amount)}</p>
+                  <p className="text-[13px] font-medium">{formatNumber(resolveCreditsAmount(detailRequest))}</p>
                 </div>
                 <div>
                   <p className="text-[11px] text-gray-400 uppercase tracking-wide">Montant</p>
-                  <p className="text-[13px] font-medium">{formatNumber(detailRequest.total_price_fcfa)} FCFA</p>
+                  <p className="text-[13px] font-medium">{formatNumber(resolveTotalPrice(detailRequest))} FCFA</p>
                 </div>
                 <div>
                   <p className="text-[11px] text-gray-400 uppercase tracking-wide">Paiement</p>

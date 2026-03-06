@@ -36,6 +36,19 @@ import type {
   Pagination,
 } from "@/types"
 
+const PAYMENT_PROOF_MAX_MB = 5
+const PAYMENT_PROOF_MAX_BYTES = PAYMENT_PROOF_MAX_MB * 1024 * 1024
+const ALLOWED_PAYMENT_PROOF_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+
+const assertValidPaymentProof = (file: File) => {
+  if (!ALLOWED_PAYMENT_PROOF_TYPES.has(file.type)) {
+    throw new Error("Format invalide. Utilisez JPEG, PNG ou WEBP.")
+  }
+  if (file.size > PAYMENT_PROOF_MAX_BYTES) {
+    throw new Error(`Fichier trop volumineux. Taille max: ${PAYMENT_PROOF_MAX_MB} MB.`)
+  }
+}
+
 export const whatsappService = {
   // ============ Configuration ============
 
@@ -834,11 +847,15 @@ export const whatsappService = {
     paymentMethod: string,
     paymentProof?: File
   ): Promise<{ success: boolean; transaction: WhatsAppCreditTransaction }> {
+    if (!paymentProof) {
+      throw new Error("La preuve de paiement est obligatoire.")
+    }
+    assertValidPaymentProof(paymentProof)
     const formData = new FormData()
     formData.append("package_code", code)
     formData.append("payment_reference", paymentReference)
     formData.append("payment_method", paymentMethod)
-    if (paymentProof) formData.append("payment_proof", paymentProof)
+    formData.append("payment_proof", paymentProof)
     const { data } = await api.post<{ success: boolean; transaction: WhatsAppCreditTransaction }>(
       "/v1/whatsapp/credits/purchase",
       formData,
@@ -853,11 +870,15 @@ export const whatsappService = {
     description?: string,
     paymentProof?: File
   ): Promise<{ success: boolean; transaction: WhatsAppCreditTransaction }> {
+    if (!paymentProof) {
+      throw new Error("La preuve de paiement est obligatoire.")
+    }
+    assertValidPaymentProof(paymentProof)
     const formData = new FormData()
     formData.append("amount_fcfa", String(amountFcfa))
     formData.append("payment_reference", paymentReference)
     if (description) formData.append("description", description)
-    if (paymentProof) formData.append("payment_proof", paymentProof)
+    formData.append("payment_proof", paymentProof)
     const { data } = await api.post<{ success: boolean; transaction: WhatsAppCreditTransaction }>(
       "/v1/whatsapp/credits/topup",
       formData,

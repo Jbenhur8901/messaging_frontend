@@ -139,14 +139,7 @@ export default function MembersPage() {
     setIsInviting(true)
     try {
       const invitation = await inviteMember(inviteEmail.trim(), inviteRole)
-      const invitationToken =
-        invitation.token ||
-        invitation.invitation_url?.split("/").filter(Boolean).pop() ||
-        ""
-      const invitationLink =
-        typeof window !== "undefined" && invitationToken
-          ? `${window.location.origin}/invite/${invitationToken}`
-          : ""
+      const invitationLink = invitation.invitation_url || ""
 
       setGeneratedInviteLink(invitationLink)
       setGeneratedInviteEmail(inviteEmail.trim())

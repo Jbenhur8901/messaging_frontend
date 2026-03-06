@@ -22,6 +22,7 @@ const stagger = (i: number) => ({
 })
 
 const PAGE_SIZE = 15
+const FETCH_LIMIT = 100
 
 const STATUS_FILTERS: { label: string; value: WhatsAppBroadcastStatus | "all" }[] = [
   { label: "Tous", value: "all" },
@@ -67,12 +68,16 @@ export default function WhatsAppCampaignsPage() {
   const loadBroadcasts = useCallback(async (p: number, status: WhatsAppBroadcastStatus | "all") => {
     setIsLoading(true)
     try {
+      const absoluteOffset = p * PAGE_SIZE
+      const fetchOffset = Math.floor(absoluteOffset / FETCH_LIMIT) * FETCH_LIMIT
+      const pageStartInChunk = absoluteOffset - fetchOffset
       const result = await whatsappService.getBroadcasts(
-        PAGE_SIZE,
-        p * PAGE_SIZE,
+        FETCH_LIMIT,
+        fetchOffset,
         status === "all" ? undefined : status
       )
-      setBroadcasts(result.broadcasts || [])
+      const chunkItems = result.broadcasts || []
+      setBroadcasts(chunkItems.slice(pageStartInChunk, pageStartInChunk + PAGE_SIZE))
       setPagination(result.pagination || null)
     } catch {
       // silent

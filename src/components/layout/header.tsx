@@ -66,6 +66,10 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
         authStorage.setItem("user", JSON.stringify(updatedUser))
       }
       fetchBalance()
+      if (typeof window !== "undefined") {
+        window.location.reload()
+        return
+      }
       router.refresh()
     } catch {
       toast.error("Impossible de changer d'organisation")

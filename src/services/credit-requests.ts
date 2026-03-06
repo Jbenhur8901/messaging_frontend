@@ -8,6 +8,9 @@ export const creditRequestsService = {
     paymentReference?: string,
     paymentProof?: File
   ): Promise<{ success: boolean; request: CreditRequest }> {
+    if (!paymentProof) {
+      throw new Error("La preuve de paiement est obligatoire.")
+    }
     const formData = buildOrgFormData({
       amount: amount.toString(),
       payment_method: paymentMethod,

@@ -777,6 +777,12 @@ export interface SendLocationPayload {
 
 export interface MediaUploadResult {
   media_id: string
+  success?: boolean
+  file_handle?: string
+  upload_session_id?: string
+  file_name?: string
+  file_type?: string
+  file_size?: number
 }
 
 // === Messages Programmés ===
