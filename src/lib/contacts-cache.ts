@@ -95,6 +95,7 @@ export const fetchAllContactsPaged = async ({
   maxContacts?: number
 }): Promise<{ contacts: Contact[]; total: number | null; truncated: boolean }> => {
   const allContacts: Contact[] = []
+  const seenIds = new Set<string>()
   let offset = 0
   let total: number | null = null
 
@@ -106,21 +107,31 @@ export const fetchAllContactsPaged = async ({
       total = pagination.total
     }
 
+    const uniqueBatch = batch.filter((contact) => {
+      if (!contact?.id) return true
+      if (seenIds.has(contact.id)) return false
+      seenIds.add(contact.id)
+      return true
+    })
+
     const remaining = maxContacts - allContacts.length
-    allContacts.push(...batch.slice(0, remaining))
+    allContacts.push(...uniqueBatch.slice(0, remaining))
 
     const pageLimit =
       typeof pagination?.limit === "number" && pagination.limit > 0
         ? pagination.limit
         : batch.length
+    if (pageLimit <= 0) break
+
     const expectedBatchSize = Math.min(pageSize, pageLimit)
     offset += pageLimit
 
     onProgress?.(allContacts.length, total)
 
-    if (pagination?.has_more === false) break
+    if (typeof total === "number" && allContacts.length >= total) break
     if (typeof pagination?.total === "number" && offset >= pagination.total) break
     if (batch.length < expectedBatchSize) break
+    if (uniqueBatch.length === 0) break
   }
 
   const truncated = total !== null ? total > maxContacts : allContacts.length >= maxContacts
