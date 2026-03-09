@@ -1,4 +1,4 @@
-import { api, apiJson } from "./api"
+import { api, apiJson, buildOrgFormData, getStoredActiveOrgId, withOrgQuery } from "./api"
 import type { CustomField } from "@/types"
 
 const normalizeCustomField = (rawField: unknown): CustomField => {
@@ -17,9 +17,19 @@ const normalizeCustomField = (rawField: unknown): CustomField => {
   }
 }
 
+const belongsToOrganization = (rawField: unknown, organizationId: string | null): boolean => {
+  if (!organizationId) return true
+  const field = (rawField || {}) as Record<string, unknown>
+  if (field.is_system === true || field.is_global === true) return true
+  const fieldOrgId = typeof field.organization_id === "string" ? field.organization_id : null
+  if (!fieldOrgId) return true
+  return fieldOrgId === organizationId
+}
+
 export const customFieldsService = {
   async getCustomFields(): Promise<{ custom_fields: CustomField[] }> {
-    const { data } = await api.get("/v1/custom-fields")
+    const activeOrgId = getStoredActiveOrgId()
+    const { data } = await api.get(withOrgQuery("/v1/custom-fields", activeOrgId))
     const systemFields = Array.isArray(data.system_fields)
       ? data.system_fields
       : Array.isArray(data.fields_system)
@@ -39,7 +49,9 @@ export const customFieldsService = {
       is_system: true,
     }))
 
-    const normalizedCustom = customFields.map((field: unknown) => normalizeCustomField(field))
+    const normalizedCustom = customFields
+      .filter((field: unknown) => belongsToOrganization(field, activeOrgId))
+      .map((field: unknown) => normalizeCustomField(field))
 
     return { custom_fields: [...normalizedSystem, ...normalizedCustom] }
   },
@@ -53,22 +65,15 @@ export const customFieldsService = {
     placeholder?: string
     options?: string[]
   }): Promise<{ success: boolean; custom_field: CustomField }> {
-    const formData = new URLSearchParams()
-    formData.append("field_key", field.field_key)
-    formData.append("label", field.label)
-    formData.append("field_type", field.field_type)
-    if (field.is_required !== undefined) {
-      formData.append("is_required", String(field.is_required))
-    }
-    if (field.is_global !== undefined) {
-      formData.append("is_global", String(field.is_global))
-    }
-    if (field.placeholder) {
-      formData.append("placeholder", field.placeholder)
-    }
-    if (field.options && field.options.length > 0) {
-      formData.append("options", JSON.stringify(field.options))
-    }
+    const formData = buildOrgFormData({
+      field_key: field.field_key,
+      label: field.label,
+      field_type: field.field_type,
+      is_required: field.is_required !== undefined ? String(field.is_required) : undefined,
+      is_global: field.is_global !== undefined ? String(field.is_global) : undefined,
+      placeholder: field.placeholder,
+      options: field.options && field.options.length > 0 ? JSON.stringify(field.options) : undefined,
+    }, getStoredActiveOrgId())
     const { data } = await api.post("/v1/custom-fields", formData)
     return data
   },
@@ -79,7 +84,9 @@ export const customFieldsService = {
     errors?: string[] | Record<string, unknown>
     message?: string
   }> {
-    const { data } = await apiJson.post("/v1/custom-fields/validate", values)
+    const activeOrgId = getStoredActiveOrgId()
+    const payload = activeOrgId ? { org_id: activeOrgId, ...values } : values
+    const { data } = await apiJson.post("/v1/custom-fields/validate", payload)
     return data
   },
 
@@ -93,28 +100,19 @@ export const customFieldsService = {
       options?: string[]
     }
   ): Promise<{ success: boolean; custom_field: CustomField }> {
-    const formData = new URLSearchParams()
-    if (updates.label !== undefined) {
-      formData.append("label", updates.label)
-    }
-    if (updates.is_required !== undefined) {
-      formData.append("is_required", String(updates.is_required))
-    }
-    if (updates.is_active !== undefined) {
-      formData.append("is_active", String(updates.is_active))
-    }
-    if (updates.placeholder !== undefined) {
-      formData.append("placeholder", updates.placeholder)
-    }
-    if (updates.options !== undefined) {
-      formData.append("options", JSON.stringify(updates.options))
-    }
-    const { data } = await api.put(`/v1/custom-fields/${fieldId}`, formData)
+    const formData = buildOrgFormData({
+      label: updates.label,
+      is_required: updates.is_required !== undefined ? String(updates.is_required) : undefined,
+      is_active: updates.is_active !== undefined ? String(updates.is_active) : undefined,
+      placeholder: updates.placeholder,
+      options: updates.options !== undefined ? JSON.stringify(updates.options) : undefined,
+    }, getStoredActiveOrgId())
+    const { data } = await api.put(withOrgQuery(`/v1/custom-fields/${fieldId}`, getStoredActiveOrgId()), formData)
     return data
   },
 
   async deleteCustomField(fieldId: string): Promise<{ success: boolean; message: string }> {
-    const { data } = await api.delete(`/v1/custom-fields/${fieldId}`)
+    const { data } = await api.delete(withOrgQuery(`/v1/custom-fields/${fieldId}`, getStoredActiveOrgId()))
     return data
   },
 }
