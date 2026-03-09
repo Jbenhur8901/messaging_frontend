@@ -14,6 +14,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { toast } from "sonner"
 import {
   ArrowLeft,
@@ -39,6 +47,10 @@ import { HeaderMediaUpload } from "@/components/whatsapp/campaign/header-media-u
 
 type RecipientMode = "contacts" | "tags"
 type SendMode = "standard" | "personalized"
+type MissingCustomFieldDetail = {
+  field: string
+  phones: string[]
+}
 
 const RATE_PER_CATEGORY: Record<string, number> = {
   MARKETING: 18,
@@ -75,6 +87,8 @@ export default function NewWhatsAppCampaignPage() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
   const [recipientSheetOpen, setRecipientSheetOpen] = useState(false)
   const [personalizationDialogOpen, setPersonalizationDialogOpen] = useState(false)
+  const [missingCustomFieldsDialogOpen, setMissingCustomFieldsDialogOpen] = useState(false)
+  const [missingCustomFieldDetails, setMissingCustomFieldDetails] = useState<MissingCustomFieldDetail[]>([])
 
   // Credit estimation
   const [creditCheck, setCreditCheck] = useState<PreSendCheck | null>(null)
@@ -567,19 +581,23 @@ export default function NewWhatsAppCampaignPage() {
           setIsSending(false)
           return
         }
-        const customKeyErrors = templateVariables.flatMap((variable) => {
+        const missingCustomFields = templateVariables.flatMap((variable) => {
           const mapping = variableMapping[variable.key]
           if (!mapping || !mapping.startsWith("custom:")) return []
           const key = mapping.replace("custom:", "")
-          const missingCount = recipientContacts.filter((contact) => {
+          const missingContacts = recipientContacts.filter((contact) => {
             const value = getContactCustomFields(contact)[key]
             return value === null || value === undefined || value === ""
-          }).length
-          if (missingCount === 0) return []
-          return [`${key} (${missingCount} contact(s) sans valeur)`]
+          })
+          if (missingContacts.length === 0) return []
+          const missingPhones = missingContacts
+            .map((contact) => contact.phone_number)
+            .filter((phone): phone is string => typeof phone === "string" && phone.trim().length > 0)
+          return [{ field: key, phones: missingPhones }]
         })
-        if (customKeyErrors.length > 0) {
-          toast.error(`Champs personnalisés manquants: ${customKeyErrors.join(", ")}`)
+        if (missingCustomFields.length > 0) {
+          setMissingCustomFieldDetails(missingCustomFields)
+          setMissingCustomFieldsDialogOpen(true)
           setIsSending(false)
           return
         }
@@ -1052,6 +1070,46 @@ export default function NewWhatsAppCampaignPage() {
         systemVariableOptions={systemVariableOptions}
         customVariableOptions={customVariableOptions}
       />
+
+      <Dialog
+        open={missingCustomFieldsDialogOpen}
+        onOpenChange={setMissingCustomFieldsDialogOpen}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Champs personnalisés manquants</DialogTitle>
+            <DialogDescription>
+              Certains destinataires n&apos;ont pas les valeurs requises pour personnaliser ce template.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+            {missingCustomFieldDetails.map((detail) => (
+              <div key={detail.field} className="space-y-2 rounded-lg border p-3">
+                <p className="text-sm font-medium">
+                  {detail.field} ({detail.phones.length} contact{detail.phones.length > 1 ? "s" : ""})
+                </p>
+                <div className="space-y-1">
+                  {detail.phones.map((phone) => (
+                    <div key={`${detail.field}-${phone}`} className="font-mono text-xs text-muted-foreground">
+                      {phone}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => setMissingCustomFieldsDialogOpen(false)}
+              className="h-8 text-[13px] rounded-lg"
+            >
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

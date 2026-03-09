@@ -1,0 +1,94 @@
+ID,Parcours,Module,Objectif business,Prerequis,Instructions,Resultat_attendu,KPI_cible,Persona,Priorite
+UC-001,Activation compte,Inscription + connexion,Demarrer rapidement la prise en main,"Aucun compte","1. Ouvrir /auth/register
+2. Creer le compte
+3. Se connecter",Acces a la plateforme,"Taux d activation J1",Nouveau client,Haute
+UC-002,Activation compte,Onboarding organisation,Structurer l espace commercial,"Compte connecte","1. Ouvrir /onboarding
+2. Creer l organisation
+3. Entrer dans le dashboard",Workspace operationnel,"Temps moyen jusqu a 1ere action",Owner,Haute
+UC-003,Base client,Import contacts,Constituer l audience marketing,"Fichier CSV prospects/clients","1. Ouvrir /contacts/import
+2. Uploader CSV
+3. Mapper
+4. Lancer import",Base contacts disponible,"Nb contacts importes valides",Marketing,Haute
+UC-004,Base client,Segmentation tags,Segmenter pour des campagnes ciblees,"Contacts existants","1. Ouvrir /contacts/tags
+2. Creer tags (VIP, Lead chaud...)
+3. Assigner tags",Segments exploitables,"Taux de couverture contacts tagges",Marketing,Haute
+UC-005,Base client,Champs personnalises,Qualifier les leads,"Acces module champs","1. Ouvrir /contacts/tags?tab=fields
+2. Creer champs (secteur, budget, ville)
+3. Enregistrer",Profils enrichis,"Taux de completion des champs",Sales,Haute
+UC-006,Canal WhatsApp,Configuration Meta,Activer le canal de vente officiel,"Identifiants API officielle Meta","1. Ouvrir /whatsapp/config
+2. Renseigner phone_number_id + business_account_id
+3. Sauvegarder",Canal WhatsApp actif,"Temps d activation canal",Owner,Haute
+UC-007,Canal WhatsApp,Test connexion Meta,Valider la readiness commerciale,"Configuration en place","1. Ouvrir /whatsapp/config
+2. Lancer Test",Connexion confirmee,"Taux de config valide au 1er essai",Owner,Haute
+UC-008,Contenu marketing,Sync templates Meta,Recuperer les templates approuves,"Canal configure","1. Ouvrir /templates/whatsapp
+2. Synchroniser",Catalogue de templates pret,"Nb templates APPROVED",Marketing,Haute
+UC-009,Contenu marketing,Creation template promo,Standardiser les messages de campagne,"Canal configure","1. Ouvrir /templates/whatsapp/create
+2. Creer template promotionnel
+3. Sauvegarder",Template exploitable en campagne,"Temps creation template",Marketing,Haute
+UC-010,Contenu marketing,Template personnalise,Augmenter la pertinence des messages,"Template avec variables","1. Creer body avec variables
+2. Definir exemples
+3. Sauvegarder",Template personnalise valide,"Taux de personnalisation active",Marketing,Haute
+UC-011,Campagnes,Creation campagne segmentee,Lancer une campagne ciblee,"Templates APPROVED + segments tags","1. Ouvrir /campaigns/whatsapp/new
+2. Choisir template
+3. Choisir audience
+4. Envoyer",Campagne diffusee,"Taux de livraison campagne",Marketing,Haute
+UC-012,Campagnes,Campagne personnalisee par contact,Ameliorer conversion par message contextuel,"Variables et champs contact disponibles","1. Activer mode personnalise
+2. Mapper variables
+3. Envoyer",Messages contextuels envoyes,"Taux de lecture / reponse",Marketing,Haute
+UC-013,Campagnes,Controle budget avant envoi,Eviter perte business par credits insuffisants,"Campagne prete","1. Verifier pre-send check
+2. Ajuster volume si besoin",Envoi securise,"Taux de campagnes sans echec budget",Owner,Haute
+UC-014,Campagnes,Suivi performance campagne,Piloter les decisions marketing,"Campagne envoyee","1. Ouvrir /campaigns/whatsapp/{id}
+2. Lire livraisons lectures echecs",Vue de performance claire,"Delivery rate / Read rate",Marketing,Haute
+UC-015,Campagnes,Export resultats campagne,Partager la performance avec l equipe,"Campagne avec donnees","1. Ouvrir detail campagne
+2. Exporter CSV",Rapport partageable,"Delai de reporting",Marketing,Moyenne
+UC-016,Conversation client,Inbox WhatsApp,Gerer les demandes clients en temps reel,"Conversations actives","1. Ouvrir /conversations
+2. Selectionner une conversation
+3. Lire historique",Prise en charge rapide,"Temps de 1ere reponse",Support,Haute
+UC-017,Conversation client,Reponse texte en conversation,Convertir une demande en opportunite,"Conversation ouverte","1. Renseigner message
+2. Envoyer",Client recu et engage,"Taux de reponse client",Sales,Haute
+UC-018,Conversation client,Reponse media en conversation,Ameliorer persuasion produit,"Conversation ouverte","1. Ajouter image/pdf/video
+2. Envoyer",Support commercial enrichi,"Taux de clic ou reponse",Sales,Moyenne
+UC-019,Conversation client,Gestion statut conversation,Fluidifier le traitement pipeline,"Conversations en volume","1. Marquer lu
+2. Archiver
+3. Reouvrir si necessaire",Pipeline conversation propre,"Taux de conversations traitees",Support,Moyenne
+UC-020,Automation,Flows WhatsApp,Automatiser parcours interactifs clients,"Canal configure","1. Ouvrir /whatsapp/flows
+2. Creer flow
+3. Definir categories",Flow commercial cree,"Nb flows actifs",Owner,Haute
+UC-021,Automation,Publication flow,Rendre un flow disponible en production,"Flow en brouillon valide","1. Ouvrir detail flow
+2. Publier",Flow exploitable client,"Taux de publication reussie",Owner,Haute
+UC-022,Automation,Suivi reponses flow,Mesurer l engagement interactif,"Flow avec trafic","1. Ouvrir detail flow
+2. Consulter onglet reponses",Donnees conversationnelles exploitables,"Taux de completion flow",Marketing,Moyenne
+UC-023,Agent IA,Activation agent IA,Offrir reponse instantanee 24/7,"Canal WhatsApp + credits IA","1. Ouvrir /whatsapp/ai-tools
+2. Activer IA
+3. Sauvegarder",Agent IA actif,"Taux de conversations auto-traitees",Owner,Haute
+UC-024,Agent IA,Consignes metier IA,Aligner les reponses au discours commercial,"Agent IA actif","1. Editer instructions IA
+2. Choisir modele
+3. Sauvegarder",Reponses IA coherentes,"Score qualite reponse",Owner,Haute
+UC-025,Agent IA,Base de connaissance,Augmenter precision de l IA,"Module AI Tools accessible","1. Creer vector store
+2. Uploader docs produit/FAQ
+3. Associer au bot",IA mieux contextualisee,"Taux de resolution sans escalade",Support,Haute
+UC-026,Agent IA,Maintenance base de connaissance,Garder l IA a jour business,"Vector store existant","1. Supprimer docs obsoletes
+2. Ajouter nouvelles offres",Connaissance actualisee,"Diminution erreurs de reponse",Owner,Moyenne
+UC-027,Monetisation,Credits WhatsApp,Assurer la continuite des campagnes,"Role owner","1. Ouvrir /whatsapp/credits
+2. Consulter soldes",Vision budgetaire claire,"Solde disponible avant campagne",Owner,Haute
+UC-028,Monetisation,Recharge credits WhatsApp,Eviter interruption d envoi,"Preuve de paiement disponible","1. Choisir pack
+2. Uploader preuve
+3. Soumettre",Demande de recharge creee,"Temps entre demande et approbation",Owner,Haute
+UC-029,Monetisation,Top-up libre,Adapter budget aux pics de campagne,"Preuve de paiement disponible","1. Ouvrir top-up libre
+2. Saisir montant
+3. Soumettre",Recharge flexible demandee,"Delai de remise en capacite",Owner,Moyenne
+UC-030,Monetisation,Credits IA,Maintenir la disponibilite du bot IA,"Role owner","1. Ouvrir /whatsapp/ai-credits
+2. Verifier solde
+3. Demander un pack si besoin",Capacite IA preservee,"Taux de rupture credits IA",Owner,Haute
+UC-031,Pilotage,Dashboard commercial,Suivre la traction business,"Donnees campagnes et conversations","1. Ouvrir /dashboard
+2. Lire KPI et tendances",Pilotage quotidien possible,"Messages envoyes / lus / delivres",Owner,Haute
+UC-032,Collaboration,Invitation membre equipe,Accelerer l execution go-to-market,"Role owner","1. Ouvrir /organization/members
+2. Inviter un membre
+3. Partager le lien",Equipe embarquee,"Temps onboarding collaborateur",Owner,Moyenne
+UC-033,Collaboration,Gestion roles equipe,Securiser la collaboration commerciale,"Membres presents","1. Ouvrir /organization/members
+2. Ajuster les roles",Droits alignes aux responsabilites,"Incidents d acces reduits",Owner,Moyenne
+UC-034,Retention,Securite compte,Reduire le risque de perte d acces,"Utilisateur connecte","1. Ouvrir /settings
+2. Changer mot de passe",Compte securise,"Incidents de connexion",Client,Moyenne
+UC-035,Qualite donnees,Nettoyage base contacts,Ameliorer performance campagnes,"Base contacts existante","1. Supprimer contacts invalides
+2. Mettre a jour fiches
+3. Retagger",Base saine et exploitable,"Taux de delivrabilite ameliore",Marketing,Moyenne

@@ -1,10 +1,10 @@
 import type { Contact } from "@/types"
 
-const CONTACTS_CACHE_PREFIX = "contacts-cache:v2:"
+const CONTACTS_CACHE_PREFIX = "contacts-cache:v4:"
 const DEFAULT_SCOPE = "global"
 
 type CachedContactsPayload = {
-  version: 1
+  version: 3
   cached_at: number
   contacts: Contact[]
 }
@@ -46,7 +46,7 @@ export const setCachedContacts = (contacts: Contact[], organizationId?: string |
 
   try {
     const payload: CachedContactsPayload = {
-      version: 1,
+      version: 3,
       cached_at: Date.now(),
       contacts,
     }
@@ -97,7 +97,6 @@ export const fetchAllContactsPaged = async ({
   maxContacts?: number
 }): Promise<{ contacts: Contact[]; total: number | null; truncated: boolean }> => {
   const allContacts: Contact[] = []
-  const seenIds = new Set<string>()
   let offset = 0
   let total: number | null = null
 
@@ -109,32 +108,27 @@ export const fetchAllContactsPaged = async ({
       total = pagination.total
     }
 
-    const uniqueBatch = batch.filter((contact) => {
-      if (!contact?.id) return true
-      if (seenIds.has(contact.id)) return false
-      seenIds.add(contact.id)
-      return true
-    })
-
     const remaining = maxContacts - allContacts.length
-    allContacts.push(...uniqueBatch.slice(0, remaining))
+    allContacts.push(...batch.slice(0, remaining))
 
-    const pageLimit =
-      typeof pagination?.limit === "number" && pagination.limit > 0
-        ? pagination.limit
-        : batch.length
-    if (pageLimit <= 0) break
-
-    const expectedBatchSize = Math.min(pageSize, pageLimit)
-    offset += pageLimit
+    // Advance by the number of contacts actually returned.
+    // Some APIs cap the response size server-side but still echo the requested
+    // limit in pagination, which would otherwise skip pages.
+    offset += batch.length
 
     onProgress?.(allContacts.length, total)
     onBatch?.([...allContacts], total)
 
     if (typeof total === "number" && allContacts.length >= total) break
     if (typeof pagination?.total === "number" && offset >= pagination.total) break
-    if (batch.length < expectedBatchSize) break
-    if (uniqueBatch.length === 0) break
+    if (pagination?.has_more === false && typeof total !== "number") break
+    if (
+      typeof pagination?.total !== "number" &&
+      pagination?.has_more !== true &&
+      batch.length < pageSize
+    ) {
+      break
+    }
   }
 
   const truncated = total !== null ? total > maxContacts : allContacts.length >= maxContacts
