@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { whatsappService, handleApiError } from "@/services"
+import { uploadMediaToBackend } from "@/lib/media-upload"
 import { useOrganizationStore } from "@/stores"
 import { cn } from "@/lib/utils"
 import { WhatsAppTemplatePreview } from "@/components/whatsapp/whatsapp-template-card"
@@ -223,17 +224,19 @@ export default function WhatsAppTemplateCreatePage() {
     setIsUploadingHeader(true)
 
     try {
-      const result = await whatsappService.uploadMedia(file)
-      const headerHandle = result.file_handle || result.media_id
-      if (!headerHandle) {
-        throw new Error("Aucun identifiant média retourné")
+      const result = await uploadMediaToBackend(file)
+      const fileHandle = result.file_handle?.trim() || ""
+      setHeaderMediaUrl(fileHandle)
+      if (fileHandle) {
+        toast.success("Média uploadé")
+      } else {
+        toast.message("Média uploadé, mais aucun file_handle template n'a été retourné")
       }
-      setHeaderMediaUrl(headerHandle)
-      toast.success("Média uploadé")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur lors de l'upload")
       setHeaderMediaPreviewUrl(null)
       setHeaderMediaFilename("")
+      setHeaderMediaUrl("")
     } finally {
       setIsUploadingHeader(false)
     }

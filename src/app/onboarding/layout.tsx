@@ -20,7 +20,7 @@ export default function OnboardingLayout({
               />
               <div>
                 <p className="text-[15px] font-semibold tracking-tight">Flow</p>
-                <p className="text-[11px] text-muted-foreground">WhatsApp &amp; SMS Platform</p>
+                <p className="text-[11px] text-muted-foreground">WhatsApp marketing interactif &amp; agents IA</p>
               </div>
             </div>
             {children}

@@ -39,9 +39,9 @@ export default function AuthLayout({
             </div>
             <div className="rounded-xl border border-slate-200/60 bg-white/50 p-4 backdrop-blur-sm">
               <div>
-                <p className="text-[13px] font-medium text-slate-800">SMS</p>
+                <p className="text-[13px] font-medium text-slate-800">Flows</p>
                 <p className="mt-0.5 text-[11px] text-slate-400">
-                  Campagnes, personnalisation et suivi d&apos;envoi.
+                  Parcours, relances et automatisations conversationnelles.
                 </p>
               </div>
             </div>

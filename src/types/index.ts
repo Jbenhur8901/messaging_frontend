@@ -225,35 +225,6 @@ export interface Tag {
   contact_count: number
 }
 
-// Template types
-export interface Template {
-  id: string
-  name: string
-  body: string
-  category: "transactional" | "marketing" | "notification" | "other"
-  encoding: "GSM-7" | "UCS-2"
-  segments_count: number
-  character_count: number
-  variables: string[]
-  is_active: boolean
-  use_count: number
-  created_at?: string
-  updated_at?: string
-}
-
-export interface TemplatePreview {
-  template_id: string
-  template_name: string
-  original_body: string
-  rendered_body: string
-  variables_used: Record<string, string>
-  analysis: {
-    segments: number
-    encoding: "GSM-7" | "UCS-2"
-    characters: number
-  }
-}
-
 // Custom Field types
 export interface CustomField {
   id: string
@@ -301,39 +272,6 @@ export interface DailyStat {
   messages_read?: number
   delivery_rate: number
   credits_consumed: number
-}
-
-// SMS Tools types
-export interface SMSAnalysis {
-  segments: number
-  encoding: "GSM-7" | "UCS-2"
-  characters: number
-  characters_per_segment: number
-  max_characters: number
-  is_gsm: boolean
-  cost_multiplier: number
-}
-
-export interface SMSEstimate {
-  message_analysis: {
-    segments: number
-    encoding: "GSM-7" | "UCS-2"
-    characters: number
-  }
-  recipient_count: number
-  segments_per_recipient: number
-  total_segments: number
-  total_credits_required: number
-  credits_available: number
-  sufficient_credits: boolean
-  shortage: number
-}
-
-export interface NonGSMCharacter {
-  character: string
-  position: number
-  unicode: string
-  suggestion: string
 }
 
 // API Key types

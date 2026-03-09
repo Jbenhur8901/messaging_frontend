@@ -5,7 +5,6 @@ import Link from "next/link"
 import { whatsappService } from "@/services"
 import type { WhatsAppBroadcast, WhatsAppBroadcastStatus, Pagination } from "@/types"
 import { formatNumber, formatDate } from "@/lib/utils"
-import { ChannelTabs } from "@/components/channel-tabs"
 import { BroadcastStatusBadge } from "@/components/whatsapp/whatsapp-status-badge"
 import { useOrganizationStore } from "@/stores"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,7 +13,6 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 import { Plus, Eye, RefreshCw, MessageSquareMore, AlertTriangle, Settings } from "lucide-react"
-import { featureFlags } from "@/config/features"
 
 /* ── Stagger animation ── */
 const stagger = (i: number) => ({
@@ -128,7 +126,6 @@ export default function WhatsAppCampaignsPage() {
               Gérez vos campagnes et suivez leurs performances.
             </p>
           </div>
-          {featureFlags.SMS_ENABLED && <ChannelTabs basePath="campaigns" />}
         </div>
 
         <Card className="border-transparent" style={stagger(1)}>
@@ -157,11 +154,10 @@ export default function WhatsAppCampaignsPage() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Campagnes WhatsApp</h1>
           <p className="text-[13px] text-muted-foreground mt-0.5">
-            Gérez vos campagnes et suivez leurs performances.
+            Activez vos diffusions interactives et suivez leurs performances.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {featureFlags.SMS_ENABLED && <ChannelTabs basePath="campaigns" />}
           <Link href="/campaigns/whatsapp/new">
             <Button size="sm" className="h-8 gap-1.5 text-[13px] rounded-lg">
               <Plus className="h-3.5 w-3.5" />

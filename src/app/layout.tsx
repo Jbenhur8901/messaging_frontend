@@ -11,8 +11,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Flow - SMS Campaign Management",
-  description: "Plateforme de gestion de campagnes SMS",
+  title: "Flow - Marketing interactif et agents IA",
+  description: "Plateforme WhatsApp de marketing interactif, conversations automatisees et agents IA.",
   icons: {
     icon: "https://phwyhgzcnnjffovepbrt.supabase.co/storage/v1/object/public/file/2.png",
     apple: "https://phwyhgzcnnjffovepbrt.supabase.co/storage/v1/object/public/file/2.png",

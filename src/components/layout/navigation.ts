@@ -4,24 +4,18 @@ import {
   Send,
   Users,
   Tags,
-  FileText,
   MessageSquareMore,
-  Radio,
-  GitBranch,
-  MessageSquare,
   Building2,
   Settings,
   Megaphone,
   Bot,
   Receipt,
 } from "lucide-react"
-import { featureFlags } from "@/config/features"
 
 export interface NavigationItem {
   name: string
   href: string
   icon: ComponentType<{ className?: string }>
-  smsOnly?: boolean
   ownerOnly?: boolean
   children?: Array<{
     name: string
@@ -46,20 +40,18 @@ export const navigationSections: NavigationSection[] = [
     title: "Communication",
     icon: Megaphone,
     items: [
-      { name: "Campagnes", href: featureFlags.SMS_ENABLED ? "/campaigns" : "/campaigns/whatsapp", icon: Send },
+      { name: "Campagnes", href: "/campaigns/whatsapp", icon: Send },
       {
-        name: "WhatsApp",
+        name: "Messagerie",
         href: "/conversations",
         icon: MessageSquareMore,
         children: [
           { name: "Conversations", href: "/conversations" },
-          { name: "Templates", href: "/templates/whatsapp" },
+          { name: "Templates WhatsApp", href: "/templates/whatsapp" },
           { name: "Configuration", href: "/whatsapp/config" },
         ],
       },
-      { name: "Outils IA", href: "/whatsapp/ai-tools", icon: Bot },
-      { name: "Services", href: "/services", icon: Radio, smsOnly: true },
-      { name: "SMS Tools", href: "/tools", icon: MessageSquare, smsOnly: true },
+      { name: "Agents IA", href: "/whatsapp/ai-tools", icon: Bot },
     ],
   },
   {
@@ -103,7 +95,6 @@ export const getFilteredNavigationSections = (isOwner = false): NavigationSectio
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
-        if (item.smsOnly && !featureFlags.SMS_ENABLED) return false
         if (item.ownerOnly && !isOwner) return false
         return true
       }),

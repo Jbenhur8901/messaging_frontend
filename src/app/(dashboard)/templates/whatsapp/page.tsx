@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { whatsappService, handleApiError } from "@/services"
 import type { WhatsAppTemplate } from "@/types"
-import { ChannelTabs } from "@/components/channel-tabs"
 import { WhatsAppTemplateCard } from "@/components/whatsapp/whatsapp-template-card"
 import { useOrganizationStore } from "@/stores"
 import { Card, CardContent } from "@/components/ui/card"
@@ -176,10 +175,9 @@ export default function WhatsAppTemplatesPage() {
           <div>
             <h1 className="text-2xl font-semibold">Templates WhatsApp</h1>
             <p className="text-muted-foreground mt-1">
-              Gérez vos modèles de messages.
+              Centralisez vos messages marketing, utilitaires et conversationnels.
             </p>
           </div>
-          <ChannelTabs basePath="templates" />
         </div>
 
         <Card>
@@ -221,7 +219,6 @@ export default function WhatsAppTemplatesPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <ChannelTabs basePath="templates" />
           <Button variant="outline" size="sm" asChild>
             <Link href="/templates/whatsapp/create">
               <Plus className="mr-1.5 h-4 w-4" />

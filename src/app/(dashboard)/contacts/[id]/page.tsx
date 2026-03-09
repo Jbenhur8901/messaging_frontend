@@ -373,7 +373,7 @@ export default function EditContactPage() {
                             <SelectTrigger className="h-9 text-[13px] rounded-lg"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="manual" className="text-[13px]">Manuel</SelectItem>
-                              <SelectItem value="sms" className="text-[13px]">SMS</SelectItem>
+                              <SelectItem value="campaign" className="text-[13px]">Campagne</SelectItem>
                               <SelectItem value="web" className="text-[13px]">Web</SelectItem>
                               <SelectItem value="api" className="text-[13px]">API</SelectItem>
                             </SelectContent>

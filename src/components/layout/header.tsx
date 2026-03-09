@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuthStore, useCreditsStore, useOrganizationStore } from "@/stores"
 import { organizationsService } from "@/services/organizations"
+import { aiCreditsService } from "@/services/ai-credits"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -43,8 +44,23 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
     setCurrentOrganization,
   } = useOrganizationStore()
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(false)
+  const [aiBalance, setAiBalance] = useState<number | null>(null)
   const currentRole = organizations.find((org) => org.id === currentOrganization?.id)?.role
   const isOwner = currentRole === "owner"
+
+  useEffect(() => {
+    let cancelled = false
+    aiCreditsService.getBalance()
+      .then((result) => {
+        if (!cancelled) setAiBalance(result.balance ?? 0)
+      })
+      .catch(() => {
+        if (!cancelled) setAiBalance(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [currentOrganization?.id])
 
   const handleOrganizationChange = async (orgId: string) => {
     if (orgId === activeOrgId || isSwitchingOrg) return
@@ -66,6 +82,9 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
         authStorage.setItem("user", JSON.stringify(updatedUser))
       }
       fetchBalance()
+      aiCreditsService.getBalance()
+        .then((result) => setAiBalance(result.balance ?? 0))
+        .catch(() => setAiBalance(null))
       if (typeof window !== "undefined") {
         window.location.reload()
         return
@@ -160,6 +179,15 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
 
         {isOwner && (
           <div className="hidden items-center gap-1.5 sm:flex">
+            <Link
+              href="/whatsapp/ai-credits"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500/10 px-1.5 text-[10px] font-semibold text-emerald-600">
+                IA
+              </span>
+              {formatNumber(aiBalance ?? 0)} FCFA
+            </Link>
             <Link
               href="/whatsapp/credits"
               className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

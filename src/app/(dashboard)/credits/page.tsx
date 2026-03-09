@@ -739,7 +739,7 @@ export default function CreditsPage() {
                   min="1"
                   className="h-9 rounded-lg text-[13px]"
                 />
-                <p className="text-[10px] text-gray-400">1 crédit = 1 segment SMS</p>
+                <p className="text-[10px] text-gray-400">Crédits utilises pour WhatsApp et l'automatisation IA.</p>
               </div>
 
               {/* Payment method */}

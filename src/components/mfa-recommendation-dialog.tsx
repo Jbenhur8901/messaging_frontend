@@ -69,7 +69,7 @@ export function MFARecommendationDialog() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
-                Sécurise vos données et vos campagnes SMS
+                Sécurise vos donnees, campagnes WhatsApp et agents IA
               </li>
             </ul>
           </div>

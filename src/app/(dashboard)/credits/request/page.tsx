@@ -92,7 +92,7 @@ export default function CreditRequestPage() {
                 required
               />
               <p className="text-xs text-muted-foreground">
-                1 crédit = 1 segment SMS
+                Utilisez vos credits pour WhatsApp, vos campagnes et vos agents IA.
               </p>
             </div>
 
