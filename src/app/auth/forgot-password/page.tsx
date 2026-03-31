@@ -13,10 +13,8 @@ import { Label } from "@/components/ui/label"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { toast } from "sonner"
 import { Loader2, ArrowLeft, CheckCircle } from "lucide-react"
@@ -56,19 +54,24 @@ export default function ForgotPasswordPage() {
   if (isSubmitted) {
     return (
       <Card className="w-full border-0 bg-transparent p-0 shadow-none">
-        <CardHeader className="space-y-2 p-0 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900">
-            <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+        <CardHeader className="space-y-4 p-0 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E0D112]/10 border border-[#E0D112]/20">
+            <CheckCircle className="h-8 w-8 text-[#E0D112]" />
           </div>
-          <CardTitle className="text-2xl font-semibold text-foreground">Email envoyé</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Si un compte existe avec cette adresse email, vous recevrez un lien
-            pour réinitialiser votre mot de passe.
-          </CardDescription>
+          <div className="space-y-2">
+            <h2 className="text-[22px] font-bold text-white">Email envoyé</h2>
+            <p className="text-[13px] text-muted-foreground leading-relaxed">
+              Si un compte existe avec cette adresse, vous recevrez
+              un lien de réinitialisation.
+            </p>
+          </div>
         </CardHeader>
-        <CardFooter className="px-0 pb-0 pt-6">
+        <CardFooter className="px-0 pb-0 pt-8">
           <Link href="/auth/login" className="w-full">
-            <Button variant="outline" className="w-full">
+            <Button
+              variant="outline"
+              className="w-full h-11 border-white/10 hover:bg-white/5 text-white rounded-xl text-[13px]"
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour à la connexion
             </Button>
@@ -81,34 +84,48 @@ export default function ForgotPasswordPage() {
   return (
     <Card className="w-full border-0 bg-transparent p-0 shadow-none">
       <CardHeader className="space-y-2 p-0">
-        <CardTitle className="text-2xl font-semibold text-foreground">Mot de passe oublié</CardTitle>
-        <CardDescription className="text-muted-foreground">
-          Entrez votre adresse email pour recevoir un lien de réinitialisation
-        </CardDescription>
+        <h2 className="text-[22px] font-bold tracking-tight text-white">
+          Mot de passe oublié
+        </h2>
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
+          Entrez votre adresse email pour recevoir un lien de réinitialisation.
+        </p>
       </CardHeader>
+
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4 px-0 pb-0 pt-6">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+        <CardContent className="space-y-5 px-0 pb-0 pt-7">
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              Email
+            </Label>
             <Input
               id="email"
               type="email"
               placeholder="vous@exemple.com"
+              className="h-11 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-[#E0D112]/50 focus:ring-[#E0D112]/20 rounded-xl transition-all"
               {...register("email")}
               disabled={isLoading}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p className="text-xs text-destructive mt-1">{errors.email.message}</p>
             )}
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4 px-0 pb-0 pt-6">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+
+        <CardFooter className="flex flex-col gap-4 px-0 pb-0 pt-7">
+          <Button
+            type="submit"
+            className="w-full h-11 text-[13px] font-bold rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-[#E0D112] hover:bg-[#E0D112]/90 text-black shadow-lg shadow-[#E0D112]/15"
+            disabled={isLoading}
+          >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Envoyer le lien
           </Button>
           <Link href="/auth/login" className="w-full">
-            <Button variant="outline" className="w-full">
+            <Button
+              variant="ghost"
+              className="w-full h-11 text-[13px] text-muted-foreground hover:text-white hover:bg-white/5 rounded-xl"
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour à la connexion
             </Button>

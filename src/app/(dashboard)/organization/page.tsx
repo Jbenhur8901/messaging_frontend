@@ -94,7 +94,7 @@ export default function OrganizationPage() {
 
       <div className="grid gap-5 max-w-2xl">
         {userRole === "owner" && (
-          <div className="rounded-xl border border-border/40 bg-white p-4">
+          <div className="rounded-xl border border-border/40 bg-card p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-[14px] font-semibold text-foreground">

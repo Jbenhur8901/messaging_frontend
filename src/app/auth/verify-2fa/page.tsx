@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/stores"
 import { authService, handleApiError } from "@/services"
 import { authStorage } from "@/lib/auth-storage"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { OTPInput } from "@/components/ui/otp-input"
@@ -141,7 +141,6 @@ export default function Verify2FAPage() {
       }
 
       authStorage.setItem("user", JSON.stringify(result.user))
-
       setUser(result.user)
       completeMFA()
       setVerificationComplete(true)
@@ -180,22 +179,24 @@ export default function Verify2FAPage() {
 
   return (
     <Card className="w-full border-0 bg-transparent p-0 shadow-none">
-      <CardHeader className="space-y-2 p-0 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
-          <Shield className="h-7 w-7 text-primary" />
+      <CardHeader className="space-y-4 p-0 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E0D112]/10 border border-[#E0D112]/20">
+          <Shield className="h-8 w-8 text-[#E0D112]" />
         </div>
-        <CardTitle className="text-2xl font-semibold text-foreground">
-          Vérification en deux étapes
-        </CardTitle>
-        <CardDescription className="text-muted-foreground">
-          {useBackupCode
-            ? "Entrez un de vos codes de récupération."
-            : "Entrez le code de votre application d'authentification."}
-        </CardDescription>
+        <div className="space-y-2">
+          <h2 className="text-[22px] font-bold text-white">
+            Vérification en deux étapes
+          </h2>
+          <p className="text-[13px] text-muted-foreground leading-relaxed">
+            {useBackupCode
+              ? "Entrez un de vos codes de récupération."
+              : "Entrez le code de votre application d'authentification."}
+          </p>
+        </div>
       </CardHeader>
 
-      <CardContent className="space-y-6 px-0 pb-0 pt-6">
-        <div className="space-y-3">
+      <CardContent className="space-y-8 px-0 pb-0 pt-8">
+        <div className="space-y-4">
           {useBackupCode ? (
             <Input
               ref={backupCodeRef}
@@ -203,22 +204,24 @@ export default function Verify2FAPage() {
               value={backupCode}
               onChange={(e) => setBackupCode(e.target.value.trim())}
               placeholder="XXXX-XXXX-XXXX"
-              className={hasError ? "animate-shake" : ""}
+              className={`h-12 bg-white/[0.03] border-white/10 text-white text-center text-lg tracking-widest placeholder:text-white/20 focus:border-[#E0D112]/50 focus:ring-[#E0D112]/20 rounded-xl transition-all ${hasError ? "animate-shake border-destructive/50" : ""}`}
               disabled={isVerifying || isCooldownActive}
             />
           ) : (
-            <OTPInput
-              ref={otpRef}
-              value={code}
-              onChange={setCode}
-              onComplete={(fullCode) => {
-                if (!isVerifying && !isCooldownActive) {
-                  void handleVerify(fullCode)
-                }
-              }}
-              hasError={hasError}
-              disabled={isVerifying || isCooldownActive}
-            />
+            <div className={`flex justify-center transition-transform ${hasError ? "animate-shake" : ""}`}>
+              <OTPInput
+                ref={otpRef}
+                value={code}
+                onChange={setCode}
+                onComplete={(fullCode) => {
+                  if (!isVerifying && !isCooldownActive) {
+                    void handleVerify(fullCode)
+                  }
+                }}
+                hasError={hasError}
+                disabled={isVerifying || isCooldownActive}
+              />
+            </div>
           )}
 
           <div className="text-center">
@@ -230,24 +233,26 @@ export default function Verify2FAPage() {
                 setBackupCode("")
                 setHasError(false)
               }}
-              className="text-[12px] text-primary hover:underline"
+              className="text-[11px] font-semibold text-[#E0D112] hover:text-[#E0D112]/80 transition-colors uppercase tracking-widest"
               disabled={isVerifying}
             >
               {useBackupCode ? "Utiliser un code OTP" : "Utiliser un code de récupération"}
             </button>
           </div>
 
-          {isCooldownActive ? (
-            <p className="text-xs text-center text-destructive">
-              Trop de tentatives. Réessayez dans {cooldownRemaining}s.
-            </p>
-          ) : (
-            failedAttempts > 0 && (
-              <p className="text-xs text-center text-muted-foreground">
-                {remainingAttempts} tentative{remainingAttempts > 1 ? "s" : ""} restante{remainingAttempts > 1 ? "s" : ""}
+          <div className="h-5 flex items-center justify-center">
+            {isCooldownActive ? (
+              <p className="text-[11px] font-medium text-destructive animate-pulse">
+                Trop de tentatives. Réessayez dans {cooldownRemaining}s.
               </p>
-            )
-          )}
+            ) : (
+              failedAttempts > 0 && (
+                <p className="text-[11px] font-medium text-muted-foreground/60">
+                  {remainingAttempts} tentative{remainingAttempts > 1 ? "s" : ""} restante{remainingAttempts > 1 ? "s" : ""}
+                </p>
+              )
+            )}
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -258,8 +263,7 @@ export default function Verify2FAPage() {
               isCooldownActive ||
               (useBackupCode ? backupCode.trim().length < 8 : code.length !== 6)
             }
-            className="w-full"
-            size="lg"
+            className="w-full h-11 text-[13px] font-bold rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-[#E0D112] hover:bg-[#E0D112]/90 text-black shadow-lg shadow-[#E0D112]/15"
           >
             {isVerifying ? (
               <>
@@ -274,7 +278,7 @@ export default function Verify2FAPage() {
           <Button
             variant="ghost"
             onClick={handleCancel}
-            className="w-full"
+            className="w-full h-11 text-[13px] text-muted-foreground hover:text-white hover:bg-white/5 rounded-xl"
             disabled={isVerifying}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />

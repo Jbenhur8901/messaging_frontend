@@ -64,15 +64,15 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
       <SheetContent
         side="left"
         className="flex h-full w-64 flex-col overflow-hidden p-0 sm:max-w-64 [&>button]:hidden"
-        style={{ background: "#f9fafb" }}
+        style={{ background: "#0f0f0f" }}
       >
-        <div className="flex min-h-16 shrink-0 items-center border-b border-black/5 px-4">
+        <div className="flex min-h-16 shrink-0 items-center border-b border-white/[0.06] px-4">
           <Link
             href="/dashboard"
             className="flex items-center gap-2.5"
             onClick={onClose}
           >
-            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-white">
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-white/10">
               <Image
                 src={BRAND_ICON_URL}
                 alt="Flow"
@@ -82,7 +82,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
               />
             </div>
             <div>
-              <SheetTitle className="text-sm font-semibold leading-tight">
+              <SheetTitle className="text-sm font-semibold leading-tight text-white">
                 Flow
               </SheetTitle>
             </div>
@@ -124,8 +124,8 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                         className={cn(
                           "group flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                           sectionHasActive
-                            ? "text-foreground"
-                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                            ? "text-white"
+                            : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                         )}
                       >
                         {section.icon && (
@@ -136,7 +136,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                         </span>
                         <ChevronDown
                           className={cn(
-                            "h-3.5 w-3.5 text-muted-foreground/50 transition-transform duration-200",
+                            "h-3.5 w-3.5 text-white/30 transition-transform duration-200",
                             !isSectionOpen && "-rotate-90"
                           )}
                         />
@@ -162,12 +162,12 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                                       className={cn(
                                         "relative flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition-colors",
                                         isActive || hasActiveChild
-                                          ? "bg-primary/[0.06] font-medium text-primary"
-                                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                          ? "bg-[#E0D112]/10 font-medium text-[#E0D112]"
+                                          : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                                       )}
                                     >
                                       {(isActive || hasActiveChild) && (
-                                        <span className="absolute -left-[13px] top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                                        <span className="absolute -left-[13px] top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
                                       )}
                                       <item.icon className="h-3.5 w-3.5 shrink-0" />
                                       <span className="truncate">{item.name}</span>
@@ -175,7 +175,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                                     {hasChildren && (
                                       <button
                                         type="button"
-                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:text-foreground"
+                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-white/30 transition-colors hover:text-white"
                                         onClick={() =>
                                           setOpenGroups((prev) => ({
                                             ...prev,
@@ -204,9 +204,9 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                                             onClick={onClose}
                                             className={cn(
                                               "block rounded-lg px-3 py-2 text-xs transition-colors",
-                                              isChildActive
-                                                ? "font-medium text-primary"
-                                                : "text-muted-foreground hover:text-foreground"
+                                                isChildActive
+                                                  ? "font-medium text-[#E0D112]"
+                                                  : "text-white/50 hover:text-white"
                                             )}
                                           >
                                             {child.name}
@@ -234,12 +234,12 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                             className={cn(
                               "relative flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                               isActive
-                                ? "bg-primary/[0.06] text-primary"
-                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                ? "bg-[#E0D112]/10 text-[#E0D112]"
+                                : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                             )}
                           >
                             {isActive && (
-                              <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                              <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
                             )}
                             <item.icon className="h-[18px] w-[18px] shrink-0" />
                             <span className="truncate">{item.name}</span>
@@ -254,7 +254,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
           </div>
 
           {bottomSections.length > 0 && (
-            <div className="mt-4 border-t border-black/5 pt-3">
+            <div className="mt-4 border-t border-white/[0.06] pt-3">
               {bottomSections.flatMap((s) => s.items).map((item) => {
                 const isActive = activeHref === item.href
                 return (
@@ -265,12 +265,12 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                     className={cn(
                       "relative flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                       isActive
-                        ? "bg-primary/[0.06] text-primary"
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        ? "bg-[#E0D112]/10 text-[#E0D112]"
+                        : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                     )}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                      <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
                     )}
                     <item.icon className="h-[18px] w-[18px] shrink-0" />
                     <span className="truncate">{item.name}</span>
@@ -281,20 +281,20 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
           )}
         </nav>
 
-        <div className="shrink-0 border-t border-black/5 p-3">
+        <div className="shrink-0 border-t border-white/[0.06] p-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
               <Avatar className="h-7 w-7 shrink-0">
-                <AvatarFallback className="bg-accent text-[11px] font-medium text-muted-foreground">
+                <AvatarFallback className="bg-white/[0.08] text-[11px] font-medium text-white/60">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium leading-tight">
+                <p className="truncate text-[13px] font-medium leading-tight text-white">
                   {user ? displayName : "Utilisateur"}
                 </p>
                 {user?.email && (
-                  <p className="truncate text-[11px] text-muted-foreground leading-tight">
+                  <p className="truncate text-[11px] text-white/40 leading-tight">
                     {user.email}
                   </p>
                 )}
@@ -303,7 +303,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 py-2 text-[12px] font-medium text-rose-500 transition-colors hover:bg-rose-50"
+              className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 py-2 text-[12px] font-medium text-rose-400 transition-colors hover:bg-rose-500/10"
             >
               <LogOut className="h-3.5 w-3.5" />
               Se déconnecter

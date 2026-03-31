@@ -138,8 +138,8 @@ const txTypeMeta: Record<
   },
   adjustment: {
     label: "Ajustement",
-    color: "text-gray-700",
-    bg: "bg-gray-50 border-gray-200",
+    color: "text-foreground/80",
+    bg: "bg-muted border-border",
     icon: TrendingUp,
   },
 }
@@ -151,7 +151,7 @@ const requestStatusMeta: Record<
   pending: { label: "En attente", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Clock },
   approved: { label: "Approuvée", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: CheckCircle },
   rejected: { label: "Rejetée", color: "text-red-700", bg: "bg-red-50 border-red-200", icon: XCircle },
-  cancelled: { label: "Annulée", color: "text-gray-700", bg: "bg-gray-50 border-gray-200", icon: Ban },
+  cancelled: { label: "Annulée", color: "text-foreground/80", bg: "bg-muted border-border", icon: Ban },
 }
 
 export default function AICreditsPage() {
@@ -426,7 +426,7 @@ export default function AICreditsPage() {
             return (
               <div
                 key={pkg.id || pkg.code}
-                className="relative rounded-xl border p-4 transition-all hover:shadow-md cursor-pointer border-border/40 bg-white hover:border-border"
+                className="relative rounded-xl border p-4 transition-all hover:shadow-md cursor-pointer border-border/40 bg-card hover:border-border"
                 style={stagger(i + 3)}
                 onClick={() => {
                   setSelectedPackage(pkg)
@@ -488,7 +488,7 @@ export default function AICreditsPage() {
             </h2>
           </div>
           <select
-            className="h-7 rounded-lg border border-gray-200 bg-white px-2 text-[11px]"
+            className="h-7 rounded-lg border border-border bg-card px-2 text-[11px]"
             value={requestStatusFilter}
             onChange={(e) => setRequestStatusFilter(e.target.value as CreditRequestStatus | "all")}
           >
@@ -697,7 +697,7 @@ export default function AICreditsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
@@ -706,17 +706,17 @@ export default function AICreditsPage() {
                   <CreditCard className="h-4.5 w-4.5 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-[15px] font-semibold text-gray-900">
+                  <h3 className="text-[15px] font-semibold text-foreground">
                     Demander des crédits IA
                   </h3>
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-[11px] text-muted-foreground/60">
                     Votre demande sera validée par un administrateur
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-full p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground"
                 onClick={() => {
                   setRequestDialogOpen(false)
                   setSelectedPackage(null)
@@ -731,10 +731,10 @@ export default function AICreditsPage() {
             <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 mb-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[13px] font-semibold text-gray-900">
+                  <p className="text-[13px] font-semibold text-foreground">
                     {selectedPackage.name}
                   </p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
                     {formatNumber(resolvePackageMessages(selectedPackage.code, selectedPackage.message_count))} messages &middot; {resolvePackageUnitPrice(selectedPackage)} FCFA/msg
                   </p>
                 </div>
@@ -750,7 +750,7 @@ export default function AICreditsPage() {
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Moyen de paiement</Label>
                 <select
-                  className="w-full h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px]"
+                  className="w-full h-9 rounded-lg border border-border bg-card px-3 text-[13px]"
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 >
@@ -782,26 +782,26 @@ export default function AICreditsPage() {
                   }}
                 />
                 <div
-                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 p-4 cursor-pointer hover:border-gray-300 transition-colors"
+                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-border p-4 cursor-pointer hover:border-border transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {paymentProof ? (
                     <div className="flex items-center gap-2 text-center">
                       <FileImage className="h-4 w-4 text-blue-500 shrink-0" />
                       <div>
-                        <p className="text-[12px] font-medium text-gray-700">{paymentProof.name}</p>
-                        <p className="text-[10px] text-gray-400">
+                        <p className="text-[12px] font-medium text-foreground/80">{paymentProof.name}</p>
+                        <p className="text-[10px] text-muted-foreground/60">
                           {(paymentProof.size / 1024).toFixed(0)} Ko
                         </p>
                       </div>
                     </div>
                   ) : (
                     <div className="text-center">
-                      <Upload className="h-5 w-5 text-gray-300 mx-auto mb-1" />
-                      <p className="text-[12px] text-gray-400">
+                      <Upload className="h-5 w-5 text-muted-foreground/40 mx-auto mb-1" />
+                      <p className="text-[12px] text-muted-foreground/60">
                         Capture d&apos;écran ou reçu de paiement
                       </p>
-                      <p className="text-[10px] text-gray-300 mt-0.5">
+                      <p className="text-[10px] text-muted-foreground/40 mt-0.5">
                         JPEG, PNG ou WEBP (max 5 MB)
                       </p>
                     </div>
@@ -847,14 +847,14 @@ export default function AICreditsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-[15px] font-semibold text-gray-900">Détail de la demande</h3>
+              <h3 className="text-[15px] font-semibold text-foreground">Détail de la demande</h3>
               <button
                 type="button"
-                className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-full p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground"
                 onClick={() => setDetailRequest(null)}
               >
                 <XCircle className="h-5 w-5" />
@@ -863,19 +863,19 @@ export default function AICreditsPage() {
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Pack</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Pack</p>
                   <p className="text-[13px] font-medium">{detailRequest.package_name || detailRequest.package_code}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Crédits</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Crédits</p>
                   <p className="text-[13px] font-medium">{formatNumber(resolveCreditsAmount(detailRequest))}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Montant</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Montant</p>
                   <p className="text-[13px] font-medium">{formatNumber(resolveTotalPrice(detailRequest))} FCFA</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Paiement</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Paiement</p>
                   <p className="text-[13px] font-medium">
                     {detailRequest.payment_method === "mobile_money"
                       ? "Mobile Money"
@@ -888,16 +888,16 @@ export default function AICreditsPage() {
                 </div>
                 {detailRequest.payment_reference && (
                   <div className="col-span-2">
-                    <p className="text-[11px] text-gray-400 uppercase tracking-wide">Référence</p>
+                    <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Référence</p>
                     <p className="text-[13px] font-mono">{detailRequest.payment_reference}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Date</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Date</p>
                   <p className="text-[13px]">{formatDate(detailRequest.created_at)}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Statut</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Statut</p>
                   {(() => {
                     const meta = requestStatusMeta[detailRequest.status] || requestStatusMeta.pending
                     const StatusIcon = meta.icon
@@ -912,7 +912,7 @@ export default function AICreditsPage() {
               </div>
               {detailRequest.payment_proof_url && (
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Preuve de paiement</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide mb-1">Preuve de paiement</p>
                   <a
                     href={detailRequest.payment_proof_url}
                     target="_blank"
@@ -928,7 +928,7 @@ export default function AICreditsPage() {
                 <div className={`rounded-lg px-3 py-2 ${
                   detailRequest.status === "rejected" ? "bg-red-50/60 border border-red-200/60" : "bg-emerald-50/60 border border-emerald-200/60"
                 }`}>
-                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
                     Note de l&apos;administrateur
                   </p>
                   <p className={`text-[12px] ${detailRequest.status === "rejected" ? "text-red-700" : "text-emerald-700"}`}>

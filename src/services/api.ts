@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios"
 import { authStorage } from "@/lib/auth-storage"
 import { clearAllCachedContacts } from "@/lib/contacts-cache"
-import { supabase, syncSupabaseSession } from "@/lib/supabase"
+import { getSupabaseClient, syncSupabaseSession } from "@/lib/supabase"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -186,8 +186,11 @@ api.interceptors.request.use(
     if (typeof window !== "undefined") {
       let token: string | null = null
       try {
-        const { data } = await supabase.auth.getSession()
-        token = data.session?.access_token ?? null
+        const supabase = getSupabaseClient()
+        if (supabase) {
+          const { data } = await supabase.auth.getSession()
+          token = data.session?.access_token ?? null
+        }
       } catch {
         token = null
       }
@@ -253,8 +256,11 @@ apiJson.interceptors.request.use(
     if (typeof window !== "undefined") {
       let token: string | null = null
       try {
-        const { data } = await supabase.auth.getSession()
-        token = data.session?.access_token ?? null
+        const supabase = getSupabaseClient()
+        if (supabase) {
+          const { data } = await supabase.auth.getSession()
+          token = data.session?.access_token ?? null
+        }
       } catch {
         token = null
       }

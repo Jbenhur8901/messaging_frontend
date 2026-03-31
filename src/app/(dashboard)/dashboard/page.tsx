@@ -203,7 +203,7 @@ export default function DashboardPage() {
               <p className="text-xl font-semibold tracking-tight">{deliveryRate.toFixed(1)}%</p>
               <div className="mt-2 h-1 w-full rounded-full bg-muted overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-emerald-500/70 transition-all duration-700 ease-out"
+                  className="h-full rounded-full bg-[#E0D112]/70 transition-all duration-700 ease-out"
                   style={{ width: `${Math.min(deliveryRate, 100)}%` }}
                 />
               </div>

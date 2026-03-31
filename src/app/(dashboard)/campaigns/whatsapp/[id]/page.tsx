@@ -175,9 +175,9 @@ export default function WhatsAppCampaignDetailPage() {
 
   const kpis = [
     { label: "Destinataires", value: broadcast.total_recipients ?? 0, icon: Users, color: "#6b7280" },
-    { label: "Envoyés", value: broadcast.sent_count ?? 0, icon: Send, color: "#f59e0b" },
-    { label: "Livrés", value: broadcast.delivered_count ?? 0, icon: CheckCircle2, color: "#10b981" },
-    { label: "Lus", value: broadcast.read_count ?? 0, icon: Eye, color: "#0ea5e9" },
+    { label: "Envoyés", value: broadcast.sent_count ?? 0, icon: Send, color: "#E15701" },
+    { label: "Livrés", value: broadcast.delivered_count ?? 0, icon: CheckCircle2, color: "#12E046" },
+    { label: "Lus", value: broadcast.read_count ?? 0, icon: Eye, color: "#E15701" },
     { label: "Échoués", value: broadcast.failed_count ?? 0, icon: XCircle, color: "#ef4444" },
     { label: "En attente", value: broadcast.pending_count ?? 0, icon: Clock, color: "#9ca3af" },
   ]
@@ -243,7 +243,7 @@ export default function WhatsAppCampaignDetailPage() {
             className="h-full rounded-full transition-all duration-700 ease-out"
             style={{
               width: `${broadcast.progress_percent ?? 0}%`,
-              background: broadcast.status === "failed" ? "#ef4444" : "#10b981",
+              background: broadcast.status === "failed" ? "#ef4444" : "#12E046",
             }}
           />
         </div>
@@ -272,14 +272,14 @@ export default function WhatsAppCampaignDetailPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[12px] text-muted-foreground">Taux de livraison</span>
-              <span className="text-[20px] font-semibold tabular-nums" style={{ color: "#10b981" }}>
+              <span className="text-[20px] font-semibold tabular-nums" style={{ color: "#12E046" }}>
                 {deliveryRate.toFixed(1)}%
               </span>
             </div>
             <div className="h-1 rounded-full bg-muted overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${deliveryRate}%`, background: "#10b981" }}
+                style={{ width: `${deliveryRate}%`, background: "#12E046" }}
               />
             </div>
           </CardContent>
@@ -288,14 +288,14 @@ export default function WhatsAppCampaignDetailPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[12px] text-muted-foreground">Taux de lecture</span>
-              <span className="text-[20px] font-semibold tabular-nums" style={{ color: "#0ea5e9" }}>
+              <span className="text-[20px] font-semibold tabular-nums" style={{ color: "#E15701" }}>
                 {readRate.toFixed(1)}%
               </span>
             </div>
             <div className="h-1 rounded-full bg-muted overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${readRate}%`, background: "#0ea5e9" }}
+                style={{ width: `${readRate}%`, background: "#E15701" }}
               />
             </div>
           </CardContent>

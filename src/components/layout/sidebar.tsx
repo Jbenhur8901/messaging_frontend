@@ -64,15 +64,15 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           collapsed ? "lg:w-[60px]" : "lg:w-56"
         )}
       >
-        <div className="flex h-full flex-col border-r border-black/5 bg-[#f9fafb]">
-          <div className="flex h-14 shrink-0 items-center border-b border-black/5 px-3">
+        <div className="flex h-full flex-col border-r border-white/[0.06] bg-[#0f0f0f]">
+          <div className="flex h-14 shrink-0 items-center border-b border-white/[0.06] px-3">
             {collapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
                     onClick={onToggleCollapse}
-                    className="mx-auto flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-white transition-opacity hover:opacity-90"
+                    className="mx-auto flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-white/10 transition-opacity hover:opacity-90"
                   >
                     <Image
                       src={BRAND_ICON_URL}
@@ -88,7 +88,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             ) : (
               <div className="flex w-full items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/10">
                     <Image
                       src={BRAND_ICON_URL}
                       alt="Flow"
@@ -97,12 +97,12 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <p className="truncate text-sm font-semibold">Flow</p>
+                  <p className="truncate text-sm font-semibold text-white">Flow</p>
                 </div>
                 <button
                   type="button"
                   onClick={onToggleCollapse}
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
                   aria-label="Réduire la sidebar"
                 >
                   <PanelLeftClose className="h-4 w-4" />
@@ -147,8 +147,8 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                           className={cn(
                             "group flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                             sectionHasActive
-                              ? "text-foreground"
-                              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                              ? "text-white"
+                              : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                           )}
                         >
                           {section.icon && (
@@ -159,7 +159,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                           </span>
                           <ChevronDown
                             className={cn(
-                              "h-3.5 w-3.5 text-muted-foreground/50 transition-transform duration-200",
+                              "h-3.5 w-3.5 text-white/30 transition-transform duration-200",
                               !isSectionOpen && "-rotate-90"
                             )}
                           />
@@ -184,12 +184,12 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                         className={cn(
                                           "relative flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition-colors",
                                           isActive || hasActiveChild
-                                            ? "bg-primary/[0.06] font-medium text-primary"
-                                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                            ? "bg-[#E0D112]/10 font-medium text-[#E0D112]"
+                                            : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                                         )}
                                       >
                                         {(isActive || hasActiveChild) && (
-                                          <span className="absolute -left-[13px] top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                                          <span className="absolute -left-[13px] top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
                                         )}
                                         <item.icon className="h-3.5 w-3.5 shrink-0" />
                                         <span className="truncate">{item.name}</span>
@@ -197,7 +197,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                       {hasChildren && (
                                         <button
                                           type="button"
-                                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:text-foreground"
+                                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-white/30 transition-colors hover:text-white"
                                           onClick={() =>
                                             setOpenGroups((prev) => ({
                                               ...prev,
@@ -226,8 +226,8 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                               className={cn(
                                                 "block rounded-lg px-3 py-2 text-xs transition-colors",
                                                 isChildActive
-                                                  ? "font-medium text-primary"
-                                                  : "text-muted-foreground hover:text-foreground"
+                                                  ? "font-medium text-[#E0D112]"
+                                                  : "text-white/50 hover:text-white"
                                               )}
                                             >
                                               {child.name}
@@ -257,12 +257,12 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                     className={cn(
                                       "relative flex h-10 w-full items-center justify-center rounded-lg transition-colors",
                                       isActive
-                                        ? "bg-primary/[0.06] text-primary"
-                                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                        ? "bg-[#E0D112]/10 text-[#E0D112]"
+                                        : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                                     )}
                                   >
                                     {isActive && (
-                                      <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                                      <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
                                     )}
                                     <item.icon className="h-[18px] w-[18px]" />
                                   </Link>
@@ -281,12 +281,12 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                               className={cn(
                                 "relative flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                                 isActive
-                                  ? "bg-primary/[0.06] text-primary"
-                                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                  ? "bg-[#E0D112]/10 text-[#E0D112]"
+                                  : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                               )}
                             >
                               {isActive && (
-                                <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                                <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
                               )}
                               <item.icon className="h-[18px] w-[18px] shrink-0" />
                               <span className="truncate">{item.name}</span>
@@ -301,7 +301,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             </div>
 
             {bottomSections.length > 0 && (
-              <div className="mt-4 border-t border-black/5 pt-3">
+              <div className="mt-4 border-t border-white/[0.06] pt-3">
                 {bottomSections.flatMap((s) => s.items).map((item) => {
                   const isActive = activeHref === item.href
 
@@ -314,12 +314,12 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                             className={cn(
                               "relative flex h-10 w-full items-center justify-center rounded-lg transition-colors",
                               isActive
-                                ? "bg-primary/[0.06] text-primary"
-                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                ? "bg-[#E0D112]/10 text-[#E0D112]"
+                                : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                             )}
                           >
                             {isActive && (
-                              <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                              <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
                             )}
                             <item.icon className="h-[18px] w-[18px]" />
                           </Link>
@@ -336,12 +336,12 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                       className={cn(
                         "relative flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                         isActive
-                          ? "bg-primary/[0.06] text-primary"
-                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                          ? "bg-[#E0D112]/10 text-[#E0D112]"
+                          : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                       )}
                     >
                       {isActive && (
-                        <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-primary" />
+                        <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
                       )}
                       <item.icon className="h-[18px] w-[18px] shrink-0" />
                       <span className="truncate">{item.name}</span>
@@ -352,14 +352,14 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             )}
           </nav>
 
-          <div className="shrink-0 border-t border-black/5 p-2.5">
+          <div className="shrink-0 border-t border-white/[0.06] p-2.5">
             {collapsed ? (
               <div className="space-y-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center justify-center py-1">
                       <Avatar className="h-7 w-7">
-                        <AvatarFallback className="bg-accent text-[11px] font-medium text-muted-foreground">
+                        <AvatarFallback className="bg-white/[0.08] text-[11px] font-medium text-white/60">
                           {userInitials}
                         </AvatarFallback>
                       </Avatar>
@@ -374,7 +374,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                     <button
                       type="button"
                       onClick={logout}
-                      className="flex h-9 w-full items-center justify-center rounded-md text-rose-500 transition-colors hover:bg-rose-50"
+                      className="flex h-9 w-full items-center justify-center rounded-md text-rose-400 transition-colors hover:bg-rose-500/10"
                     >
                       <LogOut className="h-4 w-4" />
                     </button>
@@ -386,16 +386,16 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
                   <Avatar className="h-7 w-7 shrink-0">
-                    <AvatarFallback className="bg-accent text-[11px] font-medium text-muted-foreground">
+                    <AvatarFallback className="bg-white/[0.08] text-[11px] font-medium text-white/60">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium leading-tight">
+                    <p className="truncate text-[13px] font-medium leading-tight text-white">
                       {user ? displayName : "Utilisateur"}
                     </p>
                     {user?.email && (
-                      <p className="truncate text-[11px] text-muted-foreground leading-tight">
+                      <p className="truncate text-[11px] text-white/40 leading-tight">
                         {user.email}
                       </p>
                     )}
@@ -404,7 +404,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                 <button
                   type="button"
                   onClick={logout}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12px] font-medium text-rose-500 transition-colors hover:bg-rose-50"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12px] font-medium text-rose-400 transition-colors hover:bg-rose-500/10"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   Se déconnecter

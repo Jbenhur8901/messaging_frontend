@@ -404,16 +404,16 @@ export default function AIToolsPage() {
             <div className="flex items-center gap-3">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                  aiEnabled ? "bg-blue-100" : "bg-gray-100"
+                  aiEnabled ? "bg-blue-100" : "bg-muted"
                 }`}
               >
                 <Bot
-                  className={`h-5 w-5 ${aiEnabled ? "text-blue-600" : "text-gray-400"}`}
+                  className={`h-5 w-5 ${aiEnabled ? "text-[#E0D112]" : "text-muted-foreground/60"}`}
                 />
               </div>
               <div>
-                <p className="text-[14px] font-semibold text-gray-900">Agent IA</p>
-                <p className="text-[12px] text-gray-500">
+                <p className="text-[14px] font-semibold text-foreground">Agent IA</p>
+                <p className="text-[12px] text-muted-foreground">
                   {aiEnabled
                     ? "L'IA répond automatiquement aux messages entrants"
                     : "Activez pour répondre automatiquement via l'IA"}
@@ -424,7 +424,7 @@ export default function AIToolsPage() {
               {aiEnabled && (
                 <button
                   type="button"
-                  className="flex h-8 items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 text-[12px] font-medium text-blue-600 transition-colors hover:bg-blue-50"
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-[#E0D112]/30 bg-card px-3 text-[12px] font-medium text-[#E0D112] transition-colors hover:bg-[#E0D112]/10"
                   onClick={() => setAiDialogOpen(true)}
                 >
                   <Settings className="h-3.5 w-3.5" />
@@ -442,32 +442,32 @@ export default function AIToolsPage() {
             </div>
           </div>
           {aiEnabled && aiInstructions && (
-            <div className="mt-4 rounded-lg bg-white/80 p-3">
+            <div className="mt-4 rounded-lg bg-card/80 p-3">
               <div className="flex items-center gap-2 mb-1.5">
                 <Zap className="h-3 w-3 text-blue-500" />
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/60">
                   Instructions
                 </span>
               </div>
-              <p className="text-[12px] leading-relaxed text-gray-600 line-clamp-3">
+              <p className="text-[12px] leading-relaxed text-muted-foreground line-clamp-3">
                 {aiInstructions}
               </p>
             </div>
           )}
           {aiEnabled && (
-            <div className="mt-3 flex items-center gap-4 flex-wrap text-[11px] text-gray-400">
+            <div className="mt-3 flex items-center gap-4 flex-wrap text-[11px] text-muted-foreground/60">
               <span>
                 Modèle :{" "}
-                <span className="font-medium text-gray-600">{aiModel}</span>
+                <span className="font-medium text-muted-foreground">{aiModel}</span>
               </span>
               <span>
                 Session :{" "}
-                <span className="font-medium text-gray-600">{aiTimeline}s</span>
+                <span className="font-medium text-muted-foreground">{aiTimeline}s</span>
               </span>
               {aiTools.length > 0 && (
                 <span>
                   Outils :{" "}
-                  <span className="font-medium text-gray-600">
+                  <span className="font-medium text-muted-foreground">
                     {aiTools.map((t) => t === "file_search" ? "Recherche fichiers" : t === "web_search" ? "Recherche web" : t).join(", ")}
                   </span>
                 </span>
@@ -475,7 +475,7 @@ export default function AIToolsPage() {
               {aiTools.includes("file_search") && aiVectorStoreIds && (
                 <span>
                   Bases de connaissance :{" "}
-                  <span className="font-medium text-gray-600 font-mono">{aiVectorStoreIds}</span>
+                  <span className="font-medium text-muted-foreground font-mono">{aiVectorStoreIds}</span>
                 </span>
               )}
             </div>
@@ -495,26 +495,26 @@ export default function AIToolsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-[640px] max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-7 shadow-2xl"
+            className="w-full max-w-[640px] max-h-[90vh] overflow-y-auto rounded-2xl bg-card p-7 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100">
-                  <Bot className="h-4.5 w-4.5 text-blue-600" />
+                  <Bot className="h-4.5 w-4.5 text-[#E0D112]" />
                 </div>
                 <div>
-                  <h3 className="text-[15px] font-semibold text-gray-900">
+                  <h3 className="text-[15px] font-semibold text-foreground">
                     Configurer l&apos;agent IA
                   </h3>
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-[11px] text-muted-foreground/60">
                     Personnalisez le comportement de l&apos;assistance automatique
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-full p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground"
                 onClick={() => setAiDialogOpen(false)}
               >
                 <XCircle className="h-5 w-5" />
@@ -523,10 +523,10 @@ export default function AIToolsPage() {
 
             <div className="space-y-5">
               <div className="space-y-2">
-                <label className="text-[13px] font-medium text-gray-700">
+                <label className="text-[13px] font-medium text-foreground/80">
                   Instructions de l&apos;agent
                 </label>
-                <p className="text-[11px] leading-relaxed text-gray-400">
+                <p className="text-[11px] leading-relaxed text-muted-foreground/60">
                   Décrivez le rôle, le ton et les limites de l&apos;IA. Soyez précis pour
                   de meilleurs résultats.
                 </p>
@@ -534,24 +534,24 @@ export default function AIToolsPage() {
                   value={aiInstructions}
                   onChange={(e) => setAiInstructions(e.target.value)}
                   placeholder="Ex: Tu es un assistant commercial pour notre entreprise. Réponds de manière professionnelle et concise aux questions des clients sur nos produits et services. Ne donne jamais d'informations personnelles ou confidentielles..."
-                  className="min-h-[140px] rounded-lg border-gray-200 text-[13px] leading-relaxed placeholder:text-gray-400"
+                  className="min-h-[140px] rounded-lg border-border text-[13px] leading-relaxed placeholder:text-muted-foreground/60"
                 />
               </div>
 
               {/* Tools */}
               <div className="space-y-3">
                 <div>
-                  <label className="text-[13px] font-medium text-gray-700">
+                  <label className="text-[13px] font-medium text-foreground/80">
                     Outils de l&apos;agent
                   </label>
-                  <p className="text-[11px] leading-relaxed text-gray-400 mt-0.5">
+                  <p className="text-[11px] leading-relaxed text-muted-foreground/60 mt-0.5">
                     Activez les outils que l&apos;agent peut utiliser pour enrichir ses réponses.
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   {/* file_search */}
-                  <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted transition-colors">
                     <Checkbox
                       checked={aiTools.includes("file_search")}
                       onCheckedChange={(checked) => {
@@ -566,9 +566,9 @@ export default function AIToolsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <Search className="h-3.5 w-3.5 text-blue-500" />
-                        <span className="text-[13px] font-medium text-gray-700">file_search</span>
+                        <span className="text-[13px] font-medium text-foreground/80">file_search</span>
                       </div>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
+                      <p className="text-[11px] text-muted-foreground/60 mt-0.5">
                         Recherche dans les fichiers d&apos;une base de connaissance.
                       </p>
                     </div>
@@ -577,7 +577,7 @@ export default function AIToolsPage() {
                   {/* vector_store_ids — visible when file_search enabled */}
                   {aiTools.includes("file_search") && (
                     <div className="ml-8 space-y-1.5">
-                      <Label className="text-[12px] text-gray-500">
+                      <Label className="text-[12px] text-muted-foreground">
                         IDs des bases de connaissance (séparés par des virgules)
                       </Label>
                       {vectorStores.length > 0 ? (
@@ -593,7 +593,7 @@ export default function AIToolsPage() {
                                   className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
                                     isSelected
                                       ? "border-blue-300 bg-blue-50 text-blue-700"
-                                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                                      : "border-border bg-card text-muted-foreground hover:border-border"
                                   }`}
                                   onClick={() => {
                                     const currentIds = aiVectorStoreIds.split(",").map((s) => s.trim()).filter(Boolean)
@@ -624,14 +624,14 @@ export default function AIToolsPage() {
                           className="h-8 text-[11px] font-mono"
                         />
                       )}
-                      <p className="text-[10px] text-gray-400">
+                      <p className="text-[10px] text-muted-foreground/60">
                         Sélectionnez parmi vos bases de connaissance ou entrez les IDs manuellement.
                       </p>
                     </div>
                   )}
 
                   {/* web_search */}
-                  <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted transition-colors">
                     <Checkbox
                       checked={aiTools.includes("web_search")}
                       onCheckedChange={(checked) => {
@@ -646,9 +646,9 @@ export default function AIToolsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <Globe className="h-3.5 w-3.5 text-green-500" />
-                        <span className="text-[13px] font-medium text-gray-700">web_search</span>
+                        <span className="text-[13px] font-medium text-foreground/80">web_search</span>
                       </div>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
+                      <p className="text-[11px] text-muted-foreground/60 mt-0.5">
                         Recherche sur le web pour des informations à jour.
                       </p>
                     </div>
@@ -656,11 +656,11 @@ export default function AIToolsPage() {
                 </div>
               </div>
 
-              <details className="group rounded-lg border border-gray-200">
-                <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-[13px] font-medium text-gray-600 hover:bg-gray-50">
+              <details className="group rounded-lg border border-border">
+                <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-[13px] font-medium text-muted-foreground hover:bg-muted">
                   Configuration avancée
                   <svg
-                    className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180"
+                    className="h-4 w-4 text-muted-foreground/60 transition-transform group-open:rotate-180"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -673,11 +673,11 @@ export default function AIToolsPage() {
                     />
                   </svg>
                 </summary>
-                <div className="space-y-3 border-t border-gray-100 p-4">
+                <div className="space-y-3 border-t border-border/50 p-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[12px] text-gray-500">Modèle</Label>
+                    <Label className="text-[12px] text-muted-foreground">Modèle</Label>
                     <select
-                      className="w-full h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px]"
+                      className="w-full h-9 rounded-lg border border-border bg-card px-3 text-[13px]"
                       value={aiModel}
                       onChange={(e) => setAiModel(e.target.value)}
                     >
@@ -690,7 +690,7 @@ export default function AIToolsPage() {
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[12px] text-gray-500">
+                    <Label className="text-[12px] text-muted-foreground">
                       Durée session (sec)
                     </Label>
                     <Input
@@ -700,7 +700,7 @@ export default function AIToolsPage() {
                       placeholder="3600"
                       className="h-9 text-[12px]"
                     />
-                    <p className="text-[11px] text-gray-400">
+                    <p className="text-[11px] text-muted-foreground/60">
                       L&apos;IA garde le contexte de la conversation pendant cette durée.
                     </p>
                   </div>
@@ -768,7 +768,7 @@ export default function AIToolsPage() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
-                      <Database className="h-4 w-4 text-blue-600" />
+                      <Database className="h-4 w-4 text-[#E0D112]" />
                     </div>
                     <div>
                       <p className="text-[13px] font-medium">{vs.name}</p>
@@ -886,18 +886,18 @@ export default function AIToolsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50">
-                <Database className="h-4 w-4 text-blue-600" />
+                <Database className="h-4 w-4 text-[#E0D112]" />
               </div>
               <div>
-                <h3 className="text-[15px] font-semibold text-gray-900">
+                <h3 className="text-[15px] font-semibold text-foreground">
                   Créer une base de connaissance
                 </h3>
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[11px] text-muted-foreground/60">
                   Donnez un nom à votre base de connaissances
                 </p>
               </div>
@@ -949,7 +949,7 @@ export default function AIToolsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center gap-3">
@@ -957,10 +957,10 @@ export default function AIToolsPage() {
                 <Upload className="h-4 w-4 text-green-600" />
               </div>
               <div>
-                <h3 className="text-[15px] font-semibold text-gray-900">
+                <h3 className="text-[15px] font-semibold text-foreground">
                   Ajouter des documents
                 </h3>
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[11px] text-muted-foreground/60">
                   Uploadez des fichiers depuis votre appareil
                 </p>
               </div>
@@ -984,22 +984,22 @@ export default function AIToolsPage() {
                   }}
                 />
                 <div
-                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 p-4 cursor-pointer hover:border-gray-300 transition-colors"
+                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-border p-4 cursor-pointer hover:border-border transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {uploadFiles.length > 0 ? (
                     <div className="text-center">
-                      <p className="text-[13px] font-medium text-gray-700">
+                      <p className="text-[13px] font-medium text-foreground/80">
                         Fichiers sélectionnés
                       </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
+                      <p className="text-[11px] text-muted-foreground/60 mt-0.5">
                         {uploadFiles.map((f) => f.name).join(", ")}
                       </p>
                     </div>
                   ) : (
                     <div className="text-center">
-                      <Upload className="h-5 w-5 text-gray-300 mx-auto mb-1" />
-                      <p className="text-[12px] text-gray-400">
+                      <Upload className="h-5 w-5 text-muted-foreground/40 mx-auto mb-1" />
+                      <p className="text-[12px] text-muted-foreground/60">
                         Cliquez pour sélectionner des fichiers
                       </p>
                     </div>

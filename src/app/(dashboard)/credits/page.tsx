@@ -78,7 +78,7 @@ const requestStatusMeta: Record<
   pending: { label: "En attente", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Clock },
   approved: { label: "Approuvée", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: CheckCircle },
   rejected: { label: "Rejetée", color: "text-red-700", bg: "bg-red-50 border-red-200", icon: XCircle },
-  cancelled: { label: "Annulée", color: "text-gray-700", bg: "bg-gray-50 border-gray-200", icon: Ban },
+  cancelled: { label: "Annulée", color: "text-foreground/80", bg: "bg-muted border-border", icon: Ban },
 }
 
 export default function CreditsPage() {
@@ -389,8 +389,8 @@ export default function CreditsPage() {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorCredits" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0b5fff" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#0b5fff" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#12E046" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#12E046" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -417,7 +417,7 @@ export default function CreditsPage() {
                   <Area
                     type="monotone"
                     dataKey="credits"
-                    stroke="#0b5fff"
+                    stroke="#12E046"
                     strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#colorCredits)"
@@ -435,16 +435,16 @@ export default function CreditsPage() {
 
       {/* Request CTA */}
       <div style={stagger(3)}>
-        <div className="flex items-center justify-between rounded-xl border border-blue-200/60 bg-gradient-to-r from-blue-50/80 to-sky-50/60 p-5">
+        <div className="flex items-center justify-between rounded-xl border border-primary/25 bg-gradient-to-r from-primary/10 to-[rgba(225,87,1,0.08)] p-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
-              <CreditCard className="h-5 w-5 text-blue-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
+              <CreditCard className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-gray-900">
+              <p className="text-[13px] font-semibold text-foreground">
                 Besoin de crédits ?
               </p>
-              <p className="text-[11px] text-gray-500 mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 Effectuez votre paiement puis soumettez votre demande avec la preuve
               </p>
             </div>
@@ -469,7 +469,7 @@ export default function CreditsPage() {
             </h2>
           </div>
           <select
-            className="h-7 rounded-lg border border-gray-200 bg-white px-2 text-[11px]"
+            className="h-7 rounded-lg border border-border bg-card px-2 text-[11px]"
             value={requestStatusFilter}
             onChange={(e) => setRequestStatusFilter(e.target.value as CreditRequestStatus | "all")}
           >
@@ -625,7 +625,7 @@ export default function CreditsPage() {
                         ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                         : tx.type === "consumption"
                         ? "bg-amber-50 border-amber-200 text-amber-700"
-                        : "bg-gray-50 border-gray-200 text-gray-700"
+                        : "bg-muted border-border text-foreground/80"
                       return (
                         <tr key={tx.id} className="border-b border-border/20 last:border-0 hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-3 text-[12px] text-muted-foreground whitespace-nowrap">
@@ -696,7 +696,7 @@ export default function CreditsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
@@ -705,17 +705,17 @@ export default function CreditsPage() {
                   <CreditCard className="h-4.5 w-4.5 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-[15px] font-semibold text-gray-900">
+                  <h3 className="text-[15px] font-semibold text-foreground">
                     Demander des crédits
                   </h3>
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-[11px] text-muted-foreground/60">
                     Votre demande sera validée par un administrateur
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-full p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground"
                 onClick={() => {
                   setRequestDialogOpen(false)
                   setPaymentProof(null)
@@ -739,14 +739,14 @@ export default function CreditsPage() {
                   min="1"
                   className="h-9 rounded-lg text-[13px]"
                 />
-                <p className="text-[10px] text-gray-400">Crédits utilises pour WhatsApp et l'automatisation IA.</p>
+                <p className="text-[10px] text-muted-foreground/60">Crédits utilises pour WhatsApp et l'automatisation IA.</p>
               </div>
 
               {/* Payment method */}
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Moyen de paiement</Label>
                 <select
-                  className="w-full h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px]"
+                  className="w-full h-9 rounded-lg border border-border bg-card px-3 text-[13px]"
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 >
@@ -780,26 +780,26 @@ export default function CreditsPage() {
                   }}
                 />
                 <div
-                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 p-4 cursor-pointer hover:border-gray-300 transition-colors"
+                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-border p-4 cursor-pointer hover:border-border transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {paymentProof ? (
                     <div className="flex items-center gap-2 text-center">
                       <FileImage className="h-4 w-4 text-blue-500 shrink-0" />
                       <div>
-                        <p className="text-[12px] font-medium text-gray-700">{paymentProof.name}</p>
-                        <p className="text-[10px] text-gray-400">
+                        <p className="text-[12px] font-medium text-foreground/80">{paymentProof.name}</p>
+                        <p className="text-[10px] text-muted-foreground/60">
                           {(paymentProof.size / 1024).toFixed(0)} Ko
                         </p>
                       </div>
                     </div>
                   ) : (
                     <div className="text-center">
-                      <Upload className="h-5 w-5 text-gray-300 mx-auto mb-1" />
-                      <p className="text-[12px] text-gray-400">
+                      <Upload className="h-5 w-5 text-muted-foreground/40 mx-auto mb-1" />
+                      <p className="text-[12px] text-muted-foreground/60">
                         Capture d&apos;écran ou reçu de paiement
                       </p>
-                      <p className="text-[10px] text-gray-300 mt-0.5">
+                      <p className="text-[10px] text-muted-foreground/40 mt-0.5">
                         Image ou PDF
                       </p>
                     </div>
@@ -808,9 +808,9 @@ export default function CreditsPage() {
               </div>
 
               {/* How it works */}
-              <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5">
-                <p className="text-[11px] font-semibold text-gray-500 mb-1">Comment ça marche ?</p>
-                <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-gray-400">
+              <div className="rounded-lg bg-muted border border-border/50 px-3 py-2.5">
+                <p className="text-[11px] font-semibold text-muted-foreground mb-1">Comment ça marche ?</p>
+                <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-muted-foreground/60">
                   <li>Effectuez votre paiement via le mode choisi</li>
                   <li>Joignez la preuve de paiement ci-dessus</li>
                   <li>Un administrateur vérifiera et approuvera</li>
@@ -857,14 +857,14 @@ export default function CreditsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-[15px] font-semibold text-gray-900">Détail de la demande</h3>
+              <h3 className="text-[15px] font-semibold text-foreground">Détail de la demande</h3>
               <button
                 type="button"
-                className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-full p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground"
                 onClick={() => setDetailRequest(null)}
               >
                 <XCircle className="h-5 w-5" />
@@ -873,27 +873,27 @@ export default function CreditsPage() {
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Montant</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Montant</p>
                   <p className="text-[13px] font-medium">{formatNumber(detailRequest.amount)} crédits</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Paiement</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Paiement</p>
                   <p className="text-[13px] font-medium">
                     {detailRequest.payment_method === "mobile_money" ? "Mobile Money" : detailRequest.payment_method === "airtel_money" ? "Airtel Money" : "Cash"}
                   </p>
                 </div>
                 {detailRequest.payment_reference && (
                   <div className="col-span-2">
-                    <p className="text-[11px] text-gray-400 uppercase tracking-wide">Référence</p>
+                    <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Référence</p>
                     <p className="text-[13px] font-mono">{detailRequest.payment_reference}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Date</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Date</p>
                   <p className="text-[13px]">{formatDate(detailRequest.created_at)}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">Statut</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Statut</p>
                   {(() => {
                     const meta = requestStatusMeta[detailRequest.status] || requestStatusMeta.pending
                     const StatusIcon = meta.icon
@@ -908,7 +908,7 @@ export default function CreditsPage() {
               </div>
               {detailRequest.payment_proof_url && (
                 <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Preuve de paiement</p>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wide mb-1">Preuve de paiement</p>
                   <a
                     href={detailRequest.payment_proof_url}
                     target="_blank"
@@ -924,7 +924,7 @@ export default function CreditsPage() {
                 <div className={`rounded-lg px-3 py-2 ${
                   detailRequest.status === "rejected" ? "bg-red-50/60 border border-red-200/60" : "bg-emerald-50/60 border border-emerald-200/60"
                 }`}>
-                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
                     Note de l&apos;administrateur
                   </p>
                   <p className={`text-[12px] ${detailRequest.status === "rejected" ? "text-red-700" : "text-emerald-700"}`}>

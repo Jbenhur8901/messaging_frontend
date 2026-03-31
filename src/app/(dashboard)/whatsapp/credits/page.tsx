@@ -130,10 +130,16 @@ export default function WhatsAppCreditsPage() {
   // Purchase dialog state
   const [selectedPkg, setSelectedPkg] = useState<{ item: PkgItem; category: CatKey } | null>(null)
   const [paymentMethod, setPaymentMethod] = useState("mobile_money")
-  const [paymentRef, setPaymentRef] = useState("")
-  const [paymentProof, setPaymentProof] = useState<File | null>(null)
   const [isPurchasing, setIsPurchasing] = useState(false)
-  const purchaseFileRef = useRef<HTMLInputElement>(null)
+
+  // Checkout block state (UI)
+  const [payerFirstName, setPayerFirstName] = useState("")
+  const [payerLastName, setPayerLastName] = useState("")
+  const PHONE_PREFIX = "24206"
+  const PHONE_MAX_DIGITS = 12
+  const PHONE_SUFFIX_MAX_DIGITS = PHONE_MAX_DIGITS - PHONE_PREFIX.length
+  const [payerPhoneSuffix, setPayerPhoneSuffix] = useState("")
+  const [payerOperator, setPayerOperator] = useState<"mtn_momo" | "airtel_money">("mtn_momo")
 
   // Custom top-up dialog
   const [topUpDialogOpen, setTopUpDialogOpen] = useState(false)
@@ -204,24 +210,16 @@ export default function WhatsAppCreditsPage() {
 
   const handlePurchase = async () => {
     if (!selectedPkg) return
-    if (!paymentProof) {
-      toast.error("La preuve de paiement est obligatoire")
-      return
-    }
-    const paymentProofError = validatePaymentProofFile(paymentProof)
-    if (paymentProofError) {
-      toast.error(paymentProofError)
+    const payerPhone = `${PHONE_PREFIX}${payerPhoneSuffix}`
+    if (!payerFirstName.trim() || !payerLastName.trim() || !payerPhoneSuffix.trim()) {
+      toast.error("Veuillez remplir prénom, nom et téléphone.")
       return
     }
     setIsPurchasing(true)
     try {
-      await whatsappService.purchasePackage(
-        selectedPkg.item.code,
-        paymentRef,
-        paymentMethod,
-        paymentProof
-      )
-      toast.success("Demande envoyée avec succès !")
+      // Paiement en cours d’intégration côté API. Bloc UI uniquement.
+      await new Promise((r) => setTimeout(r, 250))
+      toast.message("Paiement", { description: "Paiement prêt. Intégration du paiement en cours." })
       closePurchaseDialog()
       loadData()
     } catch (error) {
@@ -269,9 +267,11 @@ export default function WhatsAppCreditsPage() {
 
   const closePurchaseDialog = () => {
     setSelectedPkg(null)
-    setPaymentRef("")
-    setPaymentProof(null)
     setPaymentMethod("mobile_money")
+    setPayerFirstName("")
+    setPayerLastName("")
+    setPayerPhoneSuffix("")
+    setPayerOperator("mtn_momo")
   }
 
   const closeTopUpDialog = () => {
@@ -432,14 +432,12 @@ export default function WhatsAppCreditsPage() {
                       key={item.code}
                       className={`relative rounded-xl border p-4 transition-all hover:shadow-md cursor-pointer ${
                         isBest
-                          ? `${c.border} ${c.bg} ring-1 ring-offset-0 ${c.border}`
-                          : "border-border/40 bg-white hover:border-border"
+                          ? "border-[#E0D112]/35 bg-card ring-1 ring-[#E0D112]/25 hover:border-[#E0D112]/55"
+                          : "border-border/40 bg-card hover:border-border"
                       }`}
                       style={stagger(i + 3)}
                       onClick={() => {
                         setSelectedPkg({ item, category: catKey })
-                        setPaymentRef("")
-                        setPaymentProof(null)
                         setPaymentMethod("mobile_money")
                       }}
                     >
@@ -495,12 +493,10 @@ export default function WhatsAppCreditsPage() {
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedPkg({ item, category: catKey })
-                            setPaymentRef("")
-                            setPaymentProof(null)
                             setPaymentMethod("mobile_money")
                           }}
                         >
-                          Demander
+                          Payer
                         </Button>
                       </div>
                     </div>
@@ -519,8 +515,8 @@ export default function WhatsAppCreditsPage() {
                       <Zap className="h-4 w-4 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-[13px] font-semibold text-gray-900">Montant personnalisé</p>
-                      <p className="text-[11px] text-gray-500">Rechargez le montant exact dont vous avez besoin</p>
+                      <p className="text-[13px] font-semibold text-foreground">Montant personnalisé</p>
+                      <p className="text-[11px] text-muted-foreground">Rechargez le montant exact dont vous avez besoin</p>
                     </div>
                   </div>
                   <Button size="sm" variant="outline" className="h-8 text-[12px] rounded-lg">
@@ -544,7 +540,7 @@ export default function WhatsAppCreditsPage() {
           </div>
           <div className="flex items-center gap-2">
             <select
-              className="h-7 rounded-lg border border-gray-200 bg-white px-2 text-[11px]"
+              className="h-7 rounded-lg border border-border bg-card px-2 text-[11px]"
               value={txTypeFilter}
               onChange={(e) => { setTxTypeFilter(e.target.value); setTxPage(1) }}
             >
@@ -555,7 +551,7 @@ export default function WhatsAppCreditsPage() {
               <option value="expiration">Expiration</option>
             </select>
             <select
-              className="h-7 rounded-lg border border-gray-200 bg-white px-2 text-[11px]"
+              className="h-7 rounded-lg border border-border bg-card px-2 text-[11px]"
               value={txCompartmentFilter}
               onChange={(e) => { setTxCompartmentFilter(e.target.value); setTxPage(1) }}
             >
@@ -647,7 +643,7 @@ export default function WhatsAppCreditsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
@@ -656,17 +652,17 @@ export default function WhatsAppCreditsPage() {
                   {(() => { const Icon = CAT[selectedPkg.category].icon; return <Icon className={`h-4.5 w-4.5 ${CAT[selectedPkg.category].color}`} /> })()}
                 </div>
                 <div>
-                  <h3 className="text-[15px] font-semibold text-gray-900">
-                    Acheter un pack {CAT[selectedPkg.category].label}
+                  <h3 className="text-[15px] font-semibold text-foreground">
+                    Paiement du pack {CAT[selectedPkg.category].label}
                   </h3>
-                  <p className="text-[11px] text-gray-400">
-                    Votre demande sera traitée par un administrateur
+                  <p className="text-[11px] text-muted-foreground/60">
+                    Remplissez les informations puis procédez au paiement.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-full p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground"
                 onClick={closePurchaseDialog}
               >
                 <XCircle className="h-5 w-5" />
@@ -677,10 +673,10 @@ export default function WhatsAppCreditsPage() {
             <div className={`rounded-xl border ${CAT[selectedPkg.category].border} ${CAT[selectedPkg.category].bg}/50 p-4 mb-5`}>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[13px] font-semibold text-gray-900">
+                  <p className="text-[13px] font-semibold text-foreground">
                     {selectedPkg.item.code} — {selectedPkg.item.name}
                   </p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
                     {selectedPkg.item.messages > 0
                       ? `${formatNumber(selectedPkg.item.messages)} messages · ${selectedPkg.item.unitPrice} FCFA/msg`
                       : "Crédits libres · Polyvalent"
@@ -695,76 +691,79 @@ export default function WhatsAppCreditsPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Payment method */}
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Moyen de paiement</Label>
-                <select
-                  className="w-full h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px]"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                >
-                  <option value="mobile_money">Mobile Money</option>
-                  <option value="airtel_money">Airtel Money</option>
-                  <option value="cash">Cash</option>
-                </select>
-              </div>
+              {/* Checkout block (like screenshot) */}
+              <div className="rounded-xl border border-border/40 bg-muted/20 p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px]">Prénom *</Label>
+                    <Input
+                      value={payerFirstName}
+                      onChange={(e) => setPayerFirstName(e.target.value)}
+                      className="h-9 rounded-lg text-[13px]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px]">Nom *</Label>
+                    <Input
+                      value={payerLastName}
+                      onChange={(e) => setPayerLastName(e.target.value)}
+                      className="h-9 rounded-lg text-[13px]"
+                    />
+                  </div>
+                </div>
 
-              {/* Payment reference */}
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Référence de paiement</Label>
-                <Input
-                  value={paymentRef}
-                  onChange={(e) => setPaymentRef(e.target.value)}
-                  placeholder="TXN123456 ou numéro de transaction"
-                  className="h-9 rounded-lg text-[13px]"
-                />
-              </div>
+                <div className="mt-3 space-y-1.5">
+                  <Label className="text-[13px]">Téléphone *</Label>
+                  <div className="flex h-9 overflow-hidden rounded-lg border border-border bg-card">
+                    <div className="flex items-center justify-center px-3 text-[13px] font-medium text-muted-foreground">
+                      {PHONE_PREFIX}
+                    </div>
+                    <div className="w-px bg-border/60" />
+                    <input
+                      value={payerPhoneSuffix}
+                      inputMode="numeric"
+                      onChange={(e) => {
+                        const digitsOnly = e.currentTarget.value.replace(/\D/g, "")
+                        setPayerPhoneSuffix(digitsOnly.slice(0, PHONE_SUFFIX_MAX_DIGITS))
+                      }}
+                      placeholder="XXXXXXX"
+                      className="h-full w-full bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
+                    />
+                  </div>
+                </div>
 
-              {/* Payment proof */}
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Preuve de paiement *</Label>
-                <input
-                  ref={purchaseFileRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    const paymentProofError = validatePaymentProofFile(file)
-                    if (paymentProofError) {
-                      toast.error(paymentProofError)
-                      e.currentTarget.value = ""
-                      return
-                    }
-                    setPaymentProof(file)
-                  }}
-                />
-                <div
-                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 p-4 cursor-pointer hover:border-gray-300 transition-colors"
-                  onClick={() => purchaseFileRef.current?.click()}
-                >
-                  {paymentProof ? (
-                    <div className="flex items-center gap-2 text-center">
-                      <FileImage className="h-4 w-4 text-blue-500 shrink-0" />
-                      <div>
-                        <p className="text-[12px] font-medium text-gray-700">{paymentProof.name}</p>
-                        <p className="text-[10px] text-gray-400">
-                          {(paymentProof.size / 1024).toFixed(0)} Ko
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <Upload className="h-5 w-5 text-gray-300 mx-auto mb-1" />
-                      <p className="text-[12px] text-gray-400">
-                        Capture d&apos;écran ou reçu de paiement
-                      </p>
-                      <p className="text-[10px] text-gray-300 mt-0.5">
-                        JPEG, PNG ou WEBP (max 5 MB)
-                      </p>
-                    </div>
-                  )}
+                <div className="mt-3 space-y-2">
+                  <Label className="text-[13px]">Opérateur</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPayerOperator("mtn_momo")
+                        setPaymentMethod("mobile_money")
+                      }}
+                      className={
+                        payerOperator === "mtn_momo"
+                          ? "h-9 rounded-lg border border-[#E0D112]/40 bg-[#E0D112]/10 text-[13px] font-medium text-[#E0D112]"
+                          : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
+                      }
+                    >
+                      MTN MoMo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPayerOperator("airtel_money")
+                        setPaymentMethod("airtel_money")
+                      }}
+                      className={
+                        payerOperator === "airtel_money"
+                          ? "h-9 rounded-lg border border-[#E0D112]/40 bg-[#E0D112]/10 text-[13px] font-medium text-[#E0D112]"
+                          : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
+                      }
+                    >
+                      Airtel Money
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -779,10 +778,10 @@ export default function WhatsAppCreditsPage() {
                 <Button
                   className="h-9 rounded-lg px-5 text-[13px] gap-2"
                   onClick={handlePurchase}
-                  disabled={isPurchasing || !paymentProof}
+                  disabled={isPurchasing}
                 >
                   {isPurchasing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  Envoyer la demande
+                  Payer {formatNumber(selectedPkg.item.totalPrice)} XAF
                 </Button>
               </div>
             </div>
@@ -800,7 +799,7 @@ export default function WhatsAppCreditsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
@@ -809,17 +808,17 @@ export default function WhatsAppCreditsPage() {
                   <Zap className="h-4.5 w-4.5 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="text-[15px] font-semibold text-gray-900">
+                  <h3 className="text-[15px] font-semibold text-foreground">
                     Recharge personnalisée
                   </h3>
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-[11px] text-muted-foreground/60">
                     Rechargez un montant libre en crédits WhatsApp
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-full p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground"
                 onClick={closeTopUpDialog}
               >
                 <XCircle className="h-5 w-5" />
@@ -877,26 +876,26 @@ export default function WhatsAppCreditsPage() {
                   }}
                 />
                 <div
-                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 p-4 cursor-pointer hover:border-gray-300 transition-colors"
+                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-border p-4 cursor-pointer hover:border-border transition-colors"
                   onClick={() => topUpFileRef.current?.click()}
                 >
                   {topUpProof ? (
                     <div className="flex items-center gap-2 text-center">
                       <FileImage className="h-4 w-4 text-blue-500 shrink-0" />
                       <div>
-                        <p className="text-[12px] font-medium text-gray-700">{topUpProof.name}</p>
-                        <p className="text-[10px] text-gray-400">
+                        <p className="text-[12px] font-medium text-foreground/80">{topUpProof.name}</p>
+                        <p className="text-[10px] text-muted-foreground/60">
                           {(topUpProof.size / 1024).toFixed(0)} Ko
                         </p>
                       </div>
                     </div>
                   ) : (
                     <div className="text-center">
-                      <Upload className="h-5 w-5 text-gray-300 mx-auto mb-1" />
-                      <p className="text-[12px] text-gray-400">
+                      <Upload className="h-5 w-5 text-muted-foreground/40 mx-auto mb-1" />
+                      <p className="text-[12px] text-muted-foreground/60">
                         Capture d&apos;écran ou reçu de paiement
                       </p>
-                      <p className="text-[10px] text-gray-300 mt-0.5">
+                      <p className="text-[10px] text-muted-foreground/40 mt-0.5">
                         JPEG, PNG ou WEBP (max 5 MB)
                       </p>
                     </div>

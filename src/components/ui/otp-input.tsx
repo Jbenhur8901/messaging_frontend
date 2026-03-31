@@ -110,10 +110,10 @@ export const OTPInput = React.forwardRef<HTMLInputElement, OTPInputProps>(
             onKeyDown={(e) => handleKeyDown(index, e)}
             onPaste={handlePaste}
             className={cn(
-              "h-11 w-10 rounded-lg border text-center text-[15px] font-mono",
-              "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
-              "disabled:cursor-not-allowed disabled:opacity-60",
-              hasError && "border-destructive/60"
+              "h-12 w-12 rounded-xl border border-white/10 bg-white/[0.03] text-center text-xl font-bold text-white transition-all",
+              "focus:border-primary/50 focus:outline-none focus:ring-4 focus:ring-primary/10",
+              "disabled:cursor-not-allowed disabled:opacity-40",
+              hasError && "border-destructive/50"
             )}
           />
         ))}
