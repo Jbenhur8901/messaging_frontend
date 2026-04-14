@@ -57,9 +57,20 @@ export default function DashboardLayout({
       return
     }
 
-    // If we have a token but no user, fetch the profile
+    // If we have a token but no user, check storage first (avoids race with Zustand rehydration)
     let currentUser = user
-    if (!user) {
+    if (!currentUser) {
+      const storedUserStr = authStorage.getItem("user")
+      if (storedUserStr) {
+        try {
+          currentUser = JSON.parse(storedUserStr)
+        } catch {
+          // Invalid JSON in storage, will fetch from API below
+        }
+      }
+    }
+
+    if (!currentUser) {
       try {
         await fetchProfile()
         const storedUser = authStorage.getItem("user")

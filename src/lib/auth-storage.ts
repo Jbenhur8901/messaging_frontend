@@ -8,6 +8,12 @@ type StorageKey =
   | "admin_token"
   | "admin_user"
 
+const readFromCookie = (key: string): string | null => {
+  if (!isBrowser()) return null
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${key}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 const readFromSessionFirst = (key: string): string | null => {
   if (!isBrowser()) return null
   const sessionValue = sessionStorage.getItem(key)
@@ -18,6 +24,14 @@ const readFromSessionFirst = (key: string): string | null => {
     sessionStorage.setItem(key, localValue)
     localStorage.removeItem(key)
     return localValue
+  }
+  // Fallback to cookie for token keys (cookie has 12h max-age, survives some edge cases)
+  if (key === "access_token" || key === "admin_token") {
+    const cookieValue = readFromCookie(key)
+    if (cookieValue) {
+      sessionStorage.setItem(key, cookieValue)
+      return cookieValue
+    }
   }
   return null
 }
