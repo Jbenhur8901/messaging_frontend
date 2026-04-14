@@ -28,7 +28,16 @@ const roleConfig = {
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { user, setUser, setOrganizations: setSessionOrganizations, setActiveOrgId, logout } = useAuthStore()
+  const {
+    user,
+    isAuthenticated,
+    requiresMFAVerification,
+    fetchProfile,
+    setUser,
+    setOrganizations: setSessionOrganizations,
+    setActiveOrgId,
+    logout,
+  } = useAuthStore()
   const {
     organizations,
     fetchOrganizations,
@@ -37,6 +46,7 @@ export default function OnboardingPage() {
   } = useOrganizationStore()
   const [isLoading, setIsLoading] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
 
   const {
@@ -83,8 +93,47 @@ export default function OnboardingPage() {
   }
 
   useEffect(() => {
-    fetchOrganizations()
-  }, [fetchOrganizations])
+    let cancelled = false
+
+    const ensureAuth = async () => {
+      const token = authStorage.getItem("access_token")
+      const mfaRequired =
+        typeof window !== "undefined" && sessionStorage.getItem("mfa_required") === "1"
+
+      if (!token) {
+        router.replace("/auth/login")
+        return
+      }
+
+      if ((requiresMFAVerification || mfaRequired) && !isAuthenticated) {
+        router.replace("/auth/verify-2fa")
+        return
+      }
+
+      if (!user) {
+        try {
+          await fetchProfile()
+        } catch {
+          authStorage.removeItem("access_token")
+          authStorage.removeItem("refresh_token")
+          authStorage.removeItem("user")
+          router.replace("/auth/login")
+          return
+        }
+      }
+
+      await fetchOrganizations()
+      if (!cancelled) {
+        setAuthChecked(true)
+      }
+    }
+
+    void ensureAuth()
+
+    return () => {
+      cancelled = true
+    }
+  }, [fetchOrganizations, fetchProfile, isAuthenticated, requiresMFAVerification, router, user])
 
   useEffect(() => {
     setSessionOrganizations(organizations)
@@ -124,6 +173,15 @@ export default function OnboardingPage() {
       toast.error("Erreur lors de la déconnexion")
       setIsLoggingOut(false)
     }
+  }
+
+  if (!authChecked) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-4 w-4 animate-spin text-white/30" />
+        <span className="ml-2 text-[13px] text-white/40">Chargement...</span>
+      </div>
+    )
   }
 
   return (

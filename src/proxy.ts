@@ -14,30 +14,17 @@ const createNonce = () => {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // ── Route Protection ──
-
-  // Public routes — no auth needed
+  // Keep only admin auth at middleware level.
+  // User routes are checked client-side because browser session state lives outside middleware.
   const publicRoutes = ["/auth/", "/terms", "/invite/"]
-  const isPublic = publicRoutes.some((r) => pathname.startsWith(r))
+  const isPublic = publicRoutes.some((route) => pathname.startsWith(route))
 
-  if (!isPublic) {
-    // Admin routes
-    if (pathname.startsWith("/admin")) {
-      const adminToken = request.cookies.get("admin_token")?.value
-      if (!adminToken && !pathname.startsWith("/admin/login")) {
-        return NextResponse.redirect(new URL("/admin/login", request.url))
-      }
-    }
-    // Dashboard routes — require access_token cookie
-    else if (pathname !== "/") {
-      const accessToken = request.cookies.get("access_token")?.value
-      if (!accessToken) {
-        return NextResponse.redirect(new URL("/auth/login", request.url))
-      }
+  if (!isPublic && pathname.startsWith("/admin")) {
+    const adminToken = request.cookies.get("admin_token")?.value
+    if (!adminToken && !pathname.startsWith("/admin/login")) {
+      return NextResponse.redirect(new URL("/admin/login", request.url))
     }
   }
-
-  // ── Security Headers ──
 
   const nonce = createNonce()
   const isDev = process.env.NODE_ENV !== "production"

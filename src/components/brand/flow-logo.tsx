@@ -20,12 +20,12 @@ export function FlowLogo({
       style={{ width: size, height: size }}
     >
       <Image
-        src="/logo-nodes.png"
+        src="/logo_flow_blanc.png"
         alt="Flow"
         width={size}
         height={size}
         priority={priority}
-        className={cn("h-full w-full object-contain brightness-0 invert", imageClassName)}
+        className={cn("h-full w-full object-contain", imageClassName)}
       />
     </div>
   )
