@@ -1,4 +1,4 @@
-import Image from "next/image"
+import { FlowLogo } from "@/components/brand/flow-logo"
 
 export default function AuthLayout({
   children,
@@ -10,13 +10,7 @@ export default function AuthLayout({
       <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 gap-10 px-6 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div className="space-y-10 animate-fade-in">
           <div className="inline-flex items-center gap-3 rounded-full bg-white/5 px-4 py-2 text-[13px] font-medium text-white/90 border border-white/10 backdrop-blur-md">
-            <Image
-              src="https://phwyhgzcnnjffovepbrt.supabase.co/storage/v1/object/public/file/1.png"
-              alt="Flow"
-              width={32}
-              height={32}
-              className="rounded-full brightness-0 invert"
-            />
+            <FlowLogo size={32} className="rounded-full" priority />
             <span className="tracking-wide">Flow</span>
           </div>
 
@@ -66,14 +60,8 @@ export default function AuthLayout({
             <div className="absolute top-0 right-0 w-40 h-40 bg-[#E0D112]/8 blur-[80px] -mr-16 -mt-16 pointer-events-none" />
 
             <div className="mb-8 flex items-center gap-4 text-white">
-              <div className="p-2 rounded-2xl bg-[#E0D112]/10 border border-[#E0D112]/20">
-                <Image
-                  src="https://phwyhgzcnnjffovepbrt.supabase.co/storage/v1/object/public/file/1.png"
-                  alt="Flow"
-                  width={44}
-                  height={44}
-                  className="rounded-xl brightness-0 invert"
-                />
+              <div className="rounded-2xl border border-[#E0D112]/20 bg-[#E0D112]/10 p-2">
+                <FlowLogo size={44} className="rounded-xl" priority />
               </div>
               <p className="text-lg font-bold tracking-tight">Flow</p>
             </div>

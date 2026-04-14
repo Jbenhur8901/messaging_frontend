@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { Loader2, Plus, ChevronRight, Crown, ShieldCheck, User } from "lucide-react"
+import { Loader2, Plus, ChevronRight, Crown, ShieldCheck, User, LogOut } from "lucide-react"
 
 const organizationSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
@@ -28,7 +28,7 @@ const roleConfig = {
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { user, setUser, setOrganizations: setSessionOrganizations, setActiveOrgId } = useAuthStore()
+  const { user, setUser, setOrganizations: setSessionOrganizations, setActiveOrgId, logout } = useAuthStore()
   const {
     organizations,
     fetchOrganizations,
@@ -36,6 +36,7 @@ export default function OnboardingPage() {
     isLoading: isLoadingOrganizations,
   } = useOrganizationStore()
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
 
   const {
@@ -115,15 +116,38 @@ export default function OnboardingPage() {
     router.push("/dashboard")
   }
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await logout()
+    } catch {
+      toast.error("Erreur lors de la déconnexion")
+      setIsLoggingOut(false)
+    }
+  }
+
   return (
     <div className="space-y-5">
-      <div className="space-y-1.5">
-        <h2 className="text-xl font-semibold tracking-tight text-white">
-          Bienvenue{user?.first_name ? `, ${user.first_name}` : ""}
-        </h2>
-        <p className="text-[12px] text-white/40">
-          Choisissez une organisation.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1.5">
+          <h2 className="text-xl font-semibold tracking-tight text-white">
+            Bienvenue{user?.first_name ? `, ${user.first_name}` : ""}
+          </h2>
+          <p className="text-[12px] text-white/40">
+            Choisissez une organisation.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0 rounded-xl border-white/10 bg-transparent text-white/70 hover:border-white/20 hover:bg-white/[0.04] hover:text-white"
+          onClick={() => void handleLogout()}
+          disabled={isLoggingOut || isLoading}
+        >
+          {isLoggingOut ? <Loader2 className="animate-spin" /> : <LogOut />}
+          Déconnexion
+        </Button>
       </div>
 
       {isLoadingOrganizations ? (

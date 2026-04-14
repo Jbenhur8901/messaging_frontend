@@ -22,12 +22,12 @@ import { Loader2 } from "lucide-react"
 
 const registerSchema = z
   .object({
-    firstName: z.string().min(1, "Prénom requis"),
+    firstName: z.string().min(1, "Prenom requis"),
     lastName: z.string().min(1, "Nom requis"),
     email: z.string().email("Email invalide"),
     password: z
       .string()
-      .min(8, "Le mot de passe doit contenir au moins 8 caractères"),
+      .min(8, "Le mot de passe doit contenir au moins 8 caracteres"),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -59,9 +59,15 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true)
     try {
-      await signup(data.email, data.password, data.firstName, data.lastName)
-      toast.success("Compte créé avec succès")
-      router.push("/onboarding")
+      const result = await signup(data.email, data.password, data.firstName, data.lastName)
+
+      if (result.emailVerified && result.isAuthenticated) {
+        toast.success("Compte cree avec succes")
+        router.push("/onboarding")
+        return
+      }
+
+      router.push(`/auth/confirm-email?email=${encodeURIComponent(data.email)}`)
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
@@ -74,10 +80,10 @@ export default function RegisterPage() {
     <Card className="w-full border-0 bg-transparent p-0 shadow-none">
       <CardHeader className="space-y-2 p-0">
         <h2 className="text-[22px] font-bold tracking-tight text-white">
-          Créer un compte
+          Creer un compte
         </h2>
         <p className="text-[13px] leading-relaxed text-muted-foreground">
-          Renseignez vos informations pour démarrer rapidement.
+          Renseignez vos informations pour demarrer rapidement.
         </p>
       </CardHeader>
 
@@ -85,7 +91,7 @@ export default function RegisterPage() {
         <CardContent className="space-y-5 px-0 pb-0 pt-7">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="firstName" className={labelClass}>Prénom</Label>
+              <Label htmlFor="firstName" className={labelClass}>Prenom</Label>
               <Input
                 id="firstName"
                 placeholder="Jean"
@@ -94,7 +100,7 @@ export default function RegisterPage() {
                 disabled={isLoading}
               />
               {errors.firstName && (
-                <p className="text-xs text-destructive mt-1">{errors.firstName.message}</p>
+                <p className="mt-1 text-xs text-destructive">{errors.firstName.message}</p>
               )}
             </div>
             <div className="space-y-1.5">
@@ -107,7 +113,7 @@ export default function RegisterPage() {
                 disabled={isLoading}
               />
               {errors.lastName && (
-                <p className="text-xs text-destructive mt-1">{errors.lastName.message}</p>
+                <p className="mt-1 text-xs text-destructive">{errors.lastName.message}</p>
               )}
             </div>
           </div>
@@ -123,7 +129,7 @@ export default function RegisterPage() {
               disabled={isLoading}
             />
             {errors.email && (
-              <p className="text-xs text-destructive mt-1">{errors.email.message}</p>
+              <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>
             )}
           </div>
 
@@ -132,13 +138,13 @@ export default function RegisterPage() {
             <Input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder="********"
               className={inputClass}
               {...register("password")}
               disabled={isLoading}
             />
             {errors.password && (
-              <p className="text-xs text-destructive mt-1">{errors.password.message}</p>
+              <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>
             )}
           </div>
 
@@ -147,13 +153,13 @@ export default function RegisterPage() {
             <Input
               id="confirmPassword"
               type="password"
-              placeholder="••••••••"
+              placeholder="********"
               className={inputClass}
               {...register("confirmPassword")}
               disabled={isLoading}
             />
             {errors.confirmPassword && (
-              <p className="text-xs text-destructive mt-1">{errors.confirmPassword.message}</p>
+              <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>
             )}
           </div>
         </CardContent>
@@ -161,18 +167,18 @@ export default function RegisterPage() {
         <CardFooter className="flex flex-col gap-5 px-0 pb-0 pt-7">
           <Button
             type="submit"
-            className="w-full h-11 text-[13px] font-bold rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-[#E0D112] hover:bg-[#E0D112]/90 text-black shadow-lg shadow-[#E0D112]/15"
+            className="h-11 w-full rounded-xl bg-[#E0D112] text-[13px] font-bold text-black shadow-lg shadow-[#E0D112]/15 transition-all hover:scale-[1.01] hover:bg-[#E0D112]/90 active:scale-[0.99]"
             disabled={isLoading}
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Créer mon compte
+            Creer mon compte
           </Button>
 
           <p className="text-center text-[13px] text-muted-foreground">
-            Déjà un compte ?{" "}
+            Deja un compte ?{" "}
             <Link
               href="/auth/login"
-              className="font-bold text-[#E0D112] hover:underline hover:text-[#E0D112]/80 transition-colors"
+              className="font-bold text-[#E0D112] transition-colors hover:text-[#E0D112]/80 hover:underline"
             >
               Se connecter
             </Link>

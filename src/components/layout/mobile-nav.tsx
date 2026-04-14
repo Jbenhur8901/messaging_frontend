@@ -1,10 +1,10 @@
 "use client"
 
-import Image from "next/image"
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { FlowLogo } from "@/components/brand/flow-logo"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { ChevronDown, LogOut } from "lucide-react"
@@ -13,9 +13,6 @@ import {
   getActiveHref,
   getFilteredNavigationSections,
 } from "./navigation"
-
-const BRAND_ICON_URL =
-  "https://phwyhgzcnnjffovepbrt.supabase.co/storage/v1/object/public/file/2.png"
 
 interface MobileNavProps {
   open: boolean
@@ -73,13 +70,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
             onClick={onClose}
           >
             <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-white/10">
-              <Image
-                src={BRAND_ICON_URL}
-                alt="Flow"
-                width={32}
-                height={32}
-                className="h-full w-full object-cover"
-              />
+              <FlowLogo size={32} />
             </div>
             <div>
               <SheetTitle className="text-sm font-semibold leading-tight text-white">

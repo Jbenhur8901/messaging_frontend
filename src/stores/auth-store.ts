@@ -44,7 +44,7 @@ interface AuthState {
     firstName: string,
     lastName: string,
     organizationName?: string
-  ) => Promise<void>
+  ) => Promise<{ emailVerified: boolean; isAuthenticated: boolean }>
   logout: () => Promise<void>
   fetchProfile: () => Promise<void>
   clearError: () => void
@@ -176,15 +176,33 @@ export const useAuthStore = create<AuthState>()(
             organizationName || ""
           )
 
+          const safeUser = sanitizeUser({ ...response.user, is_first_login: true })
+          const isAuthenticated = !!response.session
+
+          if (!isAuthenticated && typeof window !== "undefined") {
+            authStorage.removeItem("access_token")
+            authStorage.removeItem("refresh_token")
+            authStorage.removeItem("user")
+            authStorage.removeItem("auth-storage")
+            sessionStorage.removeItem("mfa_required")
+            sessionStorage.removeItem("mfa_pre_auth_token")
+            try { localStorage.removeItem("organization-storage") } catch {}
+          }
+
           set({
-            user: sanitizeUser({ ...response.user, is_first_login: true }),
+            user: isAuthenticated ? safeUser : null,
             apiKey: null,
             organizations: [],
             activeOrgId: null,
-            isAuthenticated: true,
+            isAuthenticated,
             isLoading: false,
-            showMFARecommendation: true,
+            showMFARecommendation: isAuthenticated && !response.user.mfa_enabled,
           })
+
+          return {
+            emailVerified: !!response.user.email_verified,
+            isAuthenticated,
+          }
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Erreur d'inscription",
