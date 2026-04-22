@@ -180,8 +180,8 @@ export default function Verify2FAPage() {
   return (
     <Card className="w-full border-0 bg-transparent p-0 shadow-none">
       <CardHeader className="space-y-4 p-0 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E0D112]/10 border border-[#E0D112]/20">
-          <Shield className="h-8 w-8 text-[#E0D112]" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
+          <Shield className="h-8 w-8 text-primary" />
         </div>
         <div className="space-y-2">
           <h2 className="text-[22px] font-bold text-white">
@@ -204,7 +204,7 @@ export default function Verify2FAPage() {
               value={backupCode}
               onChange={(e) => setBackupCode(e.target.value.trim())}
               placeholder="XXXX-XXXX-XXXX"
-              className={`h-12 bg-white/[0.03] border-white/10 text-white text-center text-lg tracking-widest placeholder:text-white/20 focus:border-[#E0D112]/50 focus:ring-[#E0D112]/20 rounded-xl transition-all ${hasError ? "animate-shake border-destructive/50" : ""}`}
+              className={`h-12 bg-white/[0.03] border-white/10 text-white text-center text-lg tracking-widest placeholder:text-white/20 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all ${hasError ? "animate-shake border-destructive/50" : ""}`}
               disabled={isVerifying || isCooldownActive}
             />
           ) : (
@@ -233,7 +233,7 @@ export default function Verify2FAPage() {
                 setBackupCode("")
                 setHasError(false)
               }}
-              className="text-[11px] font-semibold text-[#E0D112] hover:text-[#E0D112]/80 transition-colors uppercase tracking-widest"
+              className="text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors uppercase tracking-widest"
               disabled={isVerifying}
             >
               {useBackupCode ? "Utiliser un code OTP" : "Utiliser un code de récupération"}
@@ -263,7 +263,7 @@ export default function Verify2FAPage() {
               isCooldownActive ||
               (useBackupCode ? backupCode.trim().length < 8 : code.length !== 6)
             }
-            className="w-full h-11 text-[13px] font-bold rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-[#E0D112] hover:bg-[#E0D112]/90 text-black shadow-lg shadow-[#E0D112]/15"
+            className="w-full h-11 text-[13px] font-bold rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-primary hover:bg-primary/90 text-black shadow-[0_10px_30px_-12px_rgba(255,204,0,0.35)]"
           >
             {isVerifying ? (
               <>

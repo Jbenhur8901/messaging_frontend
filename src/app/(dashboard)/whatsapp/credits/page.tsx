@@ -432,7 +432,7 @@ export default function WhatsAppCreditsPage() {
                       key={item.code}
                       className={`relative rounded-xl border p-4 transition-all hover:shadow-md cursor-pointer ${
                         isBest
-                          ? "border-[#E0D112]/35 bg-card ring-1 ring-[#E0D112]/25 hover:border-[#E0D112]/55"
+                          ? "border-primary/35 bg-card ring-1 ring-primary/25 hover:border-primary/55"
                           : "border-border/40 bg-card hover:border-border"
                       }`}
                       style={stagger(i + 3)}
@@ -743,7 +743,7 @@ export default function WhatsAppCreditsPage() {
                       }}
                       className={
                         payerOperator === "mtn_momo"
-                          ? "h-9 rounded-lg border border-[#E0D112]/40 bg-[#E0D112]/10 text-[13px] font-medium text-[#E0D112]"
+                          ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
                           : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
                       }
                     >
@@ -757,7 +757,7 @@ export default function WhatsAppCreditsPage() {
                       }}
                       className={
                         payerOperator === "airtel_money"
-                          ? "h-9 rounded-lg border border-[#E0D112]/40 bg-[#E0D112]/10 text-[13px] font-medium text-[#E0D112]"
+                          ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
                           : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
                       }
                     >

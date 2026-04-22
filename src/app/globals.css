@@ -14,11 +14,11 @@
   --color-card-foreground: #FFFFFF;
   --color-popover: #121212;
   --color-popover-foreground: #FFFFFF;
-  --color-primary: #E0D112;
+  --color-primary: #FFCC00;
   --color-primary-foreground: #080808;
-  --color-secondary: #1F1F1F;
+  --color-secondary: #1A1A1A;
   --color-secondary-foreground: #FFFFFF;
-  --color-muted: #1F1F1F;
+  --color-muted: #1A1A1A;
   --color-muted-foreground: #A1A1AA;
   --color-accent: #27272A;
   --color-accent-foreground: #FFFFFF;
@@ -26,7 +26,7 @@
   --color-destructive-foreground: #FFFFFF;
   --color-border: #27272A;
   --color-input: #27272A;
-  --color-ring: #E0D112;
+  --color-ring: #FFCC00;
   --radius: 1rem;
 
   /* Shadows - subtle for dark mode */
@@ -36,9 +36,9 @@
   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
 
   /* Status colors */
-  --color-success: #E0D112;
+  --color-success: #FFCC00;
   --color-warning: #F59E0B;
-  --color-info: #3B82F6;
+  --color-info: #005BAA;
 }
 
 .dark {
@@ -48,11 +48,11 @@
   --color-card-foreground: #FFFFFF;
   --color-popover: #121212;
   --color-popover-foreground: #FFFFFF;
-  --color-primary: #E0D112;
+  --color-primary: #FFCC00;
   --color-primary-foreground: #080808;
-  --color-secondary: #1F1F1F;
+  --color-secondary: #1A1A1A;
   --color-secondary-foreground: #FFFFFF;
-  --color-muted: #1F1F1F;
+  --color-muted: #1A1A1A;
   --color-muted-foreground: #A1A1AA;
   --color-accent: #27272A;
   --color-accent-foreground: #FFFFFF;
@@ -60,7 +60,7 @@
   --color-destructive-foreground: #0a0a0a;
   --color-border: #27272A;
   --color-input: #27272A;
-  --color-ring: #E0D112;
+  --color-ring: #FFCC00;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -71,11 +71,11 @@
     --color-card-foreground: #FFFFFF;
     --color-popover: #121212;
     --color-popover-foreground: #FFFFFF;
-    --color-primary: #E0D112;
+    --color-primary: #FFCC00;
     --color-primary-foreground: #080808;
-    --color-secondary: #1F1F1F;
+    --color-secondary: #1A1A1A;
     --color-secondary-foreground: #FFFFFF;
-    --color-muted: #1F1F1F;
+    --color-muted: #1A1A1A;
     --color-muted-foreground: #A1A1AA;
     --color-accent: #27272A;
     --color-accent-foreground: #FFFFFF;
@@ -83,7 +83,7 @@
     --color-destructive-foreground: #0a0a0a;
     --color-border: #27272A;
     --color-input: #27272A;
-    --color-ring: #E0D112;
+    --color-ring: #FFCC00;
   }
 }
 
@@ -114,8 +114,8 @@ h6 {
   position: relative;
   background-color: #050505;
   background-image:
-    radial-gradient(ellipse 900px 600px at 8% 15%, rgba(224, 209, 18, 0.07) 0%, transparent 60%),
-    radial-gradient(ellipse 600px 500px at 92% 85%, rgba(224, 209, 18, 0.04) 0%, transparent 55%),
+    radial-gradient(ellipse 900px 600px at 8% 15%, rgba(255, 204, 0, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 500px at 92% 85%, rgba(255, 204, 0, 0.05) 0%, transparent 55%),
     radial-gradient(ellipse 400px 400px at 50% 50%, rgba(255, 255, 255, 0.015) 0%, transparent 70%);
   overflow: hidden;
 }
@@ -125,7 +125,7 @@ h6 {
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(circle at center, rgba(224, 209, 18, 0.04) 1px, transparent 1px);
+    radial-gradient(circle at center, rgba(255, 204, 0, 0.045) 1px, transparent 1px);
   background-size: 28px 28px;
   mask-image: radial-gradient(ellipse 70% 60% at 30% 40%, black 10%, transparent 70%);
   -webkit-mask-image: radial-gradient(ellipse 70% 60% at 30% 40%, black 10%, transparent 70%);
@@ -171,13 +171,13 @@ h6 {
 
 /* Custom focus ring with brand color */
 *:focus-visible {
-  outline: 2px solid #E0D112;
+  outline: 2px solid #FFCC00;
   outline-offset: 2px;
 }
 
 /* Selection color */
 ::selection {
-  background-color: rgba(224, 209, 18, 0.3);
+  background-color: rgba(255, 204, 0, 0.3);
   color: #FFFFFF;
 }
 
@@ -259,20 +259,20 @@ h6 {
 
 .hover-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 24px -8px rgba(224, 209, 18, 0.22);
+  box-shadow: 0 12px 24px -8px rgba(255, 204, 0, 0.22);
 }
 
 .dark .hover-lift:hover {
-  box-shadow: 0 12px 24px -8px rgba(224, 209, 18, 0.22);
+  box-shadow: 0 12px 24px -8px rgba(255, 204, 0, 0.22);
 }
 
 /* Gradient utilities */
 .gradient-primary {
-  background: linear-gradient(135deg, #E0D112 0%, #e8da2a 100%);
+  background: linear-gradient(135deg, #FFCC00 0%, #ffd84d 100%);
 }
 
 .gradient-primary-hover:hover {
-  background: linear-gradient(135deg, #e8da2a 0%, #f0e340 100%);
+  background: linear-gradient(135deg, #ffd84d 0%, #ffe27a 100%);
 }
 
 /* Glass effect */
@@ -289,11 +289,11 @@ h6 {
 }
 
 .card-hover-glow:hover {
-  border-color: rgba(224, 209, 18, 0.26);
-  box-shadow: 0 0 0 1px rgba(224, 209, 18, 0.10), 0 8px 24px -4px rgba(224, 209, 18, 0.14);
+  border-color: rgba(255, 204, 0, 0.26);
+  box-shadow: 0 0 0 1px rgba(255, 204, 0, 0.10), 0 8px 24px -4px rgba(255, 204, 0, 0.14);
 }
 
 .dark .card-hover-glow:hover {
-  border-color: rgba(224, 209, 18, 0.34);
-  box-shadow: 0 0 0 1px rgba(224, 209, 18, 0.18), 0 8px 24px -4px rgba(224, 209, 18, 0.22);
+  border-color: rgba(255, 204, 0, 0.34);
+  box-shadow: 0 0 0 1px rgba(255, 204, 0, 0.18), 0 8px 24px -4px rgba(255, 204, 0, 0.22);
 }

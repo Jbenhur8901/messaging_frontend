@@ -285,6 +285,15 @@ export const handleApiError = (error: unknown): APIError => {
     if (response) {
       const { status, data, headers } = response
       const correlationId = headers?.["x-correlation-id"] as string | undefined
+      const requestUrl = error.config?.url
+      const requestPathname = (() => {
+        if (!requestUrl) return null
+        try {
+          return new URL(requestUrl, API_BASE_URL).pathname
+        } catch {
+          return null
+        }
+      })()
       const detail = (data as { detail?: unknown })?.detail
       const detailMessage = (() => {
         if (typeof detail === "string") return detail
@@ -308,6 +317,12 @@ export const handleApiError = (error: unknown): APIError => {
         case 400:
           return { type: "validation", message: detailMessage || "Paramètres invalides", status, correlationId }
         case 401:
+          if (detailMessage) {
+            return { type: "auth", message: detailMessage, status, correlationId }
+          }
+          if (requestPathname === "/v1/auth/signin") {
+            return { type: "auth", message: "Email ou mot de passe incorrect", status, correlationId }
+          }
           return { type: "auth", message: "Session expirée, veuillez vous reconnecter", status, correlationId }
         case 402:
           return { type: "credits", message: "Crédits insuffisants", status, correlationId }

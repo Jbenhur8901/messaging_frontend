@@ -408,7 +408,7 @@ export default function AIToolsPage() {
                 }`}
               >
                 <Bot
-                  className={`h-5 w-5 ${aiEnabled ? "text-[#E0D112]" : "text-muted-foreground/60"}`}
+                  className={`h-5 w-5 ${aiEnabled ? "text-primary" : "text-muted-foreground/60"}`}
                 />
               </div>
               <div>
@@ -424,7 +424,7 @@ export default function AIToolsPage() {
               {aiEnabled && (
                 <button
                   type="button"
-                  className="flex h-8 items-center gap-1.5 rounded-lg border border-[#E0D112]/30 bg-card px-3 text-[12px] font-medium text-[#E0D112] transition-colors hover:bg-[#E0D112]/10"
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-card px-3 text-[12px] font-medium text-primary transition-colors hover:bg-primary/10"
                   onClick={() => setAiDialogOpen(true)}
                 >
                   <Settings className="h-3.5 w-3.5" />
@@ -501,7 +501,7 @@ export default function AIToolsPage() {
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100">
-                  <Bot className="h-4.5 w-4.5 text-[#E0D112]" />
+                  <Bot className="h-4.5 w-4.5 text-primary" />
                 </div>
                 <div>
                   <h3 className="text-[15px] font-semibold text-foreground">
@@ -768,7 +768,7 @@ export default function AIToolsPage() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
-                      <Database className="h-4 w-4 text-[#E0D112]" />
+                      <Database className="h-4 w-4 text-primary" />
                     </div>
                     <div>
                       <p className="text-[13px] font-medium">{vs.name}</p>
@@ -891,7 +891,7 @@ export default function AIToolsPage() {
           >
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50">
-                <Database className="h-4 w-4 text-[#E0D112]" />
+                <Database className="h-4 w-4 text-primary" />
               </div>
               <div>
                 <h3 className="text-[15px] font-semibold text-foreground">

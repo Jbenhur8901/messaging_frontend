@@ -21,8 +21,8 @@ const organizationSchema = z.object({
 type OrganizationForm = z.infer<typeof organizationSchema>
 
 const roleConfig = {
-  owner: { label: "Propriétaire", icon: Crown, color: "text-[#E0D112]" },
-  admin: { label: "Administrateur", icon: ShieldCheck, color: "text-[#E0D112]/70" },
+  owner: { label: "Propriétaire", icon: Crown, color: "text-primary" },
+  admin: { label: "Administrateur", icon: ShieldCheck, color: "text-primary/70" },
   member: { label: "Membre", icon: User, color: "text-white/40" },
 } as const
 
@@ -223,16 +223,16 @@ export default function OnboardingPage() {
                 key={org.id}
                 type="button"
                 onClick={() => handleSelectOrganization(org.id)}
-                className="group flex w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-left transition-all hover:border-[#E0D112]/25 hover:bg-white/[0.06]"
+                className="group flex w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-left transition-all hover:border-primary/25 hover:bg-white/[0.06]"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#E0D112]/10">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                   <RoleIcon className={`h-4 w-4 ${role.color}`} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-medium text-white truncate">{org.name}</p>
                   <p className="text-[11px] text-white/35">{role.label}</p>
                 </div>
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/20 transition-transform group-hover:translate-x-0.5 group-hover:text-[#E0D112]" />
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/20 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
               </button>
             )
           })}
@@ -247,7 +247,7 @@ export default function OnboardingPage() {
         <Button
           type="button"
           variant="outline"
-          className="w-full h-10 text-[13px] rounded-xl border-white/10 bg-transparent text-white/70 hover:border-[#E0D112]/30 hover:bg-white/[0.04] hover:text-white"
+          className="w-full h-10 text-[13px] rounded-xl border-white/10 bg-transparent text-white/70 hover:border-primary/30 hover:bg-white/[0.04] hover:text-white"
           onClick={() => setShowCreateForm(true)}
           disabled={isLoadingOrganizations}
         >
@@ -263,7 +263,7 @@ export default function OnboardingPage() {
             <Input
               id="name"
               placeholder="Mon entreprise"
-              className="h-10 text-[13px] rounded-xl bg-white/[0.04] border-white/10 text-white placeholder:text-white/20 focus:border-[#E0D112]/50 focus:ring-[#E0D112]/20"
+              className="h-10 text-[13px] rounded-xl bg-white/[0.04] border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-primary/20"
               {...register("name")}
               disabled={isLoading}
               autoFocus
@@ -286,7 +286,7 @@ export default function OnboardingPage() {
             )}
             <Button
               type="submit"
-              className="h-10 flex-1 text-[13px] font-bold rounded-xl bg-[#E0D112] hover:bg-[#E0D112]/90 text-black shadow-lg shadow-[#E0D112]/15"
+              className="h-10 flex-1 text-[13px] font-bold rounded-xl bg-primary hover:bg-primary/90 text-black shadow-[0_10px_30px_-12px_rgba(255,204,0,0.35)]"
               disabled={isLoading}
             >
               {isLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}

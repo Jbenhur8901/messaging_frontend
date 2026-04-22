@@ -55,11 +55,11 @@ export default function ForgotPasswordPage() {
     return (
       <Card className="w-full border-0 bg-transparent p-0 shadow-none">
         <CardHeader className="space-y-4 p-0 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E0D112]/10 border border-[#E0D112]/20">
-            <CheckCircle className="h-8 w-8 text-[#E0D112]" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
+            <CheckCircle className="h-8 w-8 text-primary" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-[22px] font-bold text-white">Email envoyé</h2>
+            <h2 className="text-[22px] font-bold text-foreground">Email envoyé</h2>
             <p className="text-[13px] text-muted-foreground leading-relaxed">
               Si un compte existe avec cette adresse, vous recevrez
               un lien de réinitialisation.
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
           <Link href="/auth/login" className="w-full">
             <Button
               variant="outline"
-              className="w-full h-11 border-white/10 hover:bg-white/5 text-white rounded-xl text-[13px]"
+              className="w-full h-11 border-black/10 bg-white/70 hover:bg-white text-foreground rounded-xl text-[13px]"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour à la connexion
@@ -84,7 +84,7 @@ export default function ForgotPasswordPage() {
   return (
     <Card className="w-full border-0 bg-transparent p-0 shadow-none">
       <CardHeader className="space-y-2 p-0">
-        <h2 className="text-[22px] font-bold tracking-tight text-white">
+        <h2 className="text-[22px] font-bold tracking-tight text-foreground">
           Mot de passe oublié
         </h2>
         <p className="text-[13px] leading-relaxed text-muted-foreground">
@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
               id="email"
               type="email"
               placeholder="vous@exemple.com"
-              className="h-11 bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-[#E0D112]/50 focus:ring-[#E0D112]/20 rounded-xl transition-all"
+              className="h-11 bg-white border-black/10 text-foreground placeholder:text-muted-foreground/60 focus:border-primary/60 focus:ring-primary/20 rounded-xl transition-all"
               {...register("email")}
               disabled={isLoading}
             />
@@ -115,7 +115,7 @@ export default function ForgotPasswordPage() {
         <CardFooter className="flex flex-col gap-4 px-0 pb-0 pt-7">
           <Button
             type="submit"
-            className="w-full h-11 text-[13px] font-bold rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-[#E0D112] hover:bg-[#E0D112]/90 text-black shadow-lg shadow-[#E0D112]/15"
+            className="w-full h-11 text-[13px] font-bold rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-primary hover:bg-primary/90 text-black shadow-[0_10px_30px_-12px_rgba(255,204,0,0.35)]"
             disabled={isLoading}
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -124,7 +124,7 @@ export default function ForgotPasswordPage() {
           <Link href="/auth/login" className="w-full">
             <Button
               variant="ghost"
-              className="w-full h-11 text-[13px] text-muted-foreground hover:text-white hover:bg-white/5 rounded-xl"
+              className="w-full h-11 text-[13px] text-muted-foreground hover:text-foreground hover:bg-black/[0.04] rounded-xl"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour à la connexion

@@ -17,7 +17,16 @@ export function proxy(request: NextRequest) {
   // Keep only admin auth at middleware level.
   // User routes are checked client-side because browser session state lives outside middleware.
   const publicRoutes = ["/auth/", "/terms", "/invite/"]
-  const isPublic = publicRoutes.some((route) => pathname.startsWith(route))
+  const isPublicRoute = publicRoutes.some((r) => pathname.startsWith(r))
+
+  // Static files in /public (e.g. /rr.jpg) should never require auth.
+  // Next serves them at the root path and they can be requested by <Image />.
+  const isPublicAsset =
+    pathname.includes(".") &&
+    !pathname.startsWith("/api/") &&
+    !pathname.startsWith("/_next/")
+
+  const isPublic = isPublicRoute || isPublicAsset
 
   if (!isPublic && pathname.startsWith("/admin")) {
     const adminToken = request.cookies.get("admin_token")?.value
