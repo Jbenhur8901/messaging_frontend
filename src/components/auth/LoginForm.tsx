@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 
 import { useAuthStore } from "@/stores"
 import { handleApiError } from "@/services"
@@ -60,6 +60,16 @@ export function LoginForm() {
     <Card className="w-full rounded-[28px] border border-white/10 bg-[#0B0B0B]/95 p-7 text-white shadow-[0_40px_110px_-70px_rgba(0,0,0,0.65)] backdrop-blur sm:p-9">
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-5 px-0 pb-0 pt-0">
+          <div className="flex justify-start">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-full py-1.5 pl-1 pr-2 text-[13px] font-medium text-white/50 transition-colors hover:bg-white/[0.06] hover:text-primary"
+            >
+              <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+              Retour à l&apos;accueil
+            </Link>
+          </div>
+
           <div className="space-y-1 text-center">
             <h1 className="text-[22px] font-extrabold tracking-tight">
               Connexion

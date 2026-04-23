@@ -264,14 +264,24 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-dashboard">
       <Sidebar collapsed={isSidebarCollapsed} onToggleCollapse={toggleSidebar} />
       <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
-      <div className={isSidebarCollapsed ? "transition-[padding] duration-200 lg:pl-[60px]" : "transition-[padding] duration-200 lg:pl-56"}>
+      <div
+        className={
+          isSidebarCollapsed
+            ? "min-w-0 overflow-x-hidden transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:pl-[60px]"
+            : "min-w-0 overflow-x-hidden transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:pl-[248px]"
+        }
+      >
         <Header
           onMenuClick={() => setMobileNavOpen(true)}
           isSidebarCollapsed={isSidebarCollapsed}
           onSidebarToggle={toggleSidebar}
         />
-        <main className={isEditorRoute ? "" : "py-4"}>
-          <div className={isEditorRoute ? "animate-fade-in" : "animate-fade-in px-4 sm:px-5 lg:px-6"}>
+        <main className={isEditorRoute ? "min-w-0" : "min-w-0 py-4"}>
+          <div
+            className={
+              isEditorRoute ? "min-w-0" : "min-w-0 px-4 sm:px-5 lg:px-6"
+            }
+          >
             {children}
           </div>
         </main>

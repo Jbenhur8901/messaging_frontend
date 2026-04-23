@@ -404,10 +404,10 @@ export default function WhatsAppCreditsPage() {
                 key={key}
                 type="button"
                 onClick={() => setActiveTab(key)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all ${
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-all ${
                   isActive
                     ? `${c.bg} ${c.color} border ${c.border}`
-                    : "text-muted-foreground hover:bg-muted/50"
+                    : "border-transparent text-muted-foreground hover:border-primary/45 hover:bg-primary/10 hover:text-foreground"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />

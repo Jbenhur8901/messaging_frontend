@@ -13,11 +13,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useAuthStore, useOrganizationStore } from "@/stores"
-import { ChevronDown, LogOut, PanelLeftClose } from "lucide-react"
+import { CaretDown, SignOut, SidebarSimple } from "@phosphor-icons/react"
 import {
   getActiveHref,
   getFilteredNavigationSections,
 } from "./navigation"
+import { NavIcon } from "./nav-icon"
 
 interface SidebarProps {
   collapsed: boolean
@@ -57,12 +58,12 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
       <aside
         className={cn(
           "hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col",
-          "transition-[width] duration-200 ease-in-out",
-          collapsed ? "lg:w-[60px]" : "lg:w-56"
+          "transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          collapsed ? "lg:w-[60px]" : "lg:w-[248px]"
         )}
       >
-        <div className="flex h-full flex-col border-r border-white/[0.06] bg-[#0f0f0f]">
-          <div className="flex h-14 shrink-0 items-center border-b border-white/[0.06] px-3">
+        <div className="flex h-full flex-col border-r border-white/[0.07] bg-gradient-to-b from-[#141414] via-[#0f0f0f] to-[#0a0a0a]">
+          <div className="flex h-[3.75rem] shrink-0 items-center border-b border-white/[0.07] px-3 backdrop-blur-sm">
             {collapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -90,14 +91,14 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                   className="flex h-7 w-7 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
                   aria-label="Réduire la sidebar"
                 >
-                  <PanelLeftClose className="h-4 w-4" />
+                  <SidebarSimple className="h-4 w-4 text-white/50" weight="regular" />
                 </button>
               </div>
             )}
           </div>
 
-          <nav className="min-h-0 flex flex-1 flex-col overflow-y-auto px-2.5 py-3">
-            <div className="flex-1 space-y-1">
+          <nav className="min-h-0 flex flex-1 flex-col overflow-y-auto px-2.5 py-4">
+            <div className="flex-1 space-y-1.5">
               {mainSections.map((section, sectionIndex) => {
                 const isCollapsible =
                   !collapsed &&
@@ -130,29 +131,34 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                             }))
                           }
                           className={cn(
-                            "group flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                            "group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium tracking-tight transition-all duration-200",
                             sectionHasActive
-                              ? "text-white"
+                              ? "bg-white/[0.04] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
                               : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                           )}
                         >
                           {section.icon && (
-                            <section.icon className="h-[18px] w-[18px] shrink-0" />
+                            <NavIcon
+                              icon={section.icon}
+                              active={sectionHasActive}
+                              className="h-[18px] w-[18px] shrink-0"
+                            />
                           )}
                           <span className="flex-1 truncate text-left">
                             {section.title}
                           </span>
-                          <ChevronDown
+                          <CaretDown
+                            weight="bold"
                             className={cn(
-                              "h-3.5 w-3.5 text-white/30 transition-transform duration-200",
+                              "h-3.5 w-3.5 shrink-0 text-white/35 transition-transform duration-200",
                               !isSectionOpen && "-rotate-90"
                             )}
                           />
                         </button>
 
                         {isSectionOpen && (
-                          <div className="relative mt-1 ml-[17px] pl-3">
-                            <div className="space-y-1">
+                          <div className="relative mt-2 ml-2 border-l border-white/[0.08] pl-3">
+                            <div className="space-y-0.5 pt-0.5">
                               {section.items.map((item) => {
                                 const isActive = activeHref === item.href
                                 const hasChildren = (item.children?.length || 0) > 0
@@ -167,16 +173,17 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                       <Link
                                         href={item.href}
                                         className={cn(
-                                          "relative flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition-colors",
+                                          "relative flex min-h-9 min-w-0 flex-1 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] tracking-tight transition-all duration-200",
                                           isActive || hasActiveChild
-                                            ? "bg-[#E0D112]/10 font-medium text-[#E0D112]"
+                                            ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112] shadow-[inset_3px_0_0_0_#E0D112]"
                                             : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                                         )}
                                       >
-                                        {(isActive || hasActiveChild) && (
-                                          <span className="absolute -left-[13px] top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
-                                        )}
-                                        <item.icon className="h-3.5 w-3.5 shrink-0" />
+                                        <NavIcon
+                                          icon={item.icon}
+                                          active={isActive || hasActiveChild}
+                                          className="h-3.5 w-3.5 shrink-0"
+                                        />
                                         <span className="truncate">{item.name}</span>
                                       </Link>
                                       {hasChildren && (
@@ -190,7 +197,8 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                             }))
                                           }
                                         >
-                                          <ChevronDown
+                                          <CaretDown
+                                            weight="bold"
                                             className={cn(
                                               "h-3 w-3 transition-transform duration-200",
                                               !isGroupOpen && "-rotate-90"
@@ -201,7 +209,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                     </div>
 
                                     {hasChildren && isGroupOpen && (
-                                      <div className="ml-5 mt-1 space-y-1">
+                                      <div className="ml-1 mt-1 space-y-0.5 border-l border-white/[0.06] pl-3">
                                         {item.children?.map((child) => {
                                           const isChildActive = activeHref === child.href
                                           return (
@@ -209,10 +217,10 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                               key={child.href}
                                               href={child.href}
                                               className={cn(
-                                                "block rounded-lg px-3 py-2 text-xs transition-colors",
+                                                "block rounded-md py-1.5 pl-2 pr-2 text-[12px] leading-snug transition-colors duration-200",
                                                 isChildActive
-                                                  ? "font-medium text-[#E0D112]"
-                                                  : "text-white/50 hover:text-white"
+                                                  ? "font-semibold text-[#E0D112]"
+                                                  : "text-white/45 hover:bg-white/[0.04] hover:text-white"
                                               )}
                                             >
                                               {child.name}
@@ -240,16 +248,16 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                   <Link
                                     href={item.href}
                                     className={cn(
-                                      "relative flex h-10 w-full items-center justify-center rounded-lg transition-colors",
+                                      "relative flex h-10 w-full items-center justify-center rounded-xl transition-all duration-200",
                                       isActive
-                                        ? "bg-[#E0D112]/10 text-[#E0D112]"
+                                        ? "bg-gradient-to-br from-[#E0D112]/22 to-[#E0D112]/8 text-[#E0D112] shadow-[inset_0_0_0_1px_rgba(224,209,18,0.25)]"
                                         : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                                     )}
                                   >
                                     {isActive && (
-                                      <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
+                                      <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
                                     )}
-                                    <item.icon className="h-[18px] w-[18px]" />
+                                    <NavIcon icon={item.icon} active={isActive} className="h-[18px] w-[18px]" />
                                   </Link>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">
@@ -264,16 +272,13 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                               key={item.name}
                               href={item.href}
                               className={cn(
-                                "relative flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                                "relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium tracking-tight transition-all duration-200",
                                 isActive
-                                  ? "bg-[#E0D112]/10 text-[#E0D112]"
+                                  ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112] shadow-[inset_3px_0_0_0_#E0D112]"
                                   : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                               )}
                             >
-                              {isActive && (
-                                <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
-                              )}
-                              <item.icon className="h-[18px] w-[18px] shrink-0" />
+                              <NavIcon icon={item.icon} active={isActive} className="h-[18px] w-[18px] shrink-0" />
                               <span className="truncate">{item.name}</span>
                             </Link>
                           )
@@ -286,7 +291,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             </div>
 
             {bottomSections.length > 0 && (
-              <div className="mt-4 border-t border-white/[0.06] pt-3">
+              <div className="mt-4 border-t border-white/[0.07] pt-3">
                 {bottomSections.flatMap((s) => s.items).map((item) => {
                   const isActive = activeHref === item.href
 
@@ -297,16 +302,16 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                           <Link
                             href={item.href}
                             className={cn(
-                              "relative flex h-10 w-full items-center justify-center rounded-lg transition-colors",
+                              "relative flex h-10 w-full items-center justify-center rounded-xl transition-all duration-200",
                               isActive
-                                ? "bg-[#E0D112]/10 text-[#E0D112]"
+                                ? "bg-gradient-to-br from-[#E0D112]/22 to-[#E0D112]/8 text-[#E0D112] shadow-[inset_0_0_0_1px_rgba(224,209,18,0.25)]"
                                 : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                             )}
                           >
                             {isActive && (
-                              <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
+                              <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
                             )}
-                            <item.icon className="h-[18px] w-[18px]" />
+                            <NavIcon icon={item.icon} active={isActive} className="h-[18px] w-[18px]" />
                           </Link>
                         </TooltipTrigger>
                         <TooltipContent side="right">{item.name}</TooltipContent>
@@ -319,16 +324,13 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                       key={item.name}
                       href={item.href}
                       className={cn(
-                        "relative flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                        "relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium tracking-tight transition-all duration-200",
                         isActive
-                          ? "bg-[#E0D112]/10 text-[#E0D112]"
+                          ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112] shadow-[inset_3px_0_0_0_#E0D112]"
                           : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                       )}
                     >
-                      {isActive && (
-                        <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#E0D112]" />
-                      )}
-                      <item.icon className="h-[18px] w-[18px] shrink-0" />
+                      <NavIcon icon={item.icon} active={isActive} className="h-[18px] w-[18px] shrink-0" />
                       <span className="truncate">{item.name}</span>
                     </Link>
                   )
@@ -337,7 +339,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             )}
           </nav>
 
-          <div className="shrink-0 border-t border-white/[0.06] p-2.5">
+          <div className="shrink-0 border-t border-white/[0.07] p-2.5">
             {collapsed ? (
               <div className="space-y-1">
                 <Tooltip>
@@ -361,7 +363,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                       onClick={logout}
                       className="flex h-9 w-full items-center justify-center rounded-md text-rose-400 transition-colors hover:bg-rose-500/10"
                     >
-                      <LogOut className="h-4 w-4" />
+                      <SignOut className="h-4 w-4" weight="regular" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right">Se déconnecter</TooltipContent>
@@ -391,7 +393,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                   onClick={logout}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12px] font-medium text-rose-400 transition-colors hover:bg-rose-500/10"
                 >
-                  <LogOut className="h-3.5 w-3.5" />
+                  <SignOut className="h-3.5 w-3.5" weight="regular" />
                   Se déconnecter
                 </button>
               </div>

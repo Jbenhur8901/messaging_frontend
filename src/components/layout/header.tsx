@@ -98,11 +98,11 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-x-3 border-b border-white/[0.06] bg-[#0a0a0a]/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-x-3 border-b border-border/60 bg-background/85 px-4 backdrop-blur-md backdrop-saturate-150 transition-[background-color,backdrop-filter,border-color] duration-300 ease-out sm:px-6 lg:px-8">
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 lg:hidden"
+        className="h-8 w-8 transition-colors duration-200 lg:hidden"
         onClick={onMenuClick}
       >
         <Menu className="h-4 w-4" />
@@ -113,7 +113,7 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
         <Button
           variant="ghost"
           size="icon"
-          className="hidden h-8 w-8 text-white/40 hover:text-white lg:flex"
+          className="hidden h-8 w-8 text-muted-foreground transition-colors duration-200 hover:text-foreground lg:flex"
           onClick={onSidebarToggle}
         >
           <PanelLeft className="h-4 w-4" />
@@ -126,7 +126,7 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-8 gap-2 px-2.5 text-[13px] font-medium text-white/60 hover:text-white"
+              className="h-8 gap-2 px-2.5 text-[13px] font-medium text-muted-foreground transition-colors duration-200 hover:text-foreground"
             >
               <Building2 className="h-3.5 w-3.5" />
               <span className="max-w-[140px] truncate">
@@ -181,16 +181,16 @@ export function Header({ onMenuClick, isSidebarCollapsed, onSidebarToggle }: Hea
           <div className="hidden items-center gap-1.5 sm:flex">
             <Link
               href="/whatsapp/ai-credits"
-              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/40 hover:text-foreground"
             >
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#E0D112]/10 px-1.5 text-[10px] font-semibold text-[#E0D112]">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#E0D112]/10 px-1.5 text-[10px] font-semibold text-[#E0D112] transition-transform duration-200 hover:scale-105">
                 IA
               </span>
               {formatNumber(aiBalance ?? 0)} FCFA
             </Link>
             <Link
               href="/whatsapp/credits"
-              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/40 hover:text-foreground"
             >
               <Wallet className="h-3.5 w-3.5" />
               {formatNumber(walletTotal)} FCFA

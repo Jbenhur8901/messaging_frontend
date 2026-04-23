@@ -28,21 +28,21 @@ import {
 import { toast } from "sonner"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
-  Loader2,
-  Bot,
-  Zap,
-  Settings,
-  XCircle,
-  Plus,
-  Upload,
-  Trash2,
   Database,
   FileText,
-  Search,
+  GearSix,
   Globe,
-  AlertTriangle,
-  Sparkles,
-} from "lucide-react"
+  Lightning,
+  MagnifyingGlass,
+  Plus,
+  Robot,
+  Sparkle,
+  Spinner,
+  Trash,
+  UploadSimple,
+  WarningCircle,
+  XCircle,
+} from "@phosphor-icons/react"
 
 const stagger = (i: number) => ({
   opacity: 0,
@@ -319,7 +319,7 @@ export default function AIToolsPage() {
         </div>
         <div className="space-y-2">
           {[...Array(2)].map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-xl" />
+            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
           ))}
         </div>
       </div>
@@ -327,31 +327,39 @@ export default function AIToolsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* ── Header ── */}
-      <div style={stagger(0)}>
-        <h1 className="text-xl font-semibold tracking-tight">Outils IA</h1>
-        <p className="text-[13px] text-muted-foreground mt-0.5">
-          Configurez l&apos;agent IA et gérez vos bases de connaissances
-        </p>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between" style={stagger(0)}>
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">Outils IA</h1>
+          <p className="mt-0.5 max-w-xl text-[13px] text-muted-foreground">
+            Configurez l&apos;agent IA et gérez vos bases de connaissances
+          </p>
+        </div>
       </div>
 
       {/* ── AI Credits Banner ── */}
       {aiCredits && aiCredits.balance === 0 && (
-        <div className="rounded-xl border border-red-200 bg-red-50/60 p-4 flex items-center justify-between" style={stagger(1)}>
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-100">
-              <AlertTriangle className="h-4.5 w-4.5 text-red-600" />
+        <div
+          className="flex flex-col gap-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+          style={stagger(1)}
+        >
+          <div className="flex items-start gap-3 sm:items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/15 ring-1 ring-destructive/25">
+              <WarningCircle className="h-[18px] w-[18px] text-destructive" weight="fill" />
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-red-800">Crédits IA épuisés</p>
-              <p className="text-[11px] text-red-600">
+              <p className="text-[13px] font-semibold text-foreground">Crédits IA épuisés</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
                 L&apos;auto-reply IA est désactivée. Rechargez vos crédits pour continuer.
               </p>
             </div>
           </div>
-          <Link href="/whatsapp/ai-credits">
-            <Button size="sm" className="h-8 text-[12px] rounded-lg bg-red-600 hover:bg-red-700">
+          <Link href="/whatsapp/ai-credits" className="shrink-0">
+            <Button
+              size="sm"
+              className="h-9 w-full rounded-xl text-[12px] font-semibold sm:w-auto"
+            >
               Recharger
             </Button>
           </Link>
@@ -359,20 +367,29 @@ export default function AIToolsPage() {
       )}
 
       {aiCredits && aiCredits.balance > 0 && aiCredits.balance < 100 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 flex items-center justify-between" style={stagger(1)}>
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100">
-              <AlertTriangle className="h-4.5 w-4.5 text-amber-600" />
+        <div
+          className="flex flex-col gap-4 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+          style={stagger(1)}
+        >
+          <div className="flex items-start gap-3 sm:items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 ring-1 ring-amber-500/20">
+              <WarningCircle className="h-[18px] w-[18px] text-amber-400" weight="fill" />
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-amber-800">Solde faible : {new Intl.NumberFormat("fr-FR").format(aiCredits.balance)} crédits</p>
-              <p className="text-[11px] text-amber-600">
+              <p className="text-[13px] font-semibold text-foreground">
+                Solde faible : {new Intl.NumberFormat("fr-FR").format(aiCredits.balance)} crédits
+              </p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
                 Rechargez pour éviter une interruption de l&apos;auto-reply IA.
               </p>
             </div>
           </div>
-          <Link href="/whatsapp/ai-credits">
-            <Button size="sm" variant="outline" className="h-8 text-[12px] rounded-lg border-amber-300 text-amber-700 hover:bg-amber-100">
+          <Link href="/whatsapp/ai-credits" className="shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 w-full rounded-xl border-amber-500/35 text-[12px] text-amber-100 hover:bg-amber-500/10 sm:w-auto"
+            >
               Recharger
             </Button>
           </Link>
@@ -380,13 +397,20 @@ export default function AIToolsPage() {
       )}
 
       {aiCredits && aiCredits.balance >= 100 && (
-        <div className="flex items-center gap-2 text-[12px] text-muted-foreground" style={stagger(1)}>
-          <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+        <div
+          className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card/40 px-4 py-3 text-[12px] text-muted-foreground shadow-sm"
+          style={stagger(1)}
+        >
+          <Sparkle className="h-3.5 w-3.5 shrink-0 text-primary" weight="fill" />
           <span>
-            Solde IA : <span className="font-semibold text-foreground">{new Intl.NumberFormat("fr-FR").format(aiCredits.balance)}</span> crédits
+            Solde IA :{" "}
+            <span className="font-semibold text-foreground">
+              {new Intl.NumberFormat("fr-FR").format(aiCredits.balance)}
+            </span>{" "}
+            crédits
           </span>
-          <span className="text-muted-foreground/40">|</span>
-          <Link href="/whatsapp/ai-credits" className="text-primary hover:underline">
+          <span className="hidden text-muted-foreground/40 sm:inline">|</span>
+          <Link href="/whatsapp/ai-credits" className="font-medium text-primary transition-colors hover:text-primary/85 hover:underline">
             Gérer les crédits
           </Link>
         </div>
@@ -394,22 +418,22 @@ export default function AIToolsPage() {
 
       {/* ── Section 1: Agent IA ── */}
       <div style={stagger(1)}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Agent IA
           </h2>
         </div>
-        <div className="rounded-xl border border-border/40 bg-gradient-to-r from-blue-50/50 to-sky-50/50 p-5">
-          <div className="flex items-center justify-between">
+        <div className="rounded-2xl border border-border/50 bg-card/60 p-5 shadow-sm transition-all duration-300 hover:border-border hover:bg-card/75">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                  aiEnabled ? "bg-blue-100" : "bg-muted"
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 transition-colors ${
+                  aiEnabled
+                    ? "bg-primary/15 text-primary ring-primary/25"
+                    : "bg-muted text-muted-foreground ring-border/60"
                 }`}
               >
-                <Bot
-                  className={`h-5 w-5 ${aiEnabled ? "text-primary" : "text-muted-foreground/60"}`}
-                />
+                <Robot className="h-5 w-5" weight={aiEnabled ? "fill" : "regular"} />
               </div>
               <div>
                 <p className="text-[14px] font-semibold text-foreground">Agent IA</p>
@@ -420,14 +444,14 @@ export default function AIToolsPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-end gap-3 sm:justify-start">
               {aiEnabled && (
                 <button
                   type="button"
-                  className="flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-card px-3 text-[12px] font-medium text-primary transition-colors hover:bg-primary/10"
+                  className="flex h-9 items-center gap-2 rounded-xl border border-primary/35 bg-primary/10 px-3.5 text-[12px] font-medium text-primary transition-all hover:border-primary/50 hover:bg-primary/15"
                   onClick={() => setAiDialogOpen(true)}
                 >
-                  <Settings className="h-3.5 w-3.5" />
+                  <GearSix className="h-3.5 w-3.5" weight="bold" />
                   Configurer
                 </button>
               )}
@@ -442,10 +466,10 @@ export default function AIToolsPage() {
             </div>
           </div>
           {aiEnabled && aiInstructions && (
-            <div className="mt-4 rounded-lg bg-card/80 p-3">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Zap className="h-3 w-3 text-blue-500" />
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/60">
+            <div className="mt-4 rounded-xl border border-border/40 bg-muted/30 p-3">
+              <div className="mb-1.5 flex items-center gap-2">
+                <Lightning className="h-3.5 w-3.5 text-primary" weight="fill" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   Instructions
                 </span>
               </div>
@@ -486,7 +510,7 @@ export default function AIToolsPage() {
       {/* ── AI Config Dialog ── */}
       {aiDialogOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
           onClick={() => setAiDialogOpen(false)}
           onKeyDown={(e) => {
             if (e.key === "Escape") setAiDialogOpen(false)
@@ -495,29 +519,30 @@ export default function AIToolsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-[640px] max-h-[90vh] overflow-y-auto rounded-2xl bg-card p-7 shadow-2xl"
+            className="max-h-[90vh] w-full max-w-[640px] overflow-y-auto rounded-2xl border border-border/60 bg-card p-7 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100">
-                  <Bot className="h-4.5 w-4.5 text-primary" />
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/20">
+                  <Robot className="h-5 w-5 text-primary" weight="fill" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-[15px] font-semibold text-foreground">
                     Configurer l&apos;agent IA
                   </h3>
-                  <p className="text-[11px] text-muted-foreground/60">
+                  <p className="text-[11px] text-muted-foreground">
                     Personnalisez le comportement de l&apos;assistance automatique
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                className="rounded-full p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground"
+                className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 onClick={() => setAiDialogOpen(false)}
+                aria-label="Fermer"
               >
-                <XCircle className="h-5 w-5" />
+                <XCircle className="h-5 w-5" weight="regular" />
               </button>
             </div>
 
@@ -551,7 +576,7 @@ export default function AIToolsPage() {
 
                 <div className="space-y-2">
                   {/* file_search */}
-                  <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted transition-colors">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/60 p-3 transition-colors hover:border-border hover:bg-muted/40">
                     <Checkbox
                       checked={aiTools.includes("file_search")}
                       onCheckedChange={(checked) => {
@@ -563,10 +588,10 @@ export default function AIToolsPage() {
                       }}
                       className="mt-0.5"
                     />
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <Search className="h-3.5 w-3.5 text-blue-500" />
-                        <span className="text-[13px] font-medium text-foreground/80">file_search</span>
+                        <MagnifyingGlass className="h-3.5 w-3.5 text-primary" weight="bold" />
+                        <span className="text-[13px] font-medium text-foreground/90">file_search</span>
                       </div>
                       <p className="text-[11px] text-muted-foreground/60 mt-0.5">
                         Recherche dans les fichiers d&apos;une base de connaissance.
@@ -592,8 +617,8 @@ export default function AIToolsPage() {
                                   type="button"
                                   className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
                                     isSelected
-                                      ? "border-blue-300 bg-blue-50 text-blue-700"
-                                      : "border-border bg-card text-muted-foreground hover:border-border"
+                                      ? "border-primary/40 bg-primary/15 text-primary"
+                                      : "border-border/60 bg-card/50 text-muted-foreground hover:border-border hover:bg-muted/30"
                                   }`}
                                   onClick={() => {
                                     const currentIds = aiVectorStoreIds.split(",").map((s) => s.trim()).filter(Boolean)
@@ -603,7 +628,7 @@ export default function AIToolsPage() {
                                     setAiVectorStoreIds(newIds.join(","))
                                   }}
                                 >
-                                  <Database className="h-3 w-3" />
+                                  <Database className="h-3 w-3" weight="bold" />
                                   {vs.name}
                                 </button>
                               )
@@ -631,7 +656,7 @@ export default function AIToolsPage() {
                   )}
 
                   {/* web_search */}
-                  <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted transition-colors">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/60 p-3 transition-colors hover:border-border hover:bg-muted/40">
                     <Checkbox
                       checked={aiTools.includes("web_search")}
                       onCheckedChange={(checked) => {
@@ -643,10 +668,10 @@ export default function AIToolsPage() {
                       }}
                       className="mt-0.5"
                     />
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <Globe className="h-3.5 w-3.5 text-green-500" />
-                        <span className="text-[13px] font-medium text-foreground/80">web_search</span>
+                        <Globe className="h-3.5 w-3.5 text-emerald-400" weight="bold" />
+                        <span className="text-[13px] font-medium text-foreground/90">web_search</span>
                       </div>
                       <p className="text-[11px] text-muted-foreground/60 mt-0.5">
                         Recherche sur le web pour des informations à jour.
@@ -656,8 +681,8 @@ export default function AIToolsPage() {
                 </div>
               </div>
 
-              <details className="group rounded-lg border border-border">
-                <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-[13px] font-medium text-muted-foreground hover:bg-muted">
+              <details className="group rounded-xl border border-border/60">
+                <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
                   Configuration avancée
                   <svg
                     className="h-4 w-4 text-muted-foreground/60 transition-transform group-open:rotate-180"
@@ -673,7 +698,7 @@ export default function AIToolsPage() {
                     />
                   </svg>
                 </summary>
-                <div className="space-y-3 border-t border-border/50 p-4">
+                <div className="space-y-3 border-t border-border/50 p-4 pt-4">
                   <div className="space-y-1.5">
                     <Label className="text-[12px] text-muted-foreground">Modèle</Label>
                     <select
@@ -710,17 +735,17 @@ export default function AIToolsPage() {
               <div className="flex justify-end gap-2 pt-1">
                 <Button
                   variant="outline"
-                  className="h-10 rounded-lg px-4 text-[13px]"
+                  className="h-10 rounded-xl px-4 text-[13px]"
                   onClick={() => setAiDialogOpen(false)}
                 >
                   Annuler
                 </Button>
                 <Button
-                  className="h-10 rounded-lg px-6 text-[13px] gap-2"
+                  className="h-10 gap-2 rounded-xl px-6 text-[13px] font-semibold"
                   onClick={() => handleSaveAi()}
                   disabled={aiSaving}
                 >
-                  {aiSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {aiSaving && <Spinner className="h-3.5 w-3.5 animate-spin" weight="bold" />}
                   Enregistrer
                 </Button>
               </div>
@@ -731,28 +756,28 @@ export default function AIToolsPage() {
 
       {/* ── Section 2: Bases de connaissance ── */}
       <div style={stagger(2)}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Bases de connaissance
           </h2>
           <Button
             size="sm"
-            className="h-8 gap-1.5 text-[13px] rounded-lg"
+            className="h-9 gap-2 rounded-xl px-4 text-[13px] font-semibold shadow-sm transition-transform hover:scale-[1.01] active:scale-[0.99]"
             onClick={() => setCreateVSDialogOpen(true)}
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-3.5 w-3.5" weight="bold" />
             Créer une base de connaissance
           </Button>
         </div>
 
         {vectorStores.length === 0 ? (
-          <Card className="border-transparent">
-            <CardContent className="flex flex-col items-center justify-center py-12 gap-2">
-              <Database className="h-8 w-8 text-muted-foreground/40" />
-              <p className="text-[13px] text-muted-foreground">
-                Aucune base de connaissance créée
-              </p>
-              <p className="text-[11px] text-muted-foreground/60">
+          <Card className="rounded-2xl border border-dashed border-border/60 bg-card/40 shadow-sm">
+            <CardContent className="flex flex-col items-center justify-center gap-2 py-14">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/50 ring-1 ring-border/50">
+                <Database className="h-6 w-6 text-muted-foreground" weight="duotone" />
+              </div>
+              <p className="text-[13px] font-medium text-foreground">Aucune base de connaissance créée</p>
+              <p className="max-w-sm text-center text-[11px] leading-relaxed text-muted-foreground">
                 Créez une base de connaissance pour stocker vos documents et enrichir les réponses de l&apos;IA.
               </p>
             </CardContent>
@@ -762,13 +787,13 @@ export default function AIToolsPage() {
             {vectorStores.map((vs, i) => (
               <div
                 key={`${vs.id}-${i}`}
-                className="rounded-xl border border-border/40 p-4"
+                className="rounded-2xl border border-border/50 bg-card/50 p-4 shadow-sm transition-all duration-300 hover:border-border hover:bg-card/70"
                 style={stagger(i + 3)}
               >
-                <div className="flex items-center justify-between mb-3">
+                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
-                      <Database className="h-4 w-4 text-primary" />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 ring-1 ring-primary/20">
+                      <Database className="h-4 w-4 text-primary" weight="fill" />
                     </div>
                     <div>
                       <p className="text-[13px] font-medium">{vs.name}</p>
@@ -777,17 +802,17 @@ export default function AIToolsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 gap-1.5 text-[11px] rounded-lg"
+                      className="h-8 gap-1.5 rounded-xl border-border/60 text-[11px] transition-colors hover:border-primary/30 hover:bg-primary/5"
                       onClick={() => {
                         setUploadDialogVSId(vs.id)
                         setUploadFiles([])
                       }}
                     >
-                      <Upload className="h-3 w-3" />
+                      <UploadSimple className="h-3 w-3" weight="bold" />
                       Ajouter des documents
                     </Button>
                     <AlertDialog>
@@ -795,13 +820,13 @@ export default function AIToolsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500"
+                          className="h-8 w-8 rounded-xl p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                           disabled={deletingVSId === vs.id}
                         >
                           {deletingVSId === vs.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Spinner className="h-3 w-3 animate-spin" weight="bold" />
                           ) : (
-                            <Trash2 className="h-3 w-3" />
+                            <Trash className="h-3 w-3" weight="bold" />
                           )}
                         </Button>
                       </AlertDialogTrigger>
@@ -834,10 +859,10 @@ export default function AIToolsPage() {
                     {vs.files.map((file, fileIdx) => (
                       <div
                         key={`${file.file_id}-${fileIdx}`}
-                        className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-accent/50 transition-colors"
+                        className="flex items-center justify-between rounded-xl px-3 py-2 transition-colors hover:bg-muted/40"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <div className="flex min-w-0 items-center gap-2">
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" weight="regular" />
                           <span className="text-[12px] truncate">
                             {file.filename}
                           </span>
@@ -848,16 +873,16 @@ export default function AIToolsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500 shrink-0"
+                          className="h-7 w-7 shrink-0 rounded-lg p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                           disabled={deletingFileId === file.file_id}
                           onClick={() =>
                             handleDeleteFile(vs.id, file)
                           }
                         >
                           {deletingFileId === file.file_id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Spinner className="h-3 w-3 animate-spin" weight="bold" />
                           ) : (
-                            <Trash2 className="h-3 w-3" />
+                            <Trash className="h-3 w-3" weight="bold" />
                           )}
                         </Button>
                       </div>
@@ -877,7 +902,7 @@ export default function AIToolsPage() {
       {/* ── Create Knowledge Base Dialog ── */}
       {createVSDialogOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
           onClick={() => setCreateVSDialogOpen(false)}
           onKeyDown={(e) => {
             if (e.key === "Escape") setCreateVSDialogOpen(false)
@@ -886,18 +911,18 @@ export default function AIToolsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-border/60 bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50">
-                <Database className="h-4 w-4 text-primary" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/20">
+                <Database className="h-4 w-4 text-primary" weight="fill" />
               </div>
               <div>
                 <h3 className="text-[15px] font-semibold text-foreground">
                   Créer une base de connaissance
                 </h3>
-                <p className="text-[11px] text-muted-foreground/60">
+                <p className="text-[11px] text-muted-foreground">
                   Donnez un nom à votre base de connaissances
                 </p>
               </div>
@@ -916,18 +941,18 @@ export default function AIToolsPage() {
               <div className="flex justify-end gap-2 pt-2">
                 <Button
                   variant="outline"
-                  className="h-9 rounded-lg px-4 text-[13px]"
+                  className="h-9 rounded-xl px-4 text-[13px]"
                   onClick={() => setCreateVSDialogOpen(false)}
                 >
                   Annuler
                 </Button>
                 <Button
-                  className="h-9 rounded-lg px-5 text-[13px] gap-2"
+                  className="h-9 gap-2 rounded-xl px-5 text-[13px] font-semibold"
                   onClick={handleCreateVectorStore}
                   disabled={isCreatingVS || !newVSName.trim()}
                 >
                   {isCreatingVS && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Spinner className="h-3.5 w-3.5 animate-spin" weight="bold" />
                   )}
                   Créer
                 </Button>
@@ -940,7 +965,7 @@ export default function AIToolsPage() {
       {/* ── Upload Files Dialog ── */}
       {uploadDialogVSId && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
           onClick={() => setUploadDialogVSId(null)}
           onKeyDown={(e) => {
             if (e.key === "Escape") setUploadDialogVSId(null)
@@ -949,18 +974,18 @@ export default function AIToolsPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-border/60 bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50">
-                <Upload className="h-4 w-4 text-green-600" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 ring-1 ring-emerald-500/25">
+                <UploadSimple className="h-4 w-4 text-emerald-400" weight="fill" />
               </div>
               <div>
                 <h3 className="text-[15px] font-semibold text-foreground">
                   Ajouter des documents
                 </h3>
-                <p className="text-[11px] text-muted-foreground/60">
+                <p className="text-[11px] text-muted-foreground">
                   Uploadez des fichiers depuis votre appareil
                 </p>
               </div>
@@ -968,8 +993,8 @@ export default function AIToolsPage() {
             <div className="space-y-4">
               {/* File upload */}
               <div className="space-y-1.5">
-                <Label className="text-[13px] flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5" />
+                <Label className="flex items-center gap-1.5 text-[13px]">
+                  <FileText className="h-3.5 w-3.5" weight="regular" />
                   Fichiers
                 </Label>
                 <input
@@ -984,22 +1009,22 @@ export default function AIToolsPage() {
                   }}
                 />
                 <div
-                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-border p-4 cursor-pointer hover:border-border transition-colors"
+                  className="flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border/70 p-4 transition-all hover:border-primary/35 hover:bg-muted/20"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {uploadFiles.length > 0 ? (
                     <div className="text-center">
-                      <p className="text-[13px] font-medium text-foreground/80">
+                      <p className="text-[13px] font-medium text-foreground/90">
                         Fichiers sélectionnés
                       </p>
-                      <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {uploadFiles.map((f) => f.name).join(", ")}
                       </p>
                     </div>
                   ) : (
                     <div className="text-center">
-                      <Upload className="h-5 w-5 text-muted-foreground/40 mx-auto mb-1" />
-                      <p className="text-[12px] text-muted-foreground/60">
+                      <UploadSimple className="mx-auto mb-1 h-5 w-5 text-muted-foreground" weight="duotone" />
+                      <p className="text-[12px] text-muted-foreground">
                         Cliquez pour sélectionner des fichiers
                       </p>
                     </div>
@@ -1010,18 +1035,18 @@ export default function AIToolsPage() {
               <div className="flex justify-end gap-2 pt-1">
                 <Button
                   variant="outline"
-                  className="h-9 rounded-lg px-4 text-[13px]"
+                  className="h-9 rounded-xl px-4 text-[13px]"
                   onClick={() => setUploadDialogVSId(null)}
                 >
                   Annuler
                 </Button>
                 <Button
-                  className="h-9 rounded-lg px-5 text-[13px] gap-2"
+                  className="h-9 gap-2 rounded-xl px-5 text-[13px] font-semibold"
                   onClick={() => handleUploadFiles(uploadDialogVSId)}
                   disabled={isUploading}
                 >
                   {isUploading && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Spinner className="h-3.5 w-3.5 animate-spin" weight="bold" />
                   )}
                   Envoyer
                 </Button>

@@ -1,21 +1,21 @@
-import type { ComponentType } from "react"
+import type { Icon } from "@phosphor-icons/react"
 import {
-  LayoutDashboard,
-  Send,
-  Users,
-  Tags,
-  MessageSquareMore,
-  Building2,
-  Settings,
-  Megaphone,
-  Bot,
+  Buildings,
+  ChatCircleDots,
+  Gear,
+  GridFour,
+  MegaphoneSimple,
+  PaperPlaneRight,
   Receipt,
-} from "lucide-react"
+  Robot,
+  Tag,
+  Users,
+} from "@phosphor-icons/react"
 
 export interface NavigationItem {
   name: string
   href: string
-  icon: ComponentType<{ className?: string }>
+  icon: Icon
   ownerOnly?: boolean
   children?: Array<{
     name: string
@@ -25,33 +25,31 @@ export interface NavigationItem {
 
 export interface NavigationSection {
   title?: string
-  icon?: ComponentType<{ className?: string }>
+  icon?: Icon
   items: NavigationItem[]
   position?: "default" | "bottom"
 }
 
 export const navigationSections: NavigationSection[] = [
   {
-    items: [
-      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    ],
+    items: [{ name: "Dashboard", href: "/dashboard", icon: GridFour }],
   },
   {
     title: "Communication",
-    icon: Megaphone,
+    icon: MegaphoneSimple,
     items: [
-      { name: "Campagnes", href: "/campaigns/whatsapp", icon: Send },
+      { name: "Campagnes", href: "/campaigns/whatsapp", icon: PaperPlaneRight },
       {
         name: "Messagerie",
         href: "/conversations",
-        icon: MessageSquareMore,
+        icon: ChatCircleDots,
         children: [
           { name: "Conversations", href: "/conversations" },
           { name: "Templates WhatsApp", href: "/templates/whatsapp" },
           { name: "Configuration", href: "/whatsapp/config" },
         ],
       },
-      { name: "Agents IA", href: "/whatsapp/ai-tools", icon: Bot },
+      { name: "Agents IA", href: "/whatsapp/ai-tools", icon: Robot },
     ],
   },
   {
@@ -59,14 +57,14 @@ export const navigationSections: NavigationSection[] = [
     icon: Users,
     items: [
       { name: "Contacts", href: "/contacts", icon: Users },
-      { name: "Tags", href: "/contacts/tags", icon: Tags },
+      { name: "Tags", href: "/contacts/tags", icon: Tag },
     ],
   },
   {
     title: "Organisation & Gestion",
-    icon: Building2,
+    icon: Buildings,
     items: [
-      { name: "Organisation", href: "/organization", icon: Building2, ownerOnly: true },
+      { name: "Organisation", href: "/organization", icon: Buildings, ownerOnly: true },
       {
         name: "Facturation",
         href: "/whatsapp/credits",
@@ -80,7 +78,7 @@ export const navigationSections: NavigationSection[] = [
       {
         name: "Paramètres",
         href: "/settings",
-        icon: Settings,
+        icon: Gear,
         children: [
           { name: "Compte", href: "/settings" },
           { name: "Exportation", href: "/settings/exportation" },
