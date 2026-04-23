@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios"
 import { authStorage } from "@/lib/auth-storage"
 import { clearAllCachedContacts } from "@/lib/contacts-cache"
-import { getSupabaseClient, syncSupabaseSession } from "@/lib/supabase"
+import { syncSupabaseSession } from "@/lib/supabase"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -96,6 +96,7 @@ export function buildOrgFormData(
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 20000,
 })
 
 // ── Token refresh lock (shared between api and apiJson) ──
@@ -184,19 +185,7 @@ api.interceptors.request.use(
     config.url = withAppNamespace(config.url)
 
     if (typeof window !== "undefined") {
-      let token: string | null = null
-      try {
-        const supabase = getSupabaseClient()
-        if (supabase) {
-          const { data } = await supabase.auth.getSession()
-          token = data.session?.access_token ?? null
-        }
-      } catch {
-        token = null
-      }
-      if (!token) {
-        token = authStorage.getItem("access_token")
-      }
+      const token = authStorage.getItem("access_token")
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }
@@ -244,6 +233,7 @@ api.interceptors.response.use(
 // API with JSON content type
 export const apiJson = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 20000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -254,19 +244,7 @@ apiJson.interceptors.request.use(
     config.url = withAppNamespace(config.url)
 
     if (typeof window !== "undefined") {
-      let token: string | null = null
-      try {
-        const supabase = getSupabaseClient()
-        if (supabase) {
-          const { data } = await supabase.auth.getSession()
-          token = data.session?.access_token ?? null
-        }
-      } catch {
-        token = null
-      }
-      if (!token) {
-        token = authStorage.getItem("access_token")
-      }
+      const token = authStorage.getItem("access_token")
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }

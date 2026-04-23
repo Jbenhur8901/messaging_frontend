@@ -42,17 +42,13 @@ if (typeof window !== "undefined") {
   const supabase = getSupabaseClient()
   if (supabase) {
     supabase.auth.onAuthStateChange((_event, session) => {
-    if (session?.access_token) {
-      authStorage.setItem("access_token", session.access_token)
-    } else {
-      authStorage.removeItem("access_token")
-    }
+      if (session?.access_token) {
+        authStorage.setItem("access_token", session.access_token)
+      }
 
-    if (session?.refresh_token) {
-      authStorage.setItem("refresh_token", session.refresh_token)
-    } else {
-      authStorage.removeItem("refresh_token")
-    }
+      if (session?.refresh_token) {
+        authStorage.setItem("refresh_token", session.refresh_token)
+      }
     })
   }
 }

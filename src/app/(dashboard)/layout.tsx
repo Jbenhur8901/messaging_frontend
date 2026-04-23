@@ -34,12 +34,14 @@ export default function DashboardLayout({
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
   const [isReady, setIsReady] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const authCheckStartedRef = useRef(false)
 
   const checkAuth = useCallback(async () => {
     if (authCheckStartedRef.current) return
     authCheckStartedRef.current = true
+    setAuthError(null)
 
     // Check if we have a token
     const token = authStorage.getItem("access_token")
@@ -47,12 +49,14 @@ export default function DashboardLayout({
       typeof window !== "undefined" && sessionStorage.getItem("mfa_required") === "1"
 
     if (!token) {
+      setAuthChecked(true)
       router.replace("/auth/login")
       return
     }
 
     // Check if MFA verification is pending (only if not already authenticated)
     if ((requiresMFAVerification || mfaRequired) && !isAuthenticated) {
+      setAuthChecked(true)
       router.replace("/auth/verify-2fa")
       return
     }
@@ -85,69 +89,105 @@ export default function DashboardLayout({
           return
         }
 
+        setAuthError("Impossible de vérifier votre session. Vérifiez votre connexion puis réessayez.")
+        setAuthChecked(true)
         authCheckStartedRef.current = false
         return
       }
     }
 
-    // Load organizations and decide if onboarding is required
-    await fetchOrganizations()
-    const orgState = useOrganizationStore.getState()
-    const orgs = orgState.organizations
-    setSessionOrganizations(orgs)
-
-    if (orgs.length === 0) {
-      router.replace("/onboarding")
-      return
-    }
-
-    let activeOrganization = orgs.find((org) => org.id === activeOrgId) || orgs[0]
-
-    if (!activeOrganization) {
-      router.replace("/onboarding")
-      return
-    }
-
     try {
+      // Load organizations and decide if onboarding is required
+      await fetchOrganizations()
+      const orgState = useOrganizationStore.getState()
+      const orgs = orgState.organizations
+      setSessionOrganizations(orgs)
+
+      if (orgs.length === 0) {
+        setAuthChecked(true)
+        router.replace("/onboarding")
+        return
+      }
+
+      let activeOrganization = orgs.find((org) => org.id === activeOrgId) || orgs[0]
+
+      if (!activeOrganization) {
+        setAuthChecked(true)
+        router.replace("/onboarding")
+        return
+      }
+
       await organizationsService.switchOrganization(activeOrganization.id)
+      setActiveOrgId(activeOrganization.id)
+      setCurrentOrganization(activeOrganization)
+
+      if (currentUser) {
+        const updatedUser = {
+          ...currentUser,
+          organization_id: activeOrganization.id,
+          organization_name: activeOrganization.name,
+        }
+        authStorage.setItem("user", JSON.stringify(updatedUser))
+        setUser(updatedUser)
+      }
+
+      // User has organization, load balance without blocking the initial dashboard render.
+      void fetchBalance()
+      setIsReady(true)
+      setAuthChecked(true)
     } catch (error) {
       const status = axios.isAxiosError(error) ? error.response?.status : undefined
+
+      if (status === 401) {
+        authStorage.removeItem("access_token")
+        authStorage.removeItem("refresh_token")
+        authStorage.removeItem("user")
+        setAuthChecked(true)
+        router.replace("/auth/login")
+        return
+      }
+
       if (status === 403 || status === 404) {
-        await fetchOrganizations()
-        const refreshedOrgs = useOrganizationStore.getState().organizations
-        setSessionOrganizations(refreshedOrgs)
-        if (refreshedOrgs.length === 0) {
-          router.replace("/onboarding")
-          return
-        }
-        activeOrganization = refreshedOrgs[0]
         try {
+          await fetchOrganizations()
+          const refreshedOrgs = useOrganizationStore.getState().organizations
+          setSessionOrganizations(refreshedOrgs)
+          if (refreshedOrgs.length === 0) {
+            setAuthChecked(true)
+            router.replace("/onboarding")
+            return
+          }
+          const activeOrganization = refreshedOrgs[0]
           await organizationsService.switchOrganization(activeOrganization.id)
+
+          setActiveOrgId(activeOrganization.id)
+          setCurrentOrganization(activeOrganization)
+
+          if (currentUser) {
+            const updatedUser = {
+              ...currentUser,
+              organization_id: activeOrganization.id,
+              organization_name: activeOrganization.name,
+            }
+            authStorage.setItem("user", JSON.stringify(updatedUser))
+            setUser(updatedUser)
+          }
+
+          void fetchBalance()
+          setIsReady(true)
+          setAuthChecked(true)
+          return
         } catch {
+          setAuthChecked(true)
           router.replace("/onboarding")
           return
         }
       }
+
+      setAuthError("Impossible de charger votre espace. Vérifiez votre connexion puis réessayez.")
+      setAuthChecked(true)
+      authCheckStartedRef.current = false
     }
-
-    setActiveOrgId(activeOrganization.id)
-    setCurrentOrganization(activeOrganization)
-
-    if (currentUser) {
-      const updatedUser = {
-        ...currentUser,
-        organization_id: activeOrganization.id,
-        organization_name: activeOrganization.name,
-      }
-      authStorage.setItem("user", JSON.stringify(updatedUser))
-      setUser(updatedUser)
-    }
-
-    // User has organization, load balance
-    fetchBalance()
-    setIsReady(true)
-
-    setAuthChecked(true)
   }, [user, fetchProfile, fetchBalance, router, requiresMFAVerification, isAuthenticated, fetchOrganizations, setCurrentOrganization, setUser, activeOrgId, setActiveOrgId, setSessionOrganizations])
 
   useEffect(() => {
@@ -173,6 +213,37 @@ export default function DashboardLayout({
   }, [])
 
   // Show loading while checking auth
+  if (authError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#0a0a0a] px-6">
+        <div className="max-w-md rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center shadow-2xl">
+          <p className="text-base font-semibold text-white">Chargement interrompu</p>
+          <p className="mt-2 text-sm text-white/60">{authError}</p>
+          <div className="mt-5 flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthChecked(false)
+                setIsReady(false)
+                void checkAuth()
+              }}
+              className="rounded-full bg-[#E0D112] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#f2e73a]"
+            >
+              Réessayer
+            </button>
+            <button
+              type="button"
+              onClick={() => router.replace("/auth/login")}
+              className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Reconnexion
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!authChecked || !isReady || isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0a0a0a]">
