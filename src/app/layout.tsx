@@ -14,9 +14,9 @@ export const metadata: Metadata = {
   title: "Flow - Marketing interactif et agents IA",
   description: "Plateforme WhatsApp de marketing interactif, conversations automatisees et agents IA.",
   icons: {
-    icon: "/logo_flow_blanc.png",
-    apple: "/logo_flow_blanc.png",
-    shortcut: "/logo_flow_blanc.png",
+    icon: "/logo-nodes-badge.svg",
+    apple: "/logo-nodes-badge.svg",
+    shortcut: "/logo-nodes-badge.svg",
   },
 }
 

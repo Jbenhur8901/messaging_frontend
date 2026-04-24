@@ -2,7 +2,8 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { FlowLogo } from "@/components/brand/flow-logo"
+ 
 
 const FEATURES = [
   { title: "WhatsApp", desc: "Templates, conversations et envois groupés." },
@@ -33,22 +34,14 @@ export function HomeHero() {
 
       <div className="relative mx-auto grid min-h-[82vh] max-w-6xl grid-cols-1 items-center gap-10 px-6 py-14 lg:min-h-[88vh] lg:grid-cols-2 lg:gap-16">
         {/* Left: text */}
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-xl"
-        >
+        <div className="max-w-xl animate-[fade-up_0.55s_cubic-bezier(0.16,1,0.3,1)_both]">
           <div className="group/badge inline-flex cursor-default items-center rounded-full border border-black/10 bg-white/70 px-3.5 py-2.5 backdrop-blur transition-all duration-300 ease-out hover:scale-[1.03] hover:border-[#FFCC00]/35 hover:bg-white/95 hover:shadow-[0_14px_36px_-18px_rgba(0,0,0,0.14)]">
-            <span className="relative h-12 w-12 overflow-hidden rounded-full shadow-[0_14px_30px_-18px_rgba(0,0,0,0.35)] transition-[box-shadow,transform] duration-300 ease-out group-hover/badge:shadow-[0_18px_40px_-16px_rgba(255,204,0,0.38)]">
-              <Image
-                src="/mtn.jpg"
-                alt="MTN"
-                fill
-                className="object-cover transition-transform duration-500 ease-out group-hover/badge:scale-110"
-                sizes="48px"
-              />
-            </span>
+            <FlowLogo
+              size={48}
+              className="rounded-full transition-[box-shadow,transform] duration-300 ease-out group-hover/badge:scale-110 group-hover/badge:shadow-[0_18px_40px_-16px_rgba(255,204,0,0.38)]"
+              imageClassName="scale-[0.92]"
+              priority
+            />
           </div>
 
           <h1 className="mt-7 max-w-xl text-[34px] font-extrabold leading-[1.08] tracking-tight text-black sm:text-[54px] sm:leading-[1.05]">
@@ -106,15 +99,10 @@ export function HomeHero() {
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
 
         {/* Right: image */}
-        <motion.div
-          initial={{ opacity: 0, x: 22 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.65, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-          className="relative flex items-stretch justify-center lg:justify-end"
-        >
+        <div className="relative flex items-stretch justify-center animate-[fade-in-right_0.65s_cubic-bezier(0.16,1,0.3,1)_0.05s_both] lg:justify-end">
           <div className="relative w-full">
             <div className="relative h-[72vh] w-full overflow-hidden rounded-[28px] lg:h-[88vh]">
               <div className="relative h-full w-full">
@@ -155,8 +143,31 @@ export function HomeHero() {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
+      <style jsx>{`
+        @keyframes fade-up {
+          from {
+            opacity: 0;
+            transform: translateY(18px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes fade-in-right {
+          from {
+            opacity: 0;
+            transform: translateX(22px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      `}</style>
     </section>
   )
 }

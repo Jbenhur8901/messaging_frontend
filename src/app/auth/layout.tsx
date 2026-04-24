@@ -3,6 +3,8 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+
+import { FlowLogo } from "@/components/brand/flow-logo"
 import { Button } from "@/components/ui/button"
 
 export default function AuthLayout({
@@ -17,7 +19,6 @@ export default function AuthLayout({
   if (isPlainAuth) {
     return (
       <div className="relative min-h-screen bg-[#070707] text-white selection:bg-primary/25 selection:text-black">
-        {/* Background base */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
@@ -27,7 +28,6 @@ export default function AuthLayout({
           }}
         />
 
-        {/* HomeHero background: diagonal lines + soft yellow glow */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 opacity-[0.12]"
@@ -37,21 +37,18 @@ export default function AuthLayout({
           }}
         />
 
-        {/* MTN yellow glow */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -left-28 top-20 h-80 w-80 rounded-full blur-[95px]"
           style={{ backgroundColor: "rgba(255,204,0,0.28)" }}
         />
 
-        {/* Subtle rare accent (blue) */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -right-40 top-10 h-96 w-96 rounded-full blur-[120px]"
           style={{ backgroundColor: "rgba(0,91,170,0.12)" }}
         />
 
-        {/* Card spotlight */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[90px]"
@@ -68,7 +65,6 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen bg-[#fbfbfb] text-[#111] selection:bg-primary/20 selection:text-black">
       <div className="relative mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 items-stretch gap-10 px-6 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-12">
-        {/* Subtle background lines (like reference) */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 opacity-[0.35]"
@@ -78,7 +74,6 @@ export default function AuthLayout({
           }}
         />
 
-        {/* Left content */}
         <div className="relative z-10 flex flex-col justify-center gap-8 animate-fade-in">
           <div className="inline-flex items-center gap-3 self-start rounded-full border border-black/10 bg-white/70 px-4 py-2 text-[13px] font-semibold text-black/80 backdrop-blur">
             <Image
@@ -92,7 +87,6 @@ export default function AuthLayout({
           </div>
 
           <div className="space-y-5">
-            {/* Keep texts exactly, change styling only */}
             <h1 className="max-w-xl text-[40px] font-extrabold leading-[1.05] tracking-tight sm:text-[54px]">
               Une seule <span className="text-primary">plateforme</span>
               <br />
@@ -102,7 +96,8 @@ export default function AuthLayout({
             </h1>
 
             <p className="max-w-[34rem] text-[15px] leading-[1.8] text-black/60">
-              Orchestrez vos campagnes, activez des agents IA et transformez vos interactions clients en croissance mesurable.
+              Orchestrez vos campagnes, activez des agents IA et transformez vos
+              interactions clients en croissance mesurable.
             </p>
 
             <div className="space-y-2 text-[12px] text-black/65">
@@ -116,8 +111,8 @@ export default function AuthLayout({
 
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <Link href="/auth/login">
-                <Button className="h-11 rounded-xl bg-primary px-6 text-[13px] font-extrabold text-black hover:bg-primary/90 shadow-[0_12px_30px_-14px_rgba(0,0,0,0.35)]">
-                  Créer un compte
+                <Button className="h-11 rounded-xl bg-primary px-6 text-[13px] font-extrabold text-black shadow-[0_12px_30px_-14px_rgba(0,0,0,0.35)] hover:bg-primary/90">
+                  Creer un compte
                 </Button>
               </Link>
               <Link href="/terms" target="_blank">
@@ -133,13 +128,25 @@ export default function AuthLayout({
 
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              { title: "WhatsApp", desc: "Templates, conversations et envois groupés." },
-              { title: "Flows", desc: "Parcours, relances et automatisations conversationnelles." },
-              { title: "IA", desc: "Réponses automatiques et recherche documentaire." },
-              { title: "Suivi", desc: "Statistiques, crédits et activité en temps réel." },
-            ].map((item, i) => (
+              {
+                title: "WhatsApp",
+                desc: "Templates, conversations et envois groupes.",
+              },
+              {
+                title: "Flows",
+                desc: "Parcours, relances et automatisations conversationnelles.",
+              },
+              {
+                title: "IA",
+                desc: "Reponses automatiques et recherche documentaire.",
+              },
+              {
+                title: "Suivi",
+                desc: "Statistiques, credits et activite en temps reel.",
+              },
+            ].map((item) => (
               <div
-                key={i}
+                key={item.title}
                 className="rounded-2xl border border-black/10 bg-white/70 px-5 py-4 backdrop-blur-sm transition-all hover:bg-white"
               >
                 <p className="text-[13px] font-semibold text-black/85">
@@ -153,11 +160,12 @@ export default function AuthLayout({
           </div>
         </div>
 
-        {/* Right visual + form */}
         <div className="relative z-10 flex items-center justify-center lg:justify-end animate-slide-up">
           <div className="relative w-full max-w-md">
-            {/* Visual layer (big cutout face + floating photos) */}
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 hidden lg:block"
+            >
               <div className="absolute -right-28 -top-12 h-[620px] w-[560px]">
                 <div
                   className="absolute inset-0"
@@ -200,25 +208,18 @@ export default function AuthLayout({
               <div className="absolute -bottom-6 -left-6 h-44 w-44 rounded-full bg-primary/18 blur-[85px]" />
             </div>
 
-            {/* Form card */}
             <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-white/85 p-7 shadow-[0_30px_80px_-50px_rgba(0,0,0,0.45)] backdrop-blur sm:p-8">
               <div className="absolute -right-10 -top-10 h-44 w-44 rounded-full bg-primary/15 blur-[60px]" />
               <div className="mb-7 flex items-center gap-3">
                 <div className="rounded-2xl border border-black/10 bg-primary/20 p-2">
-                  <Image
-                    src="https://phwyhgzcnnjffovepbrt.supabase.co/storage/v1/object/public/file/1.png"
-                    alt="Flow"
-                    width={40}
-                    height={40}
-                    className="rounded-xl"
-                  />
+                  <FlowLogo size={40} className="rounded-xl" priority />
                 </div>
                 <div className="leading-tight">
                   <p className="text-[16px] font-extrabold tracking-tight text-black">
                     Flow
                   </p>
                   <p className="text-[11px] font-medium text-black/45">
-                    Connexion sécurisée
+                    Connexion securisee
                   </p>
                 </div>
               </div>

@@ -16,12 +16,15 @@ export function FlowLogo({
 }: FlowLogoProps) {
   return (
     <div
-      className={cn("flex items-center justify-center overflow-hidden", className)}
+      className={cn(
+        "flex items-center justify-center overflow-hidden rounded-xl border border-black/10 bg-white p-1.5 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]",
+        className,
+      )}
       style={{ width: size, height: size }}
     >
       <Image
-        src="/logo_flow_blanc.png"
-        alt="Flow"
+        src="/logo-nodes.png"
+        alt="Nodes"
         width={size}
         height={size}
         priority={priority}
