@@ -884,16 +884,9 @@ export const whatsappService = {
       operator: "mtn" | "airtel"
     }
   ): Promise<{ intentId: string; status: string; walletCredited: boolean; creditsAwarded: number; failureMessage: string | null }> {
-    const { intent_id, client_secret, first_name, last_name, phone, operator } = payload
     const { data } = await apiJson.post(
       "/v1/app/whatsapp/credits/recharge/yabetoo/confirm",
-      {
-        intent_id,
-        client_secret,
-        payment_method_data: {
-          momo: { operator_name: operator, first_name, last_name, phone },
-        },
-      }
+      payload
     )
     const r = data as Record<string, unknown>
     return {
@@ -919,15 +912,45 @@ export const whatsappService = {
     }
   },
 
-  async createStripeRechargeIntent(
+  async waitYabetooPayment(
+    intentId: string,
+    timeout = 60
+  ): Promise<{ status: string; walletCredited: boolean; failureMessage: string | null }> {
+    const { data } = await api.get(
+      `/v1/app/whatsapp/credits/recharge/yabetoo/${intentId}/wait`,
+      { params: { timeout }, timeout: (timeout + 5) * 1000 }
+    )
+    const r = data as Record<string, unknown>
+    return {
+      status: (r.status as string) ?? "processing",
+      walletCredited: ((r.wallet_credited ?? r.walletCredited ?? false) as boolean),
+      failureMessage: (r.failure_message ?? r.failureMessage ?? null) as string | null,
+    }
+  },
+
+  async createStripeCheckout(
     amountXaf: number,
+    successUrl: string,
+    cancelUrl: string,
     description?: string
-  ): Promise<{ success: boolean; intent_id: string; client_secret: string; stripe_amount: number; stripe_currency: string; amount_xaf: number; status: string }> {
-    const { data } = await apiJson.post("/v1/app/whatsapp/credits/recharge/stripe/intent", {
+  ): Promise<{ success: boolean; checkoutSessionId: string; checkoutUrl: string; intentId: string; stripeAmount: number; stripeCurrency: string; amountXaf: number; status: string }> {
+    const { data } = await apiJson.post("/v1/app/whatsapp/credits/recharge/stripe/checkout", {
       amount_xaf: amountXaf,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       description: description ?? "Recharge wallet WhatsApp",
     })
-    return data
+    const r = data as Record<string, unknown>
+    return {
+      success: Boolean(r.success),
+      checkoutSessionId: (r.checkout_session_id ?? r.checkoutSessionId ?? "") as string,
+      checkoutUrl: (r.checkout_url ?? r.checkoutUrl ?? r.url ?? "") as string,
+      intentId: (r.intent_id ?? r.intentId ?? "") as string,
+      stripeAmount: (r.stripe_amount ?? r.stripeAmount ?? 0) as number,
+      stripeCurrency: (r.stripe_currency ?? r.stripeCurrency ?? "eur") as string,
+      amountXaf: (r.amount_xaf ?? r.amountXaf ?? amountXaf) as number,
+      status: (r.status as string) ?? "requires_payment_method",
+    }
   },
 
   async getWhatsAppTransactions(

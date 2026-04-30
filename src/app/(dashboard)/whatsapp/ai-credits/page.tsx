@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { handleApiError } from "@/services"
 import { aiCreditsService } from "@/services/ai-credits"
@@ -36,7 +36,6 @@ import {
   Robot,
   Sparkle,
   Spinner,
-  UploadSimple,
   WarningCircle,
   XCircle,
 } from "@phosphor-icons/react"
@@ -83,23 +82,19 @@ const formatDate = (iso: string) => {
   })
 }
 
-const PAYMENT_PROOF_MAX_MB = 5
-const PAYMENT_PROOF_MAX_BYTES = PAYMENT_PROOF_MAX_MB * 1024 * 1024
-const ALLOWED_PAYMENT_PROOF_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 const AI_UNIT_PRICE_FCFA = 3
 const ALLOWED_AI_PACKAGE_CODES = ["AI-1000", "AI-5000", "AI-10000", "AI-25000"] as const
 const ALLOWED_AI_PACKAGE_CODE_SET = new Set<string>(ALLOWED_AI_PACKAGE_CODES)
 const ALLOWED_AI_PACKAGE_ORDER = new Map<string, number>(ALLOWED_AI_PACKAGE_CODES.map((code, index) => [code, index]))
+type MobileMoneyOperator = "mtn" | "airtel"
 
-const validatePaymentProofFile = (file: File): string | null => {
-  if (!ALLOWED_PAYMENT_PROOF_TYPES.has(file.type)) {
-    return "Format invalide. Utilisez JPEG, PNG ou WEBP."
-  }
-  if (file.size > PAYMENT_PROOF_MAX_BYTES) {
-    return `Fichier trop volumineux. Taille max: ${PAYMENT_PROOF_MAX_MB} MB.`
-  }
-  return null
+const PHONE_PREFIX_BY_OPERATOR: Record<MobileMoneyOperator, string> = {
+  mtn: "24206",
+  airtel: "24205",
 }
+const PHONE_MAX_DIGITS = 12
+const getPhonePrefix = (operator: MobileMoneyOperator) => PHONE_PREFIX_BY_OPERATOR[operator]
+const getPhoneSuffixMaxDigits = (operator: MobileMoneyOperator) => PHONE_MAX_DIGITS - getPhonePrefix(operator).length
 
 const resolvePackageMessages = (code?: string, fallback?: number): number => {
   if (code && ALLOWED_AI_PACKAGE_CODE_SET.has(code) && typeof fallback === "number" && Number.isFinite(fallback)) {
@@ -188,11 +183,14 @@ export default function AICreditsPage() {
   // Purchase request dialog state
   const [requestDialogOpen, setRequestDialogOpen] = useState(false)
   const [selectedPackage, setSelectedPackage] = useState<AIPackage | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState("mobile_money")
-  const [paymentProof, setPaymentProof] = useState<File | null>(null)
+  const [paymentStep, setPaymentStep] = useState<"form" | "processing" | "done">("form")
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null)
+  const [payerFirstName, setPayerFirstName] = useState("")
+  const [payerLastName, setPayerLastName] = useState("")
+  const [payerPhoneSuffix, setPayerPhoneSuffix] = useState("")
+  const [payerOperator, setPayerOperator] = useState<MobileMoneyOperator>("mtn")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Detail dialog
   const [detailRequest, setDetailRequest] = useState<AICreditRequest | null>(null)
@@ -229,28 +227,29 @@ export default function AICreditsPage() {
     }
   }, [requestStatusFilter])
 
-  useEffect(() => {
-    const loadAll = async () => {
-      try {
-        const [balanceResult, packagesResult, txResult, reqResult] = await Promise.allSettled([
-          aiCreditsService.getBalance(),
-          aiCreditsService.getPackages(),
-          aiCreditsService.getTransactions(TX_LIMIT, 0),
-          aiCreditsService.listRequests(undefined, 50, 0),
-        ])
-        if (balanceResult.status === "fulfilled") setBalance(balanceResult.value)
-        if (packagesResult.status === "fulfilled") setPackages(packagesResult.value.packages || [])
-        if (txResult.status === "fulfilled") {
-          setTransactions(txResult.value.transactions || [])
-          setPagination(txResult.value.pagination || null)
-        }
-        if (reqResult.status === "fulfilled") setRequests(reqResult.value.requests || [])
-      } finally {
-        setIsLoading(false)
+  const loadAll = useCallback(async () => {
+    try {
+      const [balanceResult, packagesResult, txResult, reqResult] = await Promise.allSettled([
+        aiCreditsService.getBalance(),
+        aiCreditsService.getPackages(),
+        aiCreditsService.getTransactions(TX_LIMIT, 0),
+        aiCreditsService.listRequests(undefined, 50, 0),
+      ])
+      if (balanceResult.status === "fulfilled") setBalance(balanceResult.value)
+      if (packagesResult.status === "fulfilled") setPackages(packagesResult.value.packages || [])
+      if (txResult.status === "fulfilled") {
+        setTransactions(txResult.value.transactions || [])
+        setPagination(txResult.value.pagination || null)
       }
+      if (reqResult.status === "fulfilled") setRequests(reqResult.value.requests || [])
+    } finally {
+      setIsLoading(false)
     }
+  }, [])
+
+  useEffect(() => {
     loadAll()
-  }, [currentOrganization?.id])
+  }, [currentOrganization?.id, loadAll])
 
   useEffect(() => {
     if (!isLoading) loadRequests()
@@ -270,33 +269,71 @@ export default function AICreditsPage() {
       toast.error("Pack invalide. Veuillez sélectionner un pack autorisé.")
       return
     }
-    if (!paymentProof) {
-      toast.error("La preuve de paiement est obligatoire")
-      return
-    }
-    const paymentProofError = validatePaymentProofFile(paymentProof)
-    if (paymentProofError) {
-      toast.error(paymentProofError)
+    if (!payerFirstName.trim() || !payerLastName.trim() || !payerPhoneSuffix.trim()) {
+      toast.error("Veuillez remplir prénom, nom et téléphone.")
       return
     }
     setIsSubmitting(true)
+    setPaymentStep("processing")
+    setPaymentIntentId(null)
     try {
-      await aiCreditsService.createRequest(
+      const amount = resolvePackageTotalPrice(selectedPackage)
+      const intentRes = await aiCreditsService.createYabetooRechargeIntent(
         selectedPackage.code,
-        paymentMethod,
-        paymentProof
+        amount,
+        `Pack ${selectedPackage.code}`
       )
-      toast.success("Demande envoyée ! Elle sera traitée par un administrateur.")
-      setRequestDialogOpen(false)
-      setSelectedPackage(null)
-      setPaymentProof(null)
-      loadRequests()
+      setPaymentIntentId(intentRes.intentId)
+      const confirmRes = await aiCreditsService.confirmYabetooPayment(
+        {
+          intent_id: intentRes.intentId,
+          client_secret: intentRes.clientSecret,
+          first_name: payerFirstName,
+          last_name: payerLastName,
+          phone: `${getPhonePrefix(payerOperator)}${payerPhoneSuffix}`,
+          operator: payerOperator,
+        }
+      )
+      if (confirmRes.status === "succeeded") {
+        toast.success("Payé ! Vos crédits IA ont été ajoutés.")
+        closeRequestDialog()
+        loadAll()
+      } else {
+        setPaymentStep("done")
+        try {
+          const waitRes = await aiCreditsService.waitYabetooPayment(intentRes.intentId)
+          if (waitRes.status === "succeeded") {
+            toast.success("Payé ! Vos crédits IA ont été ajoutés.")
+            closeRequestDialog()
+            loadAll()
+          } else if (waitRes.status === "failed") {
+            toast.error(waitRes.failureMessage ?? "Paiement échoué. Veuillez réessayer.")
+            setPaymentIntentId(null)
+            setPaymentStep("form")
+          }
+        } catch {
+          // Le paiement reste en attente si le long-poll expire ou perd la connexion.
+        }
+      }
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
+      setPaymentIntentId(null)
+      setPaymentStep("form")
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const closeRequestDialog = () => {
+    setRequestDialogOpen(false)
+    setSelectedPackage(null)
+    setPaymentStep("form")
+    setPaymentIntentId(null)
+    setPayerFirstName("")
+    setPayerLastName("")
+    setPayerPhoneSuffix("")
+    setPayerOperator("mtn")
   }
 
   const handleCancelRequest = async (id: string) => {
@@ -427,7 +464,7 @@ export default function AICreditsPage() {
             <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2.5">
               <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" weight="bold" />
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                {pendingRequests.length} demande{pendingRequests.length > 1 ? "s" : ""} en attente de validation
+                {pendingRequests.length} paiement{pendingRequests.length > 1 ? "s" : ""} en attente
               </p>
             </div>
           )}
@@ -483,7 +520,7 @@ export default function AICreditsPage() {
                       setRequestDialogOpen(true)
                     }}
                   >
-                    Demander
+                    Payer
                   </Button>
                 </div>
               </div>
@@ -508,7 +545,7 @@ export default function AICreditsPage() {
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-muted-foreground" weight="duotone" />
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Mes demandes
+              Paiements
             </h2>
           </div>
           <select
@@ -536,9 +573,9 @@ export default function AICreditsPage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/50 ring-1 ring-border/50">
                 <FileText className="h-6 w-6 text-muted-foreground" weight="duotone" />
               </div>
-              <p className="text-[13px] font-medium text-foreground">Aucune demande</p>
+              <p className="text-[13px] font-medium text-foreground">Aucun paiement</p>
               <p className="max-w-sm text-center text-[11px] leading-relaxed text-muted-foreground">
-                Sélectionnez un pack ci-dessus pour envoyer une demande.
+                Sélectionnez un pack ci-dessus pour payer.
               </p>
               {displayPackages.length > 0 && (
                 <Button
@@ -730,16 +767,10 @@ export default function AICreditsPage() {
       {requestDialogOpen && selectedPackage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
-          onClick={() => {
-            setRequestDialogOpen(false)
-            setSelectedPackage(null)
-            setPaymentProof(null)
-          }}
+          onClick={closeRequestDialog}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
-              setRequestDialogOpen(false)
-              setSelectedPackage(null)
-              setPaymentProof(null)
+              closeRequestDialog()
             }
           }}
         >
@@ -756,21 +787,17 @@ export default function AICreditsPage() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-[15px] font-semibold text-foreground">
-                    Demander des crédits IA
+                    Payer des crédits IA
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    Votre demande sera validée par un administrateur
+                    Recharge immédiate par Mobile Money
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                onClick={() => {
-                  setRequestDialogOpen(false)
-                  setSelectedPackage(null)
-                  setPaymentProof(null)
-                }}
+                onClick={closeRequestDialog}
                 aria-label="Fermer"
               >
                 <XCircle className="h-5 w-5" weight="regular" />
@@ -796,90 +823,116 @@ export default function AICreditsPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Payment method */}
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Moyen de paiement</Label>
-                <select
-                  className="w-full h-9 rounded-lg border border-border bg-card px-3 text-[13px]"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                >
-                  <option value="mobile_money">Mobile Money</option>
-                  <option value="airtel_money">Airtel Money</option>
-                  <option value="bank_transfer">Virement bancaire</option>
-                  <option value="cash">Cash</option>
-                </select>
-              </div>
-
-              {/* Payment proof */}
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Preuve de paiement *</Label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    const paymentProofError = validatePaymentProofFile(file)
-                    if (paymentProofError) {
-                      toast.error(paymentProofError)
-                      e.currentTarget.value = ""
-                      return
-                    }
-                    setPaymentProof(file)
-                  }}
-                />
-                <div
-                  className="flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border/70 p-4 transition-all hover:border-primary/35 hover:bg-muted/20"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {paymentProof ? (
-                    <div className="flex items-center gap-2 text-center">
-                      <FileImage className="h-4 w-4 shrink-0 text-primary" weight="duotone" />
-                      <div>
-                        <p className="text-[12px] font-medium text-foreground/80">{paymentProof.name}</p>
-                        <p className="text-[10px] text-muted-foreground/60">
-                          {(paymentProof.size / 1024).toFixed(0)} Ko
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <UploadSimple className="mx-auto mb-1 h-5 w-5 text-muted-foreground" weight="duotone" />
-                      <p className="text-[12px] text-muted-foreground">
-                        Capture d&apos;écran ou reçu de paiement
-                      </p>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground/70">
-                        JPEG, PNG ou WEBP (max 5 MB)
-                      </p>
-                    </div>
-                  )}
+              {paymentStep === "done" ? (
+                <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-5 text-center space-y-3">
+                  <Clock className="h-8 w-8 text-amber-300 mx-auto" weight="duotone" />
+                  <div>
+                    <p className="text-[14px] font-semibold text-foreground">Paiement en cours de traitement</p>
+                    <p className="text-[12px] text-muted-foreground mt-1">
+                      Validez le paiement sur votre téléphone. Vos crédits IA seront ajoutés dès confirmation de l&apos;opérateur.
+                    </p>
+                    {paymentIntentId && (
+                      <p className="text-[11px] text-muted-foreground/60 mt-2 font-mono">Réf : {paymentIntentId}</p>
+                    )}
+                  </div>
+                  <Button className="h-9 rounded-xl px-5 text-[13px]" onClick={closeRequestDialog}>
+                    Fermer
+                  </Button>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Prénom *</Label>
+                      <Input
+                        value={payerFirstName}
+                        onChange={(e) => setPayerFirstName(e.target.value)}
+                        className="h-9 rounded-lg text-[13px]"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Nom *</Label>
+                      <Input
+                        value={payerLastName}
+                        onChange={(e) => setPayerLastName(e.target.value)}
+                        className="h-9 rounded-lg text-[13px]"
+                      />
+                    </div>
+                  </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-xl px-4 text-[13px]"
-                  onClick={() => {
-                    setRequestDialogOpen(false)
-                    setSelectedPackage(null)
-                    setPaymentProof(null)
-                  }}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  className="h-9 gap-2 rounded-xl px-5 text-[13px] font-semibold"
-                  onClick={handleSubmitRequest}
-                  disabled={isSubmitting || !paymentProof}
-                >
-                  {isSubmitting && <Spinner className="h-3.5 w-3.5 animate-spin" weight="bold" />}
-                  Envoyer la demande
-                </Button>
-              </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px]">Téléphone *</Label>
+                    <div className="flex h-9 overflow-hidden rounded-lg border border-border bg-card">
+                      <div className="flex items-center justify-center px-3 text-[13px] font-medium text-muted-foreground">
+                        {getPhonePrefix(payerOperator)}
+                      </div>
+                      <div className="w-px bg-border/60" />
+                      <input
+                        value={payerPhoneSuffix}
+                        inputMode="numeric"
+                        onChange={(e) => {
+                          const digitsOnly = e.currentTarget.value.replace(/\D/g, "")
+                          setPayerPhoneSuffix(digitsOnly.slice(0, getPhoneSuffixMaxDigits(payerOperator)))
+                        }}
+                        placeholder="XXXXXXX"
+                        className="h-full w-full bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[13px]">Opérateur</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPayerOperator("mtn")
+                          setPayerPhoneSuffix((value) => value.slice(0, getPhoneSuffixMaxDigits("mtn")))
+                        }}
+                        className={
+                          payerOperator === "mtn"
+                            ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
+                            : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
+                        }
+                      >
+                        MTN MoMo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPayerOperator("airtel")
+                          setPayerPhoneSuffix((value) => value.slice(0, getPhoneSuffixMaxDigits("airtel")))
+                        }}
+                        className={
+                          payerOperator === "airtel"
+                            ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
+                            : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
+                        }
+                      >
+                        Airtel Money
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      className="h-9 rounded-xl px-4 text-[13px]"
+                      onClick={closeRequestDialog}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      className="h-9 gap-2 rounded-xl px-5 text-[13px] font-semibold"
+                      onClick={handleSubmitRequest}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting && <Spinner className="h-3.5 w-3.5 animate-spin" weight="bold" />}
+                      Payer {formatNumber(resolvePackageTotalPrice(selectedPackage))} XAF
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -901,7 +954,7 @@ export default function AICreditsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between gap-3">
-              <h3 className="text-[15px] font-semibold text-foreground">Détail de la demande</h3>
+              <h3 className="text-[15px] font-semibold text-foreground">Détail du paiement</h3>
               <button
                 type="button"
                 className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

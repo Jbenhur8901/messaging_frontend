@@ -1,5 +1,5 @@
 import axios from "axios"
-import { api, buildOrgFormData, getStoredActiveOrgId, withOrgQuery } from "./api"
+import { api, apiJson, buildOrgFormData, getStoredActiveOrgId, withOrgQuery } from "./api"
 import type { AICreditRequest, CreditRequestStatus } from "@/types"
 
 const PAYMENT_PROOF_MAX_MB = 5
@@ -55,6 +55,23 @@ export interface AICreditsCheck {
   shortage: number
 }
 
+export interface AIYabetooIntent {
+  intentId: string
+  clientSecret: string
+  amount: number
+  currency: string
+  creditsToAward: number
+  status: string
+}
+
+export interface AIYabetooResult {
+  intentId: string
+  status: string
+  walletCredited: boolean
+  creditsAwarded: number
+  failureMessage: string | null
+}
+
 export const aiCreditsService = {
   // ── Balance & Packages ──
 
@@ -84,6 +101,72 @@ export const aiCreditsService = {
       params: { messages },
     })
     return data
+  },
+
+  // ── Yabetoo Recharge ──
+
+  async createYabetooRechargeIntent(
+    packageCode: string,
+    amount: number,
+    description?: string
+  ): Promise<AIYabetooIntent> {
+    const { data } = await apiJson.post(
+      "/v1/ai/credits/recharge/yabetoo/intent",
+      {
+        package_code: packageCode,
+        amount,
+        description: description ?? "Recharge crédits IA",
+      }
+    )
+    const r = data as Record<string, unknown>
+    return {
+      intentId: (r.intent_id ?? r.intentId ?? r.payment_intent_id ?? "") as string,
+      clientSecret: (r.client_secret ?? r.clientSecret ?? "") as string,
+      amount: (r.amount as number) ?? amount,
+      currency: (r.currency as string) ?? "XAF",
+      creditsToAward: (r.credits_to_award ?? r.creditsAwarded ?? r.credits_awarded ?? 0) as number,
+      status: (r.status as string) ?? "requires_confirmation",
+    }
+  },
+
+  async confirmYabetooPayment(
+    payload: {
+      intent_id: string
+      client_secret: string
+      first_name: string
+      last_name: string
+      phone: string
+      operator: "mtn" | "airtel"
+    }
+  ): Promise<AIYabetooResult> {
+    const { data } = await apiJson.post(
+      "/v1/ai/credits/recharge/yabetoo/confirm",
+      payload
+    )
+    const r = data as Record<string, unknown>
+    return {
+      intentId: (r.intent_id ?? r.intentId ?? "") as string,
+      status: (r.status as string) ?? "processing",
+      walletCredited: ((r.wallet_credited ?? r.walletCredited ?? false) as boolean),
+      creditsAwarded: (r.credits_awarded ?? r.creditsAwarded ?? r.credits_to_award ?? 0) as number,
+      failureMessage: (r.failure_message ?? r.failureMessage ?? null) as string | null,
+    }
+  },
+
+  async waitYabetooPayment(
+    intentId: string,
+    timeout = 60
+  ): Promise<{ status: string; walletCredited: boolean; failureMessage: string | null }> {
+    const { data } = await api.get(
+      `/v1/ai/credits/recharge/yabetoo/${intentId}/wait`,
+      { params: { timeout }, timeout: (timeout + 5) * 1000 }
+    )
+    const r = data as Record<string, unknown>
+    return {
+      status: (r.status as string) ?? "processing",
+      walletCredited: ((r.wallet_credited ?? r.walletCredited ?? false) as boolean),
+      failureMessage: (r.failure_message ?? r.failureMessage ?? null) as string | null,
+    }
   },
 
   // ── Credit Requests (Bearer token) ──
