@@ -856,32 +856,72 @@ export const whatsappService = {
 
   async createYabetooRechargeIntent(
     amount: number,
+    walletType: "agent_wallet" | "studio_wallet",
     description?: string
-  ): Promise<{ success: boolean; intent_id: string; client_secret: string; amount: number; currency: string; status: string }> {
-    const { data } = await api.post("/v1/app/whatsapp/credits/recharge/yabetoo/intent", {
-      amount,
-      description: description ?? "Recharge wallet WhatsApp",
-    })
-    return data
+  ): Promise<{ intentId: string; clientSecret: string; amount: number; currency: string; creditsToAward: number; status: string }> {
+    const { data } = await apiJson.post(
+      "/v1/app/whatsapp/credits/recharge/yabetoo/intent",
+      { amount, wallet_type: walletType, description: description ?? "Recharge wallet WhatsApp" }
+    )
+    const r = data as Record<string, unknown>
+    return {
+      intentId: (r.intent_id ?? r.intentId ?? r.payment_intent_id ?? "") as string,
+      clientSecret: (r.client_secret ?? r.clientSecret ?? "") as string,
+      amount: (r.amount as number) ?? 0,
+      currency: (r.currency as string) ?? "XAF",
+      creditsToAward: (r.credits_to_award ?? r.creditsToAward ?? 0) as number,
+      status: (r.status as string) ?? "requires_confirmation",
+    }
   },
 
-  async confirmYabetooPayment(payload: {
-    intent_id: string
-    first_name: string
-    last_name: string
-    phone: string
-    operator: "mtn" | "airtel"
-    receipt_email?: string
-  }): Promise<{ success: boolean; intent_id: string; status: string; wallet_credited: boolean; wallet_summary?: Record<string, unknown> }> {
-    const { data } = await api.post("/v1/app/whatsapp/credits/recharge/yabetoo/confirm", payload)
-    return data
+  async confirmYabetooPayment(
+    payload: {
+      intent_id: string
+      client_secret: string
+      first_name: string
+      last_name: string
+      phone: string
+      operator: "mtn" | "airtel"
+    }
+  ): Promise<{ intentId: string; status: string; walletCredited: boolean; creditsAwarded: number; failureMessage: string | null }> {
+    const { intent_id, client_secret, first_name, last_name, phone, operator } = payload
+    const { data } = await apiJson.post(
+      "/v1/app/whatsapp/credits/recharge/yabetoo/confirm",
+      {
+        intent_id,
+        client_secret,
+        payment_method_data: { first_name, last_name, phone, operator },
+      }
+    )
+    const r = data as Record<string, unknown>
+    return {
+      intentId: (r.intent_id ?? r.intentId ?? "") as string,
+      status: (r.status as string) ?? "processing",
+      walletCredited: ((r.wallet_credited ?? r.walletCredited ?? false) as boolean),
+      creditsAwarded: (r.credits_awarded ?? r.creditsAwarded ?? r.credits_to_award ?? 0) as number,
+      failureMessage: (r.failure_message ?? r.failureMessage ?? null) as string | null,
+    }
+  },
+
+  async getYabetooPaymentStatus(
+    intentId: string
+  ): Promise<{ intentId: string; status: string; walletCredited: boolean; creditsAwarded: number; failureMessage: string | null }> {
+    const { data } = await api.get(`/v1/app/whatsapp/credits/recharge/yabetoo/${intentId}`)
+    const r = data as Record<string, unknown>
+    return {
+      intentId: (r.intent_id ?? r.intentId ?? "") as string,
+      status: (r.status as string) ?? "processing",
+      walletCredited: ((r.wallet_credited ?? r.walletCredited ?? false) as boolean),
+      creditsAwarded: (r.credits_awarded ?? r.creditsAwarded ?? 0) as number,
+      failureMessage: (r.failure_message ?? r.failureMessage ?? null) as string | null,
+    }
   },
 
   async createStripeRechargeIntent(
     amountXaf: number,
     description?: string
   ): Promise<{ success: boolean; intent_id: string; client_secret: string; stripe_amount: number; stripe_currency: string; amount_xaf: number; status: string }> {
-    const { data } = await api.post("/v1/app/whatsapp/credits/recharge/stripe/intent", {
+    const { data } = await apiJson.post("/v1/app/whatsapp/credits/recharge/stripe/intent", {
       amount_xaf: amountXaf,
       description: description ?? "Recharge wallet WhatsApp",
     })

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { whatsappService } from "@/services/whatsapp"
 import { handleApiError } from "@/services"
@@ -66,6 +66,15 @@ const CAT = {
 type CatKey = keyof typeof CAT
 
 type PkgItem = { code: string; name: string; messages: number; unitPrice: number; discount: number; totalPrice: number }
+type MobileMoneyOperator = "mtn" | "airtel"
+
+const PHONE_PREFIX_BY_OPERATOR: Record<MobileMoneyOperator, string> = {
+  mtn: "24206",
+  airtel: "24205",
+}
+const PHONE_MAX_DIGITS = 12
+const getPhonePrefix = (operator: MobileMoneyOperator) => PHONE_PREFIX_BY_OPERATOR[operator]
+const getPhoneSuffixMaxDigits = (operator: MobileMoneyOperator) => PHONE_MAX_DIGITS - getPhonePrefix(operator).length
 
 const FALLBACK_PACKAGES: Record<CatKey, PkgItem[]> = {
   marketing: [
@@ -112,22 +121,26 @@ export default function WhatsAppCreditsPage() {
   const [packagesByCategory, setPackagesByCategory] = useState<Record<CatKey, PkgItem[]>>(FALLBACK_PACKAGES)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Polling refs
+  const purchasePollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const purchasePollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const topUpPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const topUpPollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Purchase dialog state
   const [selectedPkg, setSelectedPkg] = useState<{ item: PkgItem; category: CatKey } | null>(null)
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [paymentTab, setPaymentTab] = useState<"mobile_money" | "card">("mobile_money")
   const [purchaseStep, setPurchaseStep] = useState<"form" | "processing" | "done">("form")
   const [purchaseIntentId, setPurchaseIntentId] = useState<string | null>(null)
+  const [purchasePollActive, setPurchasePollActive] = useState(false)
 
   // Checkout block state (UI)
   const [payerFirstName, setPayerFirstName] = useState("")
   const [payerLastName, setPayerLastName] = useState("")
   const [payerEmail, setPayerEmail] = useState("")
-  const PHONE_PREFIX = "24206"
-  const PHONE_MAX_DIGITS = 12
-  const PHONE_SUFFIX_MAX_DIGITS = PHONE_MAX_DIGITS - PHONE_PREFIX.length
   const [payerPhoneSuffix, setPayerPhoneSuffix] = useState("")
-  const [payerOperator, setPayerOperator] = useState<"mtn" | "airtel">("mtn")
+  const [payerOperator, setPayerOperator] = useState<MobileMoneyOperator>("mtn")
 
   // Custom top-up dialog
   const [topUpDialogOpen, setTopUpDialogOpen] = useState(false)
@@ -136,10 +149,11 @@ export default function WhatsAppCreditsPage() {
   const [topUpPaymentTab, setTopUpPaymentTab] = useState<"mobile_money" | "card">("mobile_money")
   const [topUpStep, setTopUpStep] = useState<"form" | "processing" | "done">("form")
   const [topUpIntentId, setTopUpIntentId] = useState<string | null>(null)
+  const [topUpPollActive, setTopUpPollActive] = useState(false)
   const [topUpPayerFirstName, setTopUpPayerFirstName] = useState("")
   const [topUpPayerLastName, setTopUpPayerLastName] = useState("")
   const [topUpPayerPhoneSuffix, setTopUpPayerPhoneSuffix] = useState("")
-  const [topUpPayerOperator, setTopUpPayerOperator] = useState<"mtn" | "airtel">("mtn")
+  const [topUpPayerOperator, setTopUpPayerOperator] = useState<MobileMoneyOperator>("mtn")
   const [topUpPayerEmail, setTopUpPayerEmail] = useState("")
 
   // Active category tab
@@ -181,11 +195,16 @@ export default function WhatsAppCreditsPage() {
             totalPrice,
           }
         })
+      const resolvePackages = (res: typeof marketingRes, fallback: PkgItem[]): PkgItem[] => {
+        if (res.status !== "fulfilled") return fallback
+        const mapped = mapPackages(res.value.packages)
+        return mapped.length > 0 ? mapped : fallback
+      }
       setPackagesByCategory({
-        marketing: marketingRes.status === "fulfilled" ? mapPackages(marketingRes.value.packages) : FALLBACK_PACKAGES.marketing,
-        utility: utilityRes.status === "fulfilled" ? mapPackages(utilityRes.value.packages) : FALLBACK_PACKAGES.utility,
-        authentication: authRes.status === "fulfilled" ? mapPackages(authRes.value.packages) : FALLBACK_PACKAGES.authentication,
-        topup: topupRes.status === "fulfilled" ? mapPackages(topupRes.value.packages) : FALLBACK_PACKAGES.topup,
+        marketing: resolvePackages(marketingRes, FALLBACK_PACKAGES.marketing),
+        utility: resolvePackages(utilityRes, FALLBACK_PACKAGES.utility),
+        authentication: resolvePackages(authRes, FALLBACK_PACKAGES.authentication),
+        topup: resolvePackages(topupRes, FALLBACK_PACKAGES.topup),
       })
     } finally {
       setIsLoading(false)
@@ -201,6 +220,37 @@ export default function WhatsAppCreditsPage() {
     }
   }, [currentOrganization, router, userRole])
 
+  const startPurchasePolling = (intentId: string) => {
+    setPurchasePollActive(true)
+    const poll = setInterval(async () => {
+      try {
+        const res = await whatsappService.getYabetooPaymentStatus(intentId)
+        if (res.status === "succeeded" && res.walletCredited) {
+          clearInterval(poll)
+          clearTimeout(purchasePollTimeoutRef.current!)
+          purchasePollRef.current = null
+          setPurchasePollActive(false)
+          toast.success("Paiement confirmé ! Votre wallet a été crédité.")
+          closePurchaseDialog()
+          loadData()
+        } else if (res.status === "failed") {
+          clearInterval(poll)
+          clearTimeout(purchasePollTimeoutRef.current!)
+          purchasePollRef.current = null
+          setPurchasePollActive(false)
+          toast.error(res.failureMessage ?? "Paiement échoué. Veuillez réessayer.")
+          setPurchaseStep("form")
+        }
+      } catch { /* ignorer les erreurs réseau passagères */ }
+    }, 5000)
+    purchasePollRef.current = poll
+    purchasePollTimeoutRef.current = setTimeout(() => {
+      clearInterval(poll)
+      purchasePollRef.current = null
+      setPurchasePollActive(false)
+    }, 180_000)
+  }
+
   const handlePurchase = async () => {
     if (!selectedPkg) return
     if (!payerFirstName.trim() || !payerLastName.trim() || !payerPhoneSuffix.trim()) {
@@ -212,23 +262,25 @@ export default function WhatsAppCreditsPage() {
     try {
       const intentRes = await whatsappService.createYabetooRechargeIntent(
         selectedPkg.item.totalPrice,
+        "agent_wallet",
         `Pack ${selectedPkg.item.code}`
       )
       const confirmRes = await whatsappService.confirmYabetooPayment({
-        intent_id: intentRes.intent_id,
+        intent_id: intentRes.intentId,
+        client_secret: intentRes.clientSecret,
         first_name: payerFirstName,
         last_name: payerLastName,
-        phone: `${PHONE_PREFIX}${payerPhoneSuffix}`,
+        phone: `${getPhonePrefix(payerOperator)}${payerPhoneSuffix}`,
         operator: payerOperator,
-        receipt_email: payerEmail.trim() || undefined,
       })
       if (confirmRes.status === "succeeded") {
         toast.success("Paiement effectué ! Votre wallet a été crédité.")
         closePurchaseDialog()
         loadData()
       } else {
-        setPurchaseIntentId(intentRes.intent_id)
+        setPurchaseIntentId(intentRes.intentId)
         setPurchaseStep("done")
+        startPurchasePolling(intentRes.intentId)
       }
     } catch (error) {
       toast.error(handleApiError(error).message)
@@ -249,6 +301,37 @@ export default function WhatsAppCreditsPage() {
     }
   }
 
+  const startTopUpPolling = (intentId: string) => {
+    setTopUpPollActive(true)
+    const poll = setInterval(async () => {
+      try {
+        const res = await whatsappService.getYabetooPaymentStatus(intentId)
+        if (res.status === "succeeded" && res.walletCredited) {
+          clearInterval(poll)
+          clearTimeout(topUpPollTimeoutRef.current!)
+          topUpPollRef.current = null
+          setTopUpPollActive(false)
+          toast.success("Recharge confirmée ! Votre wallet a été crédité.")
+          closeTopUpDialog()
+          loadData()
+        } else if (res.status === "failed") {
+          clearInterval(poll)
+          clearTimeout(topUpPollTimeoutRef.current!)
+          topUpPollRef.current = null
+          setTopUpPollActive(false)
+          toast.error(res.failureMessage ?? "Paiement échoué. Veuillez réessayer.")
+          setTopUpStep("form")
+        }
+      } catch { /* ignorer les erreurs réseau passagères */ }
+    }, 5000)
+    topUpPollRef.current = poll
+    topUpPollTimeoutRef.current = setTimeout(() => {
+      clearInterval(poll)
+      topUpPollRef.current = null
+      setTopUpPollActive(false)
+    }, 180_000)
+  }
+
   const handleTopUp = async () => {
     const amount = Number(topUpAmount)
     if (!amount) { toast.error("Montant requis"); return }
@@ -259,22 +342,23 @@ export default function WhatsAppCreditsPage() {
     setIsTopping(true)
     setTopUpStep("processing")
     try {
-      const intentRes = await whatsappService.createYabetooRechargeIntent(amount, "Recharge personnalisée")
+      const intentRes = await whatsappService.createYabetooRechargeIntent(amount, "agent_wallet", "Recharge personnalisée")
       const confirmRes = await whatsappService.confirmYabetooPayment({
-        intent_id: intentRes.intent_id,
+        intent_id: intentRes.intentId,
+        client_secret: intentRes.clientSecret,
         first_name: topUpPayerFirstName,
         last_name: topUpPayerLastName,
-        phone: `${PHONE_PREFIX}${topUpPayerPhoneSuffix}`,
+        phone: `${getPhonePrefix(topUpPayerOperator)}${topUpPayerPhoneSuffix}`,
         operator: topUpPayerOperator,
-        receipt_email: topUpPayerEmail.trim() || undefined,
       })
       if (confirmRes.status === "succeeded") {
         toast.success("Recharge effectuée ! Votre wallet a été crédité.")
         closeTopUpDialog()
         loadData()
       } else {
-        setTopUpIntentId(intentRes.intent_id)
+        setTopUpIntentId(intentRes.intentId)
         setTopUpStep("done")
+        startTopUpPolling(intentRes.intentId)
       }
     } catch (error) {
       toast.error(handleApiError(error).message)
@@ -294,6 +378,15 @@ export default function WhatsAppCreditsPage() {
   }
 
   const closePurchaseDialog = () => {
+    if (purchasePollRef.current) {
+      clearInterval(purchasePollRef.current)
+      purchasePollRef.current = null
+    }
+    if (purchasePollTimeoutRef.current) {
+      clearTimeout(purchasePollTimeoutRef.current)
+      purchasePollTimeoutRef.current = null
+    }
+    setPurchasePollActive(false)
     setSelectedPkg(null)
     setPaymentTab("mobile_money")
     setPurchaseStep("form")
@@ -306,6 +399,15 @@ export default function WhatsAppCreditsPage() {
   }
 
   const closeTopUpDialog = () => {
+    if (topUpPollRef.current) {
+      clearInterval(topUpPollRef.current)
+      topUpPollRef.current = null
+    }
+    if (topUpPollTimeoutRef.current) {
+      clearTimeout(topUpPollTimeoutRef.current)
+      topUpPollTimeoutRef.current = null
+    }
+    setTopUpPollActive(false)
     setTopUpDialogOpen(false)
     setTopUpAmount("")
     setTopUpStep("form")
@@ -729,11 +831,17 @@ export default function WhatsAppCreditsPage() {
               {purchaseStep === "done" ? (
                 /* ── Processing state ── */
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/60 p-5 text-center space-y-3">
-                  <Clock className="h-8 w-8 text-amber-500 mx-auto" />
+                  {purchasePollActive ? (
+                    <Loader2 className="h-8 w-8 text-amber-500 mx-auto animate-spin" />
+                  ) : (
+                    <Clock className="h-8 w-8 text-amber-500 mx-auto" />
+                  )}
                   <div>
                     <p className="text-[14px] font-semibold text-foreground">Paiement en cours de traitement</p>
                     <p className="text-[12px] text-muted-foreground mt-1">
-                      Votre paiement Mobile Money est en cours. Votre wallet sera crédité automatiquement dès confirmation de l&apos;opérateur.
+                      {purchasePollActive
+                        ? "Vérification en cours… Validez le paiement sur votre téléphone."
+                        : "Votre paiement Mobile Money est en cours. Votre wallet sera crédité automatiquement dès confirmation de l'opérateur."}
                     </p>
                     {purchaseIntentId && (
                       <p className="text-[11px] text-muted-foreground/60 mt-2 font-mono">Réf : {purchaseIntentId}</p>
@@ -799,7 +907,7 @@ export default function WhatsAppCreditsPage() {
                         <Label className="text-[13px]">Téléphone *</Label>
                         <div className="flex h-9 overflow-hidden rounded-lg border border-border bg-card">
                           <div className="flex items-center justify-center px-3 text-[13px] font-medium text-muted-foreground">
-                            {PHONE_PREFIX}
+                            {getPhonePrefix(payerOperator)}
                           </div>
                           <div className="w-px bg-border/60" />
                           <input
@@ -807,7 +915,7 @@ export default function WhatsAppCreditsPage() {
                             inputMode="numeric"
                             onChange={(e) => {
                               const digitsOnly = e.currentTarget.value.replace(/\D/g, "")
-                              setPayerPhoneSuffix(digitsOnly.slice(0, PHONE_SUFFIX_MAX_DIGITS))
+                              setPayerPhoneSuffix(digitsOnly.slice(0, getPhoneSuffixMaxDigits(payerOperator)))
                             }}
                             placeholder="XXXXXXX"
                             className="h-full w-full bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
@@ -820,7 +928,10 @@ export default function WhatsAppCreditsPage() {
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
-                            onClick={() => setPayerOperator("mtn")}
+                            onClick={() => {
+                              setPayerOperator("mtn")
+                              setPayerPhoneSuffix((value) => value.slice(0, getPhoneSuffixMaxDigits("mtn")))
+                            }}
                             className={
                               payerOperator === "mtn"
                                 ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
@@ -831,7 +942,10 @@ export default function WhatsAppCreditsPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setPayerOperator("airtel")}
+                            onClick={() => {
+                              setPayerOperator("airtel")
+                              setPayerPhoneSuffix((value) => value.slice(0, getPhoneSuffixMaxDigits("airtel")))
+                            }}
                             className={
                               payerOperator === "airtel"
                                 ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
@@ -941,11 +1055,17 @@ export default function WhatsAppCreditsPage() {
               {topUpStep === "done" ? (
                 /* ── Processing state ── */
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/60 p-5 text-center space-y-3">
-                  <Clock className="h-8 w-8 text-amber-500 mx-auto" />
+                  {topUpPollActive ? (
+                    <Loader2 className="h-8 w-8 text-amber-500 mx-auto animate-spin" />
+                  ) : (
+                    <Clock className="h-8 w-8 text-amber-500 mx-auto" />
+                  )}
                   <div>
                     <p className="text-[14px] font-semibold text-foreground">Paiement en cours de traitement</p>
                     <p className="text-[12px] text-muted-foreground mt-1">
-                      Votre paiement Mobile Money est en cours. Votre wallet sera crédité automatiquement dès confirmation de l&apos;opérateur.
+                      {topUpPollActive
+                        ? "Vérification en cours… Validez le paiement sur votre téléphone."
+                        : "Votre paiement Mobile Money est en cours. Votre wallet sera crédité automatiquement dès confirmation de l'opérateur."}
                     </p>
                     {topUpIntentId && (
                       <p className="text-[11px] text-muted-foreground/60 mt-2 font-mono">Réf : {topUpIntentId}</p>
@@ -1029,7 +1149,7 @@ export default function WhatsAppCreditsPage() {
                         <Label className="text-[13px]">Téléphone *</Label>
                         <div className="flex h-9 overflow-hidden rounded-lg border border-border bg-card">
                           <div className="flex items-center justify-center px-3 text-[13px] font-medium text-muted-foreground">
-                            {PHONE_PREFIX}
+                            {getPhonePrefix(topUpPayerOperator)}
                           </div>
                           <div className="w-px bg-border/60" />
                           <input
@@ -1037,7 +1157,7 @@ export default function WhatsAppCreditsPage() {
                             inputMode="numeric"
                             onChange={(e) => {
                               const digitsOnly = e.currentTarget.value.replace(/\D/g, "")
-                              setTopUpPayerPhoneSuffix(digitsOnly.slice(0, PHONE_SUFFIX_MAX_DIGITS))
+                              setTopUpPayerPhoneSuffix(digitsOnly.slice(0, getPhoneSuffixMaxDigits(topUpPayerOperator)))
                             }}
                             placeholder="XXXXXXX"
                             className="h-full w-full bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
@@ -1050,7 +1170,10 @@ export default function WhatsAppCreditsPage() {
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
-                            onClick={() => setTopUpPayerOperator("mtn")}
+                            onClick={() => {
+                              setTopUpPayerOperator("mtn")
+                              setTopUpPayerPhoneSuffix((value) => value.slice(0, getPhoneSuffixMaxDigits("mtn")))
+                            }}
                             className={
                               topUpPayerOperator === "mtn"
                                 ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
@@ -1061,7 +1184,10 @@ export default function WhatsAppCreditsPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setTopUpPayerOperator("airtel")}
+                            onClick={() => {
+                              setTopUpPayerOperator("airtel")
+                              setTopUpPayerPhoneSuffix((value) => value.slice(0, getPhoneSuffixMaxDigits("airtel")))
+                            }}
                             className={
                               topUpPayerOperator === "airtel"
                                 ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
