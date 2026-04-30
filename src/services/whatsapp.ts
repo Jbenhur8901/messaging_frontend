@@ -884,14 +884,9 @@ export const whatsappService = {
       operator: "mtn" | "airtel"
     }
   ): Promise<{ intentId: string; status: string; walletCredited: boolean; creditsAwarded: number; failureMessage: string | null }> {
-    const { intent_id, client_secret, first_name, last_name, phone, operator } = payload
     const { data } = await apiJson.post(
       "/v1/app/whatsapp/credits/recharge/yabetoo/confirm",
-      {
-        intent_id,
-        client_secret,
-        payment_method_data: { first_name, last_name, phone, operator },
-      }
+      payload
     )
     const r = data as Record<string, unknown>
     return {
