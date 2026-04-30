@@ -36,20 +36,8 @@ import type {
   Pagination,
 } from "@/types"
 
-const PAYMENT_PROOF_MAX_MB = 5
-const PAYMENT_PROOF_MAX_BYTES = PAYMENT_PROOF_MAX_MB * 1024 * 1024
-const ALLOWED_PAYMENT_PROOF_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 const stripBearerPrefix = (value: string): string =>
   value.replace(/^\s*bearer\s*:/i, "").trim()
-
-const assertValidPaymentProof = (file: File) => {
-  if (!ALLOWED_PAYMENT_PROOF_TYPES.has(file.type)) {
-    throw new Error("Format invalide. Utilisez JPEG, PNG ou WEBP.")
-  }
-  if (file.size > PAYMENT_PROOF_MAX_BYTES) {
-    throw new Error(`Fichier trop volumineux. Taille max: ${PAYMENT_PROOF_MAX_MB} MB.`)
-  }
-}
 
 export const whatsappService = {
   // ============ Configuration ============
@@ -854,61 +842,49 @@ export const whatsappService = {
   // ============ WhatsApp Credits ============
 
   async getWhatsAppBalance(): Promise<WhatsAppCreditBalance> {
-    const { data } = await api.get<WhatsAppCreditBalance>("/v1/whatsapp/credits/balance")
+    const { data } = await api.get<WhatsAppCreditBalance>("/v1/app/whatsapp/credits/balance")
     return data
   },
 
   async getPackages(category?: string): Promise<{ packages: WhatsAppCreditPackage[] }> {
     const { data } = await api.get<{ packages: WhatsAppCreditPackage[] }>(
-      "/v1/whatsapp/credits/packages",
+      "/v1/app/whatsapp/credits/packages",
       { params: { category } }
     )
     return data
   },
 
-  async purchasePackage(
-    code: string,
-    paymentReference: string,
-    paymentMethod: string,
-    paymentProof?: File
-  ): Promise<{ success: boolean; transaction: WhatsAppCreditTransaction }> {
-    if (!paymentProof) {
-      throw new Error("La preuve de paiement est obligatoire.")
-    }
-    assertValidPaymentProof(paymentProof)
-    const formData = new FormData()
-    formData.append("package_code", code)
-    formData.append("payment_reference", paymentReference)
-    formData.append("payment_method", paymentMethod)
-    formData.append("payment_proof", paymentProof)
-    const { data } = await api.post<{ success: boolean; transaction: WhatsAppCreditTransaction }>(
-      "/v1/whatsapp/credits/purchase",
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    )
+  async createYabetooRechargeIntent(
+    amount: number,
+    description?: string
+  ): Promise<{ success: boolean; intent_id: string; client_secret: string; amount: number; currency: string; status: string }> {
+    const { data } = await api.post("/v1/app/whatsapp/credits/recharge/yabetoo/intent", {
+      amount,
+      description: description ?? "Recharge wallet WhatsApp",
+    })
     return data
   },
 
-  async topUpCredits(
-    amountFcfa: number,
-    paymentReference: string,
-    description?: string,
-    paymentProof?: File
-  ): Promise<{ success: boolean; transaction: WhatsAppCreditTransaction }> {
-    if (!paymentProof) {
-      throw new Error("La preuve de paiement est obligatoire.")
-    }
-    assertValidPaymentProof(paymentProof)
-    const formData = new FormData()
-    formData.append("amount_fcfa", String(amountFcfa))
-    formData.append("payment_reference", paymentReference)
-    if (description) formData.append("description", description)
-    formData.append("payment_proof", paymentProof)
-    const { data } = await api.post<{ success: boolean; transaction: WhatsAppCreditTransaction }>(
-      "/v1/whatsapp/credits/topup",
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    )
+  async confirmYabetooPayment(payload: {
+    intent_id: string
+    first_name: string
+    last_name: string
+    phone: string
+    operator: "mtn" | "airtel"
+    receipt_email?: string
+  }): Promise<{ success: boolean; intent_id: string; status: string; wallet_credited: boolean; wallet_summary?: Record<string, unknown> }> {
+    const { data } = await api.post("/v1/app/whatsapp/credits/recharge/yabetoo/confirm", payload)
+    return data
+  },
+
+  async createStripeRechargeIntent(
+    amountXaf: number,
+    description?: string
+  ): Promise<{ success: boolean; intent_id: string; client_secret: string; stripe_amount: number; stripe_currency: string; amount_xaf: number; status: string }> {
+    const { data } = await api.post("/v1/app/whatsapp/credits/recharge/stripe/intent", {
+      amount_xaf: amountXaf,
+      description: description ?? "Recharge wallet WhatsApp",
+    })
     return data
   },
 
@@ -927,7 +903,7 @@ export const whatsappService = {
       >
       pagination: Pagination
     }>(
-      "/v1/whatsapp/credits/transactions",
+      "/v1/app/whatsapp/credits/transactions",
       { params: { type, compartment, limit, offset } }
     )
     const normalizedTransactions: WhatsAppCreditTransaction[] = (data.transactions || []).map((tx) => {
@@ -963,7 +939,7 @@ export const whatsappService = {
 
   async getWhatsAppUsage(days = 30): Promise<{ period_days: number; total_consumed: number; daily_breakdown: Record<string, number>; by_compartment: Record<string, number> }> {
     const { data } = await api.get<{ period_days: number; total_consumed: number; daily_breakdown: Record<string, number>; by_compartment: Record<string, number> }>(
-      "/v1/whatsapp/credits/usage",
+      "/v1/app/whatsapp/credits/usage",
       { params: { days } }
     )
     return data
@@ -971,7 +947,7 @@ export const whatsappService = {
 
   async getWhatsAppCreditsDashboard(days = 30): Promise<WhatsAppCreditDashboard> {
     const { data } = await api.get<WhatsAppCreditDashboard>(
-      "/v1/whatsapp/credits/dashboard",
+      "/v1/app/whatsapp/credits/dashboard",
       { params: { days } }
     )
     return data
@@ -982,7 +958,7 @@ export const whatsappService = {
     messageCount: number
   ): Promise<PreSendCheck> {
     const { data } = await api.get<PreSendCheck>(
-      "/v1/whatsapp/credits/check",
+      "/v1/app/whatsapp/credits/check",
       { params: { category, message_count: messageCount } }
     )
     return data
@@ -994,19 +970,19 @@ export const whatsappService = {
     offset = 0
   ): Promise<{ notifications: WhatsAppCreditNotification[]; pagination: Pagination }> {
     const { data } = await api.get<{ notifications: WhatsAppCreditNotification[]; pagination: Pagination }>(
-      "/v1/whatsapp/credits/notifications",
+      "/v1/app/whatsapp/credits/notifications",
       { params: { unread_only: unreadOnly, limit, offset } }
     )
     return data
   },
 
   async markNotificationRead(id: string): Promise<{ success: boolean }> {
-    const { data } = await api.post<{ success: boolean }>(`/v1/whatsapp/credits/notifications/${id}/read`)
+    const { data } = await api.post<{ success: boolean }>(`/v1/app/whatsapp/credits/notifications/${id}/read`)
     return data
   },
 
   async markAllNotificationsRead(): Promise<{ success: boolean }> {
-    const { data } = await api.post<{ success: boolean }>("/v1/whatsapp/credits/notifications/read-all")
+    const { data } = await api.post<{ success: boolean }>("/v1/app/whatsapp/credits/notifications/read-all")
     return data
   },
 }

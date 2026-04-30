@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { whatsappService } from "@/services/whatsapp"
 import { handleApiError } from "@/services"
@@ -30,11 +30,10 @@ import {
   CreditCard,
   XCircle,
   History,
-  Upload,
-  FileImage,
   ArrowUpRight,
   ArrowDownRight,
   Package,
+  Clock,
 } from "lucide-react"
 
 const stagger = (i: number) => ({
@@ -53,20 +52,6 @@ const formatDate = (iso: string) => {
     hour: "2-digit",
     minute: "2-digit",
   })
-}
-
-const PAYMENT_PROOF_MAX_MB = 5
-const PAYMENT_PROOF_MAX_BYTES = PAYMENT_PROOF_MAX_MB * 1024 * 1024
-const ALLOWED_PAYMENT_PROOF_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
-
-const validatePaymentProofFile = (file: File): string | null => {
-  if (!ALLOWED_PAYMENT_PROOF_TYPES.has(file.type)) {
-    return "Format invalide. Utilisez JPEG, PNG ou WEBP."
-  }
-  if (file.size > PAYMENT_PROOF_MAX_BYTES) {
-    return `Fichier trop volumineux. Taille max: ${PAYMENT_PROOF_MAX_MB} MB.`
-  }
-  return null
 }
 
 // ── Bouquets ──
@@ -129,25 +114,33 @@ export default function WhatsAppCreditsPage() {
 
   // Purchase dialog state
   const [selectedPkg, setSelectedPkg] = useState<{ item: PkgItem; category: CatKey } | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState("mobile_money")
   const [isPurchasing, setIsPurchasing] = useState(false)
+  const [paymentTab, setPaymentTab] = useState<"mobile_money" | "card">("mobile_money")
+  const [purchaseStep, setPurchaseStep] = useState<"form" | "processing" | "done">("form")
+  const [purchaseIntentId, setPurchaseIntentId] = useState<string | null>(null)
 
   // Checkout block state (UI)
   const [payerFirstName, setPayerFirstName] = useState("")
   const [payerLastName, setPayerLastName] = useState("")
+  const [payerEmail, setPayerEmail] = useState("")
   const PHONE_PREFIX = "24206"
   const PHONE_MAX_DIGITS = 12
   const PHONE_SUFFIX_MAX_DIGITS = PHONE_MAX_DIGITS - PHONE_PREFIX.length
   const [payerPhoneSuffix, setPayerPhoneSuffix] = useState("")
-  const [payerOperator, setPayerOperator] = useState<"mtn_momo" | "airtel_money">("mtn_momo")
+  const [payerOperator, setPayerOperator] = useState<"mtn" | "airtel">("mtn")
 
   // Custom top-up dialog
   const [topUpDialogOpen, setTopUpDialogOpen] = useState(false)
   const [topUpAmount, setTopUpAmount] = useState("")
-  const [topUpRef, setTopUpRef] = useState("")
-  const [topUpProof, setTopUpProof] = useState<File | null>(null)
   const [isTopping, setIsTopping] = useState(false)
-  const topUpFileRef = useRef<HTMLInputElement>(null)
+  const [topUpPaymentTab, setTopUpPaymentTab] = useState<"mobile_money" | "card">("mobile_money")
+  const [topUpStep, setTopUpStep] = useState<"form" | "processing" | "done">("form")
+  const [topUpIntentId, setTopUpIntentId] = useState<string | null>(null)
+  const [topUpPayerFirstName, setTopUpPayerFirstName] = useState("")
+  const [topUpPayerLastName, setTopUpPayerLastName] = useState("")
+  const [topUpPayerPhoneSuffix, setTopUpPayerPhoneSuffix] = useState("")
+  const [topUpPayerOperator, setTopUpPayerOperator] = useState<"mtn" | "airtel">("mtn")
+  const [topUpPayerEmail, setTopUpPayerEmail] = useState("")
 
   // Active category tab
   const [activeTab, setActiveTab] = useState<CatKey>("marketing")
@@ -210,47 +203,82 @@ export default function WhatsAppCreditsPage() {
 
   const handlePurchase = async () => {
     if (!selectedPkg) return
-    const payerPhone = `${PHONE_PREFIX}${payerPhoneSuffix}`
     if (!payerFirstName.trim() || !payerLastName.trim() || !payerPhoneSuffix.trim()) {
       toast.error("Veuillez remplir prénom, nom et téléphone.")
       return
     }
     setIsPurchasing(true)
+    setPurchaseStep("processing")
     try {
-      // Paiement en cours d’intégration côté API. Bloc UI uniquement.
-      await new Promise((r) => setTimeout(r, 250))
-      toast.message("Paiement", { description: "Paiement prêt. Intégration du paiement en cours." })
-      closePurchaseDialog()
-      loadData()
+      const intentRes = await whatsappService.createYabetooRechargeIntent(
+        selectedPkg.item.totalPrice,
+        `Pack ${selectedPkg.item.code}`
+      )
+      const confirmRes = await whatsappService.confirmYabetooPayment({
+        intent_id: intentRes.intent_id,
+        first_name: payerFirstName,
+        last_name: payerLastName,
+        phone: `${PHONE_PREFIX}${payerPhoneSuffix}`,
+        operator: payerOperator,
+        receipt_email: payerEmail.trim() || undefined,
+      })
+      if (confirmRes.status === "succeeded") {
+        toast.success("Paiement effectué ! Votre wallet a été crédité.")
+        closePurchaseDialog()
+        loadData()
+      } else {
+        setPurchaseIntentId(intentRes.intent_id)
+        setPurchaseStep("done")
+      }
     } catch (error) {
       toast.error(handleApiError(error).message)
+      setPurchaseStep("form")
     } finally {
       setIsPurchasing(false)
+    }
+  }
+
+  const handleStripeIntent = async (amountXaf: number, description: string) => {
+    try {
+      const intentRes = await whatsappService.createStripeRechargeIntent(amountXaf, description)
+      toast.message("Paiement Stripe initié", {
+        description: `Référence : ${intentRes.intent_id} · Montant : ${intentRes.stripe_amount / 100} ${intentRes.stripe_currency.toUpperCase()}`,
+      })
+    } catch (error) {
+      toast.error(handleApiError(error).message)
     }
   }
 
   const handleTopUp = async () => {
     const amount = Number(topUpAmount)
     if (!amount) { toast.error("Montant requis"); return }
-    if (!topUpProof) { toast.error("La preuve de paiement est obligatoire"); return }
-    const topUpProofError = validatePaymentProofFile(topUpProof)
-    if (topUpProofError) {
-      toast.error(topUpProofError)
+    if (!topUpPayerFirstName.trim() || !topUpPayerLastName.trim() || !topUpPayerPhoneSuffix.trim()) {
+      toast.error("Veuillez remplir prénom, nom et téléphone.")
       return
     }
     setIsTopping(true)
+    setTopUpStep("processing")
     try {
-      await whatsappService.topUpCredits(
-        amount,
-        topUpRef,
-        undefined,
-        topUpProof
-      )
-      toast.success("Recharge effectuée !")
-      closeTopUpDialog()
-      loadData()
+      const intentRes = await whatsappService.createYabetooRechargeIntent(amount, "Recharge personnalisée")
+      const confirmRes = await whatsappService.confirmYabetooPayment({
+        intent_id: intentRes.intent_id,
+        first_name: topUpPayerFirstName,
+        last_name: topUpPayerLastName,
+        phone: `${PHONE_PREFIX}${topUpPayerPhoneSuffix}`,
+        operator: topUpPayerOperator,
+        receipt_email: topUpPayerEmail.trim() || undefined,
+      })
+      if (confirmRes.status === "succeeded") {
+        toast.success("Recharge effectuée ! Votre wallet a été crédité.")
+        closeTopUpDialog()
+        loadData()
+      } else {
+        setTopUpIntentId(intentRes.intent_id)
+        setTopUpStep("done")
+      }
     } catch (error) {
       toast.error(handleApiError(error).message)
+      setTopUpStep("form")
     } finally {
       setIsTopping(false)
     }
@@ -267,18 +295,27 @@ export default function WhatsAppCreditsPage() {
 
   const closePurchaseDialog = () => {
     setSelectedPkg(null)
-    setPaymentMethod("mobile_money")
+    setPaymentTab("mobile_money")
+    setPurchaseStep("form")
+    setPurchaseIntentId(null)
     setPayerFirstName("")
     setPayerLastName("")
     setPayerPhoneSuffix("")
-    setPayerOperator("mtn_momo")
+    setPayerEmail("")
+    setPayerOperator("mtn")
   }
 
   const closeTopUpDialog = () => {
     setTopUpDialogOpen(false)
     setTopUpAmount("")
-    setTopUpRef("")
-    setTopUpProof(null)
+    setTopUpStep("form")
+    setTopUpIntentId(null)
+    setTopUpPaymentTab("mobile_money")
+    setTopUpPayerFirstName("")
+    setTopUpPayerLastName("")
+    setTopUpPayerPhoneSuffix("")
+    setTopUpPayerOperator("mtn")
+    setTopUpPayerEmail("")
   }
 
   const filteredTx = transactions.filter((tx) => {
@@ -438,7 +475,6 @@ export default function WhatsAppCreditsPage() {
                       style={stagger(i + 3)}
                       onClick={() => {
                         setSelectedPkg({ item, category: catKey })
-                        setPaymentMethod("mobile_money")
                       }}
                     >
                       {isBest && (
@@ -493,7 +529,6 @@ export default function WhatsAppCreditsPage() {
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedPkg({ item, category: catKey })
-                            setPaymentMethod("mobile_money")
                           }}
                         >
                           Payer
@@ -691,99 +726,176 @@ export default function WhatsAppCreditsPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Checkout block (like screenshot) */}
-              <div className="rounded-xl border border-border/40 bg-muted/20 p-4">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px]">Prénom *</Label>
-                    <Input
-                      value={payerFirstName}
-                      onChange={(e) => setPayerFirstName(e.target.value)}
-                      className="h-9 rounded-lg text-[13px]"
-                    />
+              {purchaseStep === "done" ? (
+                /* ── Processing state ── */
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/60 p-5 text-center space-y-3">
+                  <Clock className="h-8 w-8 text-amber-500 mx-auto" />
+                  <div>
+                    <p className="text-[14px] font-semibold text-foreground">Paiement en cours de traitement</p>
+                    <p className="text-[12px] text-muted-foreground mt-1">
+                      Votre paiement Mobile Money est en cours. Votre wallet sera crédité automatiquement dès confirmation de l&apos;opérateur.
+                    </p>
+                    {purchaseIntentId && (
+                      <p className="text-[11px] text-muted-foreground/60 mt-2 font-mono">Réf : {purchaseIntentId}</p>
+                    )}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px]">Nom *</Label>
-                    <Input
-                      value={payerLastName}
-                      onChange={(e) => setPayerLastName(e.target.value)}
-                      className="h-9 rounded-lg text-[13px]"
-                    />
-                  </div>
+                  <Button className="h-9 rounded-lg px-5 text-[13px]" onClick={closePurchaseDialog}>
+                    Fermer
+                  </Button>
                 </div>
+              ) : (
+                <>
+                  {/* Payment method tabs */}
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentTab("mobile_money")}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-all ${
+                        paymentTab === "mobile_money"
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/60 bg-card text-muted-foreground hover:bg-muted/30"
+                      }`}
+                    >
+                      <Wallet className="h-3.5 w-3.5" />
+                      Mobile Money
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentTab("card")}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-all ${
+                        paymentTab === "card"
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/60 bg-card text-muted-foreground hover:bg-muted/30"
+                      }`}
+                    >
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Carte bancaire
+                    </button>
+                  </div>
 
-                <div className="mt-3 space-y-1.5">
-                  <Label className="text-[13px]">Téléphone *</Label>
-                  <div className="flex h-9 overflow-hidden rounded-lg border border-border bg-card">
-                    <div className="flex items-center justify-center px-3 text-[13px] font-medium text-muted-foreground">
-                      {PHONE_PREFIX}
+                  {paymentTab === "mobile_money" ? (
+                    /* ── Yabetoo Mobile Money form ── */
+                    <div className="rounded-xl border border-border/40 bg-muted/20 p-4 space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-[13px]">Prénom *</Label>
+                          <Input
+                            value={payerFirstName}
+                            onChange={(e) => setPayerFirstName(e.target.value)}
+                            className="h-9 rounded-lg text-[13px]"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[13px]">Nom *</Label>
+                          <Input
+                            value={payerLastName}
+                            onChange={(e) => setPayerLastName(e.target.value)}
+                            className="h-9 rounded-lg text-[13px]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-[13px]">Téléphone *</Label>
+                        <div className="flex h-9 overflow-hidden rounded-lg border border-border bg-card">
+                          <div className="flex items-center justify-center px-3 text-[13px] font-medium text-muted-foreground">
+                            {PHONE_PREFIX}
+                          </div>
+                          <div className="w-px bg-border/60" />
+                          <input
+                            value={payerPhoneSuffix}
+                            inputMode="numeric"
+                            onChange={(e) => {
+                              const digitsOnly = e.currentTarget.value.replace(/\D/g, "")
+                              setPayerPhoneSuffix(digitsOnly.slice(0, PHONE_SUFFIX_MAX_DIGITS))
+                            }}
+                            placeholder="XXXXXXX"
+                            className="h-full w-full bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-[13px]">Opérateur</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPayerOperator("mtn")}
+                            className={
+                              payerOperator === "mtn"
+                                ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
+                                : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
+                            }
+                          >
+                            MTN MoMo
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPayerOperator("airtel")}
+                            className={
+                              payerOperator === "airtel"
+                                ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
+                                : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
+                            }
+                          >
+                            Airtel Money
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="hidden">
+                        <Input
+                          type="email"
+                          value={payerEmail}
+                          onChange={(e) => setPayerEmail(e.target.value)}
+                          className="h-9 rounded-lg text-[13px]"
+                        />
+                      </div>
                     </div>
-                    <div className="w-px bg-border/60" />
-                    <input
-                      value={payerPhoneSuffix}
-                      inputMode="numeric"
-                      onChange={(e) => {
-                        const digitsOnly = e.currentTarget.value.replace(/\D/g, "")
-                        setPayerPhoneSuffix(digitsOnly.slice(0, PHONE_SUFFIX_MAX_DIGITS))
-                      }}
-                      placeholder="XXXXXXX"
-                      className="h-full w-full bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
-                    />
-                  </div>
-                </div>
+                  ) : (
+                    /* ── Stripe Card ── */
+                    <div className="rounded-xl border border-border/40 bg-muted/20 p-4 space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <CreditCard className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-[13px] font-medium text-foreground">Paiement sécurisé par Stripe</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Cliquez sur &quot;Initier&quot; pour créer la session de paiement, puis suivez le lien de paiement sécurisé.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="w-full h-9 rounded-lg text-[13px] gap-2"
+                        onClick={() => handleStripeIntent(selectedPkg.item.totalPrice, `Pack ${selectedPkg.item.code}`)}
+                      >
+                        <CreditCard className="h-3.5 w-3.5" />
+                        Initier le paiement par carte
+                      </Button>
+                    </div>
+                  )}
 
-                <div className="mt-3 space-y-2">
-                  <Label className="text-[13px]">Opérateur</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPayerOperator("mtn_momo")
-                        setPaymentMethod("mobile_money")
-                      }}
-                      className={
-                        payerOperator === "mtn_momo"
-                          ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
-                          : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
-                      }
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      className="h-9 rounded-lg px-4 text-[13px]"
+                      onClick={closePurchaseDialog}
                     >
-                      MTN MoMo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPayerOperator("airtel_money")
-                        setPaymentMethod("airtel_money")
-                      }}
-                      className={
-                        payerOperator === "airtel_money"
-                          ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
-                          : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
-                      }
-                    >
-                      Airtel Money
-                    </button>
+                      Annuler
+                    </Button>
+                    {paymentTab === "mobile_money" && (
+                      <Button
+                        className="h-9 rounded-lg px-5 text-[13px] gap-2"
+                        onClick={handlePurchase}
+                        disabled={isPurchasing}
+                      >
+                        {isPurchasing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        Payer {formatNumber(selectedPkg.item.totalPrice)} XAF
+                      </Button>
+                    )}
                   </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-lg px-4 text-[13px]"
-                  onClick={closePurchaseDialog}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  className="h-9 rounded-lg px-5 text-[13px] gap-2"
-                  onClick={handlePurchase}
-                  disabled={isPurchasing}
-                >
-                  {isPurchasing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  Payer {formatNumber(selectedPkg.item.totalPrice)} XAF
-                </Button>
-              </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -826,100 +938,195 @@ export default function WhatsAppCreditsPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Amount */}
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Montant (FCFA)</Label>
-                <Input
-                  type="number"
-                  value={topUpAmount}
-                  onChange={(e) => setTopUpAmount(e.target.value)}
-                  placeholder="25 000"
-                  min={100}
-                  className="h-9 rounded-lg text-[13px]"
-                />
-                {topUpAmount && Number(topUpAmount) > 0 && (
-                  <p className="text-[10px] text-amber-600">
-                    ~{formatNumber(Math.floor(Number(topUpAmount) / 18))} msgs marketing · ~{formatNumber(Math.floor(Number(topUpAmount) / 6))} msgs utility
-                  </p>
-                )}
-              </div>
+              {topUpStep === "done" ? (
+                /* ── Processing state ── */
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/60 p-5 text-center space-y-3">
+                  <Clock className="h-8 w-8 text-amber-500 mx-auto" />
+                  <div>
+                    <p className="text-[14px] font-semibold text-foreground">Paiement en cours de traitement</p>
+                    <p className="text-[12px] text-muted-foreground mt-1">
+                      Votre paiement Mobile Money est en cours. Votre wallet sera crédité automatiquement dès confirmation de l&apos;opérateur.
+                    </p>
+                    {topUpIntentId && (
+                      <p className="text-[11px] text-muted-foreground/60 mt-2 font-mono">Réf : {topUpIntentId}</p>
+                    )}
+                  </div>
+                  <Button className="h-9 rounded-lg px-5 text-[13px]" onClick={closeTopUpDialog}>
+                    Fermer
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {/* Amount */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px]">Montant (FCFA)</Label>
+                    <Input
+                      type="number"
+                      value={topUpAmount}
+                      onChange={(e) => setTopUpAmount(e.target.value)}
+                      placeholder="25 000"
+                      min={100}
+                      className="h-9 rounded-lg text-[13px]"
+                    />
+                    {topUpAmount && Number(topUpAmount) > 0 && (
+                      <p className="text-[10px] text-amber-600">
+                        ~{formatNumber(Math.floor(Number(topUpAmount) / 18))} msgs marketing · ~{formatNumber(Math.floor(Number(topUpAmount) / 6))} msgs utility
+                      </p>
+                    )}
+                  </div>
 
-              {/* Payment reference */}
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Référence de paiement</Label>
-                <Input
-                  value={topUpRef}
-                  onChange={(e) => setTopUpRef(e.target.value)}
-                  placeholder="TXN123456 ou numéro de transaction"
-                  className="h-9 rounded-lg text-[13px]"
-                />
-              </div>
+                  {/* Payment method tabs */}
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setTopUpPaymentTab("mobile_money")}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-all ${
+                        topUpPaymentTab === "mobile_money"
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/60 bg-card text-muted-foreground hover:bg-muted/30"
+                      }`}
+                    >
+                      <Wallet className="h-3.5 w-3.5" />
+                      Mobile Money
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTopUpPaymentTab("card")}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-all ${
+                        topUpPaymentTab === "card"
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/60 bg-card text-muted-foreground hover:bg-muted/30"
+                      }`}
+                    >
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Carte bancaire
+                    </button>
+                  </div>
 
-              {/* Payment proof */}
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Preuve de paiement *</Label>
-                <input
-                  ref={topUpFileRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    const topUpProofError = validatePaymentProofFile(file)
-                    if (topUpProofError) {
-                      toast.error(topUpProofError)
-                      e.currentTarget.value = ""
-                      return
-                    }
-                    setTopUpProof(file)
-                  }}
-                />
-                <div
-                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-border p-4 cursor-pointer hover:border-border transition-colors"
-                  onClick={() => topUpFileRef.current?.click()}
-                >
-                  {topUpProof ? (
-                    <div className="flex items-center gap-2 text-center">
-                      <FileImage className="h-4 w-4 text-blue-500 shrink-0" />
-                      <div>
-                        <p className="text-[12px] font-medium text-foreground/80">{topUpProof.name}</p>
-                        <p className="text-[10px] text-muted-foreground/60">
-                          {(topUpProof.size / 1024).toFixed(0)} Ko
-                        </p>
+                  {topUpPaymentTab === "mobile_money" ? (
+                    /* ── Yabetoo Mobile Money form ── */
+                    <div className="rounded-xl border border-border/40 bg-muted/20 p-4 space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-[13px]">Prénom *</Label>
+                          <Input
+                            value={topUpPayerFirstName}
+                            onChange={(e) => setTopUpPayerFirstName(e.target.value)}
+                            className="h-9 rounded-lg text-[13px]"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[13px]">Nom *</Label>
+                          <Input
+                            value={topUpPayerLastName}
+                            onChange={(e) => setTopUpPayerLastName(e.target.value)}
+                            className="h-9 rounded-lg text-[13px]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-[13px]">Téléphone *</Label>
+                        <div className="flex h-9 overflow-hidden rounded-lg border border-border bg-card">
+                          <div className="flex items-center justify-center px-3 text-[13px] font-medium text-muted-foreground">
+                            {PHONE_PREFIX}
+                          </div>
+                          <div className="w-px bg-border/60" />
+                          <input
+                            value={topUpPayerPhoneSuffix}
+                            inputMode="numeric"
+                            onChange={(e) => {
+                              const digitsOnly = e.currentTarget.value.replace(/\D/g, "")
+                              setTopUpPayerPhoneSuffix(digitsOnly.slice(0, PHONE_SUFFIX_MAX_DIGITS))
+                            }}
+                            placeholder="XXXXXXX"
+                            className="h-full w-full bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-[13px]">Opérateur</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setTopUpPayerOperator("mtn")}
+                            className={
+                              topUpPayerOperator === "mtn"
+                                ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
+                                : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
+                            }
+                          >
+                            MTN MoMo
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTopUpPayerOperator("airtel")}
+                            className={
+                              topUpPayerOperator === "airtel"
+                                ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary"
+                                : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"
+                            }
+                          >
+                            Airtel Money
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="hidden">
+                        <Input
+                          type="email"
+                          value={topUpPayerEmail}
+                          onChange={(e) => setTopUpPayerEmail(e.target.value)}
+                          className="h-9 rounded-lg text-[13px]"
+                        />
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center">
-                      <Upload className="h-5 w-5 text-muted-foreground/40 mx-auto mb-1" />
-                      <p className="text-[12px] text-muted-foreground/60">
-                        Capture d&apos;écran ou reçu de paiement
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/40 mt-0.5">
-                        JPEG, PNG ou WEBP (max 5 MB)
-                      </p>
+                    /* ── Stripe Card ── */
+                    <div className="rounded-xl border border-border/40 bg-muted/20 p-4 space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <CreditCard className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-[13px] font-medium text-foreground">Paiement sécurisé par Stripe</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Cliquez sur &quot;Initier&quot; pour créer la session de paiement, puis suivez le lien de paiement sécurisé.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="w-full h-9 rounded-lg text-[13px] gap-2"
+                        disabled={!topUpAmount || Number(topUpAmount) <= 0}
+                        onClick={() => handleStripeIntent(Number(topUpAmount), "Recharge personnalisée")}
+                      >
+                        <CreditCard className="h-3.5 w-3.5" />
+                        Initier le paiement par carte
+                      </Button>
                     </div>
                   )}
-                </div>
-              </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-lg px-4 text-[13px]"
-                  onClick={closeTopUpDialog}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  className="h-9 rounded-lg px-5 text-[13px] gap-2"
-                  onClick={handleTopUp}
-                  disabled={isTopping || !topUpAmount || !topUpProof}
-                >
-                  {isTopping && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  Envoyer la demande
-                </Button>
-              </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      className="h-9 rounded-lg px-4 text-[13px]"
+                      onClick={closeTopUpDialog}
+                    >
+                      Annuler
+                    </Button>
+                    {topUpPaymentTab === "mobile_money" && (
+                      <Button
+                        className="h-9 rounded-lg px-5 text-[13px] gap-2"
+                        onClick={handleTopUp}
+                        disabled={isTopping || !topUpAmount}
+                      >
+                        {isTopping && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        Payer {topUpAmount ? formatNumber(Number(topUpAmount)) : "—"} XAF
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
