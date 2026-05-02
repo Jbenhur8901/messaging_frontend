@@ -37,6 +37,7 @@ import {
   CheckCircle2,
   XCircle,
   Plus,
+  Pencil,
   Star,
   RefreshCw,
   Trash2,
@@ -151,7 +152,14 @@ export default function WhatsAppConfigPage() {
 
   const handleOpenDialog = (open: boolean) => {
     setIsDialogOpen(open)
-    if (!open) resetForm()
+    if (open && isConfigured) {
+      setFormPhoneNumberId(configPhoneNumberId)
+      setFormWabaId(configWabaId)
+      setFormEnabled(isEnabled)
+      setTestResult(null)
+    } else if (!open) {
+      resetForm()
+    }
   }
 
   const handleTest = async () => {
@@ -352,13 +360,18 @@ export default function WhatsAppConfigPage() {
             <Dialog open={isDialogOpen} onOpenChange={handleOpenDialog}>
               <DialogTrigger asChild>
                 <Button size="sm" className="h-8 gap-1.5 text-[13px] rounded-lg">
-                  <Plus className="h-3.5 w-3.5" />
-                  Ajouter
+                  {isConfigured ? (
+                    <><Pencil className="h-3.5 w-3.5" />Modifier</>
+                  ) : (
+                    <><Plus className="h-3.5 w-3.5" />Ajouter</>
+                  )}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="text-base">Configurer WhatsApp</DialogTitle>
+                  <DialogTitle className="text-base">
+                    {isConfigured ? "Modifier la configuration" : "Configurer WhatsApp"}
+                  </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-3 pt-1">
                   <div className="space-y-1.5">

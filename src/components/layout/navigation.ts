@@ -34,7 +34,7 @@ export interface NavigationSection {
 
 export const navigationSections: NavigationSection[] = [
   {
-    items: [{ name: "Dashboard", href: "/dashboard", icon: GridFour }],
+    items: [{ name: "Tableau de bord", href: "/dashboard", icon: GridFour }],
   },
   {
     title: "Communication",
@@ -43,7 +43,7 @@ export const navigationSections: NavigationSection[] = [
       { name: "Campagnes", href: "/campaigns/whatsapp", icon: PaperPlaneRight },
       { name: "Conversations", href: "/conversations", icon: ChatCircleDots },
       { name: "Modèle de message", href: "/templates/whatsapp", icon: Note },
-      { name: "Configuration", href: "/whatsapp/config", icon: Sliders },
+      { name: "Canaux", href: "/whatsapp/config", icon: Sliders },
       { name: "Agents IA", href: "/whatsapp/ai-tools", icon: Robot },
     ],
   },

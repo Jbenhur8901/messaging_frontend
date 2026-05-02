@@ -31,7 +31,6 @@ import {
   Database,
   FileText,
   GearSix,
-  Globe,
   Lightning,
   MagnifyingGlass,
   Plus,
@@ -492,7 +491,7 @@ export default function AIToolsPage() {
                 <span>
                   Outils :{" "}
                   <span className="font-medium text-muted-foreground">
-                    {aiTools.map((t) => t === "file_search" ? "Recherche fichiers" : t === "web_search" ? "Recherche web" : t).join(", ")}
+                    {aiTools.map((t) => t === "file_search" ? "Recherche de fichiers" : t).join(", ")}
                   </span>
                 </span>
               )}
@@ -591,7 +590,7 @@ export default function AIToolsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <MagnifyingGlass className="h-3.5 w-3.5 text-primary" weight="bold" />
-                        <span className="text-[13px] font-medium text-foreground/90">file_search</span>
+                        <span className="text-[13px] font-medium text-foreground/90">Recherche de fichiers</span>
                       </div>
                       <p className="text-[11px] text-muted-foreground/60 mt-0.5">
                         Recherche dans les fichiers d&apos;une base de connaissance.
@@ -601,83 +600,64 @@ export default function AIToolsPage() {
 
                   {/* vector_store_ids — visible when file_search enabled */}
                   {aiTools.includes("file_search") && (
-                    <div className="ml-8 space-y-1.5">
-                      <Label className="text-[12px] text-muted-foreground">
-                        IDs des bases de connaissance (séparés par des virgules)
-                      </Label>
+                    <div className="ml-8 space-y-2">
+                      <p className="text-[12px] text-muted-foreground">
+                        Bases de connaissance associées
+                      </p>
                       {vectorStores.length > 0 ? (
-                        <div className="space-y-1.5">
-                          <div className="flex flex-wrap gap-1.5">
-                            {vectorStores.map((vs, vsIdx) => {
-                              const ids = aiVectorStoreIds.split(",").map((s) => s.trim()).filter(Boolean)
-                              const isSelected = ids.includes(vs.id)
-                              return (
-                                <button
-                                  key={`${vs.id}-${vsIdx}`}
-                                  type="button"
-                                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-                                    isSelected
-                                      ? "border-primary/40 bg-primary/15 text-primary"
-                                      : "border-border/60 bg-card/50 text-muted-foreground hover:border-border hover:bg-muted/30"
-                                  }`}
-                                  onClick={() => {
-                                    const currentIds = aiVectorStoreIds.split(",").map((s) => s.trim()).filter(Boolean)
-                                    const newIds = isSelected
-                                      ? currentIds.filter((id) => id !== vs.id)
-                                      : [...currentIds, vs.id]
-                                    setAiVectorStoreIds(newIds.join(","))
-                                  }}
-                                >
-                                  <Database className="h-3 w-3" weight="bold" />
-                                  {vs.name}
-                                </button>
-                              )
-                            })}
-                          </div>
-                          <Input
-                            value={aiVectorStoreIds}
-                            onChange={(e) => setAiVectorStoreIds(e.target.value)}
-                            placeholder="vs_abc123,vs_def456"
-                            className="h-8 text-[11px] font-mono"
-                          />
+                        <div className="flex flex-wrap gap-2">
+                          {vectorStores.map((vs, vsIdx) => {
+                            const ids = aiVectorStoreIds.split(",").map((s) => s.trim()).filter(Boolean)
+                            const isSelected = ids.includes(vs.id)
+                            return (
+                              <button
+                                key={`${vs.id}-${vsIdx}`}
+                                type="button"
+                                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-[12px] font-medium transition-all ${
+                                  isSelected
+                                    ? "border-primary/40 bg-primary/15 text-primary shadow-sm"
+                                    : "border-border/60 bg-card/50 text-muted-foreground hover:border-border hover:bg-muted/30"
+                                }`}
+                                onClick={() => {
+                                  const currentIds = aiVectorStoreIds.split(",").map((s) => s.trim()).filter(Boolean)
+                                  const newIds = isSelected
+                                    ? currentIds.filter((id) => id !== vs.id)
+                                    : [...currentIds, vs.id]
+                                  setAiVectorStoreIds(newIds.join(","))
+                                }}
+                              >
+                                <Database
+                                  className={`h-3.5 w-3.5 ${isSelected ? "text-primary" : "text-muted-foreground"}`}
+                                  weight={isSelected ? "fill" : "regular"}
+                                />
+                                {vs.name}
+                                {isSelected && (
+                                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 text-[9px] font-bold text-primary">
+                                    ✓
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          })}
                         </div>
                       ) : (
-                        <Input
-                          value={aiVectorStoreIds}
-                          onChange={(e) => setAiVectorStoreIds(e.target.value)}
-                          placeholder="vs_abc123,vs_def456"
-                          className="h-8 text-[11px] font-mono"
-                        />
+                        <p className="text-[11px] text-muted-foreground/60">
+                          Aucune base de connaissance disponible.{" "}
+                          <button
+                            type="button"
+                            className="text-primary underline-offset-2 hover:underline"
+                            onClick={() => {
+                              setAiDialogOpen(false)
+                              setCreateVSDialogOpen(true)
+                            }}
+                          >
+                            Créer une base
+                          </button>
+                        </p>
                       )}
-                      <p className="text-[10px] text-muted-foreground/60">
-                        Sélectionnez parmi vos bases de connaissance ou entrez les IDs manuellement.
-                      </p>
                     </div>
                   )}
 
-                  {/* web_search */}
-                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/60 p-3 transition-colors hover:border-border hover:bg-muted/40">
-                    <Checkbox
-                      checked={aiTools.includes("web_search")}
-                      onCheckedChange={(checked) => {
-                        setAiTools((prev) =>
-                          checked
-                            ? [...prev, "web_search"]
-                            : prev.filter((t) => t !== "web_search")
-                        )
-                      }}
-                      className="mt-0.5"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-3.5 w-3.5 text-emerald-400" weight="bold" />
-                        <span className="text-[13px] font-medium text-foreground/90">web_search</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-                        Recherche sur le web pour des informations à jour.
-                      </p>
-                    </div>
-                  </label>
                 </div>
               </div>
 
@@ -707,11 +687,9 @@ export default function AIToolsPage() {
                       onChange={(e) => setAiModel(e.target.value)}
                     >
                       <option value="gpt-5-mini">GPT-5 Mini</option>
-                      <option value="gpt-5-nano">GPT-5 Nano</option>
                       <option value="o4-mini">o4 Mini</option>
                       <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
                       <option value="gpt-4o-mini">GPT-4o Mini</option>
-                      <option value="gpt-4o">GPT-4o</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
@@ -978,8 +956,8 @@ export default function AIToolsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 ring-1 ring-emerald-500/25">
-                <UploadSimple className="h-4 w-4 text-emerald-400" weight="fill" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/20">
+                <UploadSimple className="h-4 w-4 text-primary" weight="fill" />
               </div>
               <div>
                 <h3 className="text-[15px] font-semibold text-foreground">

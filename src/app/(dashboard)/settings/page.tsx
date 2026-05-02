@@ -65,6 +65,14 @@ const getStatusBadgeVariant = (status?: string) => {
   return "secondary"
 }
 
+const translateStatus = (status?: string) => {
+  if (status === "completed") return "Terminé"
+  if (status === "failed") return "Échoué"
+  if (status === "processing") return "En cours"
+  if (status === "queued") return "En file"
+  return status || "-"
+}
+
 const readCount = (
   status: ImportStatus | undefined,
   key: "imported" | "updated" | "skipped" | "failed"
@@ -360,36 +368,36 @@ export default function SettingsPage() {
                 <p className="mt-1 text-2xl font-semibold tabular-nums">{kpis.total}</p>
               </CardContent>
             </Card>
-            <Card className="border-amber-200 bg-amber-50/50">
+            <Card className="border-border/50 bg-card">
               <CardContent className="p-4">
-                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-amber-700">
+                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
                   <Clock3 className="h-3.5 w-3.5" />En file
                 </p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-700">{kpis.queued}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{kpis.queued}</p>
               </CardContent>
             </Card>
-            <Card className="border-blue-200 bg-blue-50/50">
+            <Card className="border-primary/30 bg-primary/5">
               <CardContent className="p-4">
-                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-blue-700">
+                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-primary">
                   <LoaderCircle className="h-3.5 w-3.5" />En cours
                 </p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums text-blue-700">{kpis.processing}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{kpis.processing}</p>
               </CardContent>
             </Card>
-            <Card className="border-emerald-200 bg-emerald-50/50">
+            <Card className="border-border/50 bg-card">
               <CardContent className="p-4">
-                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-emerald-700">
+                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
                   <CheckCircle2 className="h-3.5 w-3.5" />Terminés
                 </p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700">{kpis.completed}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{kpis.completed}</p>
               </CardContent>
             </Card>
           </div>
 
           {kpis.failed > 0 && (
-            <Card className="border-red-200 bg-red-50/50">
+            <Card className="border-destructive/30 bg-destructive/10">
               <CardContent className="p-4">
-                <p className="flex items-center gap-2 text-[13px] font-medium text-red-700">
+                <p className="flex items-center gap-2 text-[13px] font-medium text-destructive">
                   <XCircle className="h-4 w-4" />
                   {kpis.failed} job{kpis.failed > 1 ? "s" : ""} en échec
                 </p>
@@ -432,7 +440,7 @@ export default function SettingsPage() {
                         <TableCell className="px-3 py-2 text-[11px]">{formatDateTime(row.created_at)}</TableCell>
                         <TableCell className="px-3 py-2">
                           <Badge variant={getStatusBadgeVariant(row.status)} className="h-4 px-1.5 text-[9px]">
-                            {row.status || "-"}
+                            {translateStatus(row.status)}
                           </Badge>
                         </TableCell>
                         <TableCell className="px-3 py-2 text-[11px] tabular-nums">{formatCount(row.total)}</TableCell>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { whatsappService, handleApiError } from "@/services"
 import type { WhatsAppBroadcast, WhatsAppBroadcastMessage, WhatsAppMessageStatus } from "@/types"
 import { formatNumber, formatDate } from "@/lib/utils"
@@ -12,10 +12,22 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PaginationControls } from "@/components/ui/pagination-controls"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import {
   ArrowLeft,
   RefreshCw,
+  RotateCcw,
   Send,
   CheckCircle2,
   Eye,
@@ -43,6 +55,7 @@ const MSG_FILTERS: { label: string; value: WhatsAppMessageStatus | "all" }[] = [
 
 export default function WhatsAppCampaignDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const broadcastId = params.id as string
 
   const [broadcast, setBroadcast] = useState<WhatsAppBroadcast | null>(null)
@@ -50,6 +63,7 @@ export default function WhatsAppCampaignDetailPage() {
   const [allMessages, setAllMessages] = useState<WhatsAppBroadcastMessage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isRelaunching, setIsRelaunching] = useState(false)
   const [msgFilter, setMsgFilter] = useState<WhatsAppMessageStatus | "all">("all")
   const [msgPage, setMsgPage] = useState(0)
 
@@ -124,6 +138,37 @@ export default function WhatsAppCampaignDetailPage() {
     a.download = `${broadcast.campaign_name || "campagne"}-${suffix}.csv`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const handleRelaunch = async () => {
+    if (!broadcast) return
+    const phones = allMessages
+      .map((m) => m.to_phone || m.phone)
+      .filter((p): p is string => Boolean(p))
+    if (phones.length === 0) {
+      toast.error("Aucun destinataire trouvé pour la relance")
+      return
+    }
+    setIsRelaunching(true)
+    try {
+      const result = await whatsappService.createBroadcast(
+        phones,
+        broadcast.template_name,
+        broadcast.template_language,
+        `${broadcast.campaign_name || "Campagne"} (relancée)`,
+      )
+      if (result.success) {
+        toast.success(`Campagne relancée — ${phones.length} destinataires`)
+        router.push(`/campaigns/whatsapp/${result.broadcast_id}`)
+      } else {
+        toast.error("Erreur lors de la relance")
+      }
+    } catch (error) {
+      const apiError = handleApiError(error)
+      toast.error(apiError.message)
+    } finally {
+      setIsRelaunching(false)
+    }
   }
 
   const deliveryRate = broadcast && broadcast.sent_count > 0
@@ -219,15 +264,48 @@ export default function WhatsAppCampaignDetailPage() {
             </div>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground shrink-0"
-          onClick={refresh}
-          disabled={isRefreshing}
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 rounded-lg border-border/60 px-3 text-[12px] font-medium text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                disabled={isRelaunching}
+              >
+                {isRelaunching
+                  ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  : <RotateCcw className="h-3.5 w-3.5" />}
+                Relancer
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Relancer cette campagne ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Une nouvelle campagne sera créée avec le même modèle{" "}
+                  <span className="font-medium text-foreground">{broadcast.template_name}</span>{" "}
+                  et les mêmes {allMessages.length} destinataires. La campagne actuelle reste inchangée.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={handleRelaunch} disabled={isRelaunching}>
+                  Relancer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            onClick={refresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       {/* ── Progress bar ── */}

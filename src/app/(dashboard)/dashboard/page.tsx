@@ -47,6 +47,7 @@ export default function DashboardPage() {
   const [recentBroadcasts, setRecentBroadcasts] = useState<Broadcast[]>([])
   const [whatsappStats, setWhatsappStats] = useState<WhatsAppStats | null>(null)
   const [aiBalance, setAiBalance] = useState<number | null>(null)
+  const [campaignStats, setCampaignStats] = useState({ deliveryRate: 0, readRate: 0, read: 0 })
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -62,14 +63,24 @@ export default function DashboardPage() {
 
         const [statsData, broadcastsData, fallbackStats, aiBalanceRes] = await Promise.all([
           dashboardService.getDailyStats(PERIOD_DAYS, "whatsapp").catch(() => null),
-          dashboardService.getRecentBroadcasts(5, "whatsapp").catch(() => ({ broadcasts: [] })),
+          dashboardService.getRecentBroadcasts(100, "whatsapp").catch(() => ({ broadcasts: [] })),
           whatsappService.getStats(PERIOD_DAYS).catch(() => null),
           aiCreditsService.getBalance().catch(() => null),
         ])
 
         if (aiBalanceRes) setAiBalance(aiBalanceRes.balance)
 
-        setRecentBroadcasts(broadcastsData.broadcasts || [])
+        const allBroadcasts = broadcastsData.broadcasts || []
+        setRecentBroadcasts(allBroadcasts.slice(0, 5))
+
+        const campaignTotalSent = allBroadcasts.reduce((s, b) => s + (b.total_recipients || 0), 0)
+        const campaignDelivered = allBroadcasts.reduce((s, b) => s + Math.round((b.total_recipients || 0) * (b.delivery_rate ?? 0) / 100), 0)
+        const campaignRead = allBroadcasts.reduce((s, b) => s + Math.round((b.total_recipients || 0) * (b.read_rate ?? 0) / 100), 0)
+        setCampaignStats({
+          deliveryRate: campaignTotalSent > 0 ? (campaignDelivered / campaignTotalSent) * 100 : 0,
+          readRate: campaignTotalSent > 0 ? (campaignRead / campaignTotalSent) * 100 : 0,
+          read: campaignRead,
+        })
 
         if (statsData) {
           const statsArray = statsData.stats || []
@@ -143,7 +154,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between" style={stagger(0)}>
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Tableau de bord</h1>
           <p className="text-[13px] text-muted-foreground mt-0.5">
             Vue d&apos;ensemble de vos campagnes WhatsApp et de vos agents IA.
           </p>
@@ -169,11 +180,11 @@ export default function DashboardPage() {
                   {formatNumber(walletTotal)}
                   <span className="text-[11px] font-normal text-muted-foreground ml-1">FCFA</span>
                 </p>
-                {walletBalance && (
+                {walletTotal > 0 && (
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <span className="text-[10px] text-violet-500/80 font-medium">~{formatNumber(Math.floor(walletBalance.marketing.available / 18))} mkt</span>
-                    <span className="text-[10px] text-blue-500/80 font-medium">~{formatNumber(Math.floor(walletBalance.utility.available / 6))} util</span>
-                    <span className="text-[10px] text-emerald-500/80 font-medium">~{formatNumber(Math.floor(walletBalance.authentication.available / 6))} auth</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">~{formatNumber(Math.floor(walletTotal / 18))} mkt</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">~{formatNumber(Math.floor(walletTotal / 6))} util</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">~{formatNumber(Math.floor(walletTotal / 6))} auth</span>
                   </div>
                 )}
               </CardContent>
@@ -193,7 +204,7 @@ export default function DashboardPage() {
                 </p>
                 {aiBalance !== null && (
                   <p className="text-[10px] text-muted-foreground mt-1.5">
-                    ~{formatNumber(Math.floor(aiBalance / 1.8))} msgs IA
+                    ~{formatNumber(Math.floor(aiBalance / 3))} msgs IA
                   </p>
                 )}
               </CardContent>
@@ -208,7 +219,7 @@ export default function DashboardPage() {
               </div>
               <p className="text-xl font-semibold tracking-tight">{formatNumber(whatsappSummary.total_messages || 0)}</p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                {formatNumber(whatsappSummary.delivered || 0)} livres
+                {formatNumber(whatsappSummary.delivered || 0)} livrés
               </p>
             </CardContent>
           </Card>
@@ -219,11 +230,11 @@ export default function DashboardPage() {
                 <span className="text-[12px] font-medium text-muted-foreground">Livraison</span>
                 <CheckCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
               </div>
-              <p className="text-xl font-semibold tracking-tight">{deliveryRate.toFixed(1)}%</p>
+              <p className="text-xl font-semibold tracking-tight">{campaignStats.deliveryRate.toFixed(1)}%</p>
               <div className="mt-2 h-1 w-full rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full bg-primary/70 transition-all duration-700 ease-out"
-                  style={{ width: `${Math.min(deliveryRate, 100)}%` }}
+                  style={{ width: `${Math.min(campaignStats.deliveryRate, 100)}%` }}
                 />
               </div>
             </CardContent>
@@ -235,9 +246,9 @@ export default function DashboardPage() {
                 <span className="text-[12px] font-medium text-muted-foreground">Lecture</span>
                 <Eye className="h-3.5 w-3.5 text-muted-foreground/60" />
               </div>
-              <p className="text-xl font-semibold tracking-tight">{readRate.toFixed(1)}%</p>
+              <p className="text-xl font-semibold tracking-tight">{campaignStats.readRate.toFixed(1)}%</p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                {formatNumber(whatsappSummary.read || 0)} lus
+                {formatNumber(campaignStats.read)} lus
               </p>
             </CardContent>
           </Card>
@@ -250,16 +261,16 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-3.5 w-3.5 text-muted-foreground/60" />
-                <span className="text-[13px] font-medium">Activite - 14 derniers jours</span>
+                <span className="text-[13px] font-medium">Activité — 14 derniers jours</span>
               </div>
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary/70" />
-                  Envoyes
+                  Envoyés
                 </span>
-                <span className="flex items-center gap-1">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500/70" />
-                  Livres
+                <span className="flex items-center gap-1 text-foreground">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-foreground" />
+                  Livrés
                 </span>
               </div>
             </div>
@@ -273,8 +284,8 @@ export default function DashboardPage() {
                         <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="gradDelivered" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.12} />
-                        <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                        <stop offset="0%" stopColor="#ffffff" stopOpacity={0.08} />
+                        <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" strokeOpacity={0.5} vertical={false} />
@@ -302,14 +313,14 @@ export default function DashboardPage() {
                       labelFormatter={(v) => new Date(v).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
                       formatter={(value) => [formatNumber(value as number), ""]}
                     />
-                    <Area type="monotone" dataKey="messages_sent" stroke="var(--color-primary)" strokeWidth={1.5} fill="url(#gradSent)" dot={false} name="Envoyes" />
-                    <Area type="monotone" dataKey="messages_delivered" stroke="#10b981" strokeWidth={1.5} fill="url(#gradDelivered)" dot={false} name="Livres" />
+                    <Area type="monotone" dataKey="messages_sent" stroke="var(--color-primary)" strokeWidth={1.5} fill="url(#gradSent)" dot={false} name="Envoyés" />
+                    <Area type="monotone" dataKey="messages_delivered" stroke="rgba(255,255,255,0.35)" strokeWidth={1.5} fill="url(#gradDelivered)" dot={false} name="Livrés" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             ) : (
               <div className="h-56 flex items-center justify-center text-[13px] text-muted-foreground">
-                Aucune donnee disponible
+                Aucune donnée disponible
               </div>
             )}
           </CardContent>
@@ -318,7 +329,7 @@ export default function DashboardPage() {
         <Card className="lg:col-span-2 border-transparent hover:border-border/50 transition-all duration-300">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-[13px] font-medium">Campagnes recentes</span>
+              <span className="text-[13px] font-medium">Campagnes récentes</span>
               <Link href="/campaigns/whatsapp">
                 <Button variant="ghost" size="sm" className="h-7 text-[12px] text-muted-foreground hover:text-foreground gap-1 px-2">
                   Tout voir
@@ -330,7 +341,7 @@ export default function DashboardPage() {
               {recentBroadcasts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <Send className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                  <p className="text-[13px] text-muted-foreground">Aucune campagne recente</p>
+                  <p className="text-[13px] text-muted-foreground">Aucune campagne récente</p>
                 </div>
               ) : (
                 recentBroadcasts.map((broadcast) => (
@@ -348,7 +359,7 @@ export default function DashboardPage() {
                         {broadcast.delivery_rate != null && (
                           <>
                             <span className="text-muted-foreground/40">·</span>
-                            <span>{broadcast.delivery_rate.toFixed(0)}% livre</span>
+                            <span>{broadcast.delivery_rate.toFixed(0)}% livré</span>
                           </>
                         )}
                         {broadcast.read_rate != null && (
@@ -370,7 +381,7 @@ export default function DashboardPage() {
                       className="text-[10px] ml-2 shrink-0"
                     >
                       {broadcast.status === "completed"
-                        ? "Termine"
+                        ? "Terminé"
                         : broadcast.status === "processing"
                           ? "En cours"
                           : broadcast.status === "pending"

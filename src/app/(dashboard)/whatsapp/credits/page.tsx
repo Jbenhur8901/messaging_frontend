@@ -74,10 +74,10 @@ const formatDate = (iso: string) => {
 // ── Bouquets ──
 
 const CAT = {
-  marketing: { label: "Marketing", shortLabel: "M", color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-200", rate: 18 },
-  utility: { label: "Utilitaire", shortLabel: "U", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", rate: 6 },
-  authentication: { label: "Authentification", shortLabel: "A", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", rate: 6 },
-  topup: { label: "Libres", shortLabel: "F", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", rate: 0 },
+  marketing: { label: "Marketing", shortLabel: "M", color: "text-primary", bg: "bg-primary/10", border: "border-primary/30", rate: 18 },
+  utility: { label: "Utilitaire", shortLabel: "U", color: "text-foreground", bg: "bg-accent", border: "border-border", rate: 6 },
+  authentication: { label: "Authentification", shortLabel: "A", color: "text-muted-foreground", bg: "bg-accent/60", border: "border-border/60", rate: 6 },
+  topup: { label: "Libres", shortLabel: "F", color: "text-primary/70", bg: "bg-primary/5", border: "border-primary/20", rate: 0 },
 } as const
 
 type CatKey = keyof typeof CAT
@@ -852,7 +852,7 @@ export default function WhatsAppCreditsPage() {
       {/* ── Purchase Dialog ── */}
       {selectedPkg && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={closePurchaseDialog}
           onKeyDown={(e) => { if (e.key === "Escape") closePurchaseDialog() }}
         >
@@ -1074,7 +1074,7 @@ export default function WhatsAppCreditsPage() {
       {/* ── Top-up Custom Dialog ── */}
       {topUpDialogOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={closeTopUpDialog}
           onKeyDown={(e) => { if (e.key === "Escape") closeTopUpDialog() }}
         >
@@ -1561,7 +1561,7 @@ export default function WhatsAppCreditsPage() {
       {/* ── Dialog d'achat IA ── */}
       {aiRequestDialogOpen && aiSelectedPackage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={closeAiRequestDialog}
           onKeyDown={(e) => { if (e.key === "Escape") closeAiRequestDialog() }}
         >

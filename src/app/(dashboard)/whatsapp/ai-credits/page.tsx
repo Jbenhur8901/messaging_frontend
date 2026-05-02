@@ -113,20 +113,20 @@ const resolvePackageTotalPrice = (pkg: Pick<AIPackage, "message_count" | "total_
 const txTypeMeta: Record<string, { label: string; color: string; bg: string; icon: Icon }> = {
   purchase: {
     label: "Achat",
-    color: "text-sky-300",
-    bg: "border-sky-400/30 bg-sky-500/12",
+    color: "text-primary",
+    bg: "border-primary/30 bg-primary/10",
     icon: CreditCard,
   },
   bonus: {
     label: "Bonus",
-    color: "text-emerald-300",
-    bg: "border-emerald-400/30 bg-emerald-500/12",
+    color: "text-foreground",
+    bg: "border-border/60 bg-accent/50",
     icon: Gift,
   },
   consumption: {
     label: "Consommation",
-    color: "text-amber-200",
-    bg: "border-amber-400/30 bg-amber-500/12",
+    color: "text-muted-foreground",
+    bg: "border-border/50 bg-muted/30",
     icon: Lightning,
   },
   adjustment: {
@@ -140,20 +140,20 @@ const txTypeMeta: Record<string, { label: string; color: string; bg: string; ico
 const requestStatusMeta: Record<string, { label: string; color: string; bg: string; icon: Icon }> = {
   pending: {
     label: "En attente",
-    color: "text-amber-200",
-    bg: "border-amber-400/30 bg-amber-500/12",
+    color: "text-primary/80",
+    bg: "border-primary/20 bg-primary/5",
     icon: Clock,
   },
   approved: {
     label: "Approuvée",
-    color: "text-emerald-300",
-    bg: "border-emerald-400/30 bg-emerald-500/12",
+    color: "text-foreground",
+    bg: "border-border/60 bg-accent",
     icon: CheckCircle,
   },
   rejected: {
     label: "Rejetée",
-    color: "text-red-300",
-    bg: "border-red-400/30 bg-red-500/12",
+    color: "text-destructive",
+    bg: "border-destructive/30 bg-destructive/10",
     icon: XCircle,
   },
   cancelled: {
@@ -499,7 +499,7 @@ export default function AICreditsPage() {
                   <p className="text-[22px] font-bold tracking-tight">
                     {formatNumber(pkg.message_count)}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">messages IA</p>
+                  <p className="text-[11px] text-muted-foreground">crédits IA</p>
 
                   <div className="mt-3 border-t border-border/40 pt-3">
                     <p className="text-[16px] font-bold text-foreground">
@@ -528,12 +528,12 @@ export default function AICreditsPage() {
           })}
         </div>
 
-        <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 shadow-sm sm:flex-row sm:items-center">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/20">
-            <Gift className="h-4 w-4 text-emerald-300" weight="fill" />
+        <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-sm sm:flex-row sm:items-center">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/20">
+            <Gift className="h-4 w-4 text-primary" weight="fill" />
           </div>
           <p className="text-[12px] leading-relaxed text-muted-foreground">
-            <span className="font-semibold text-emerald-200">Bonus :</span> Chaque achat ou recharge WhatsApp vous offre
+            <span className="font-semibold text-primary">Bonus :</span> Chaque achat ou recharge WhatsApp vous offre
             automatiquement <span className="font-semibold text-foreground">3 000 crédits IA gratuits</span> !
           </p>
         </div>
@@ -728,7 +728,7 @@ export default function AICreditsPage() {
                           </td>
                           <td
                             className={`whitespace-nowrap px-4 py-3 text-right text-[13px] font-semibold ${
-                              isPositive ? "text-emerald-400" : "text-red-400"
+                              isPositive ? "text-primary" : "text-destructive"
                             }`}
                           >
                             {isPositive ? "+" : ""}{formatNumber(tx.amount)}

@@ -229,9 +229,9 @@ export default function WhatsAppCampaignsPage() {
           <div className="flex items-center gap-4 px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
             <div className="min-w-0 flex-1">Campagne</div>
             <div className="hidden sm:block w-20 text-right">Dest.</div>
-            <div className="hidden sm:block w-20 text-right" style={{ color: "#12E046" }}>Livrés</div>
-            <div className="hidden sm:block w-16 text-right" style={{ color: "#E15701" }}>Lus</div>
-            <div className="hidden sm:block w-16 text-right" style={{ color: "#ef4444" }}>Échoués</div>
+            <div className="hidden sm:block w-20 text-right" className="text-primary">Livrés</div>
+            <div className="hidden sm:block w-16 text-right" className="text-muted-foreground">Lus</div>
+            <div className="hidden sm:block w-16 text-right" className="text-destructive/80">Échoués</div>
             <div className="hidden lg:block w-20 text-right">Date</div>
             <div className="w-24 text-center">Statut</div>
             <div className="w-4" />
@@ -270,17 +270,17 @@ export default function WhatsAppCampaignsPage() {
                   </span>
 
                   {/* Livrés */}
-                  <span className="hidden sm:block text-[12px] w-20 text-right tabular-nums" style={{ color: "#12E046" }}>
+                  <span className="hidden sm:block text-[12px] w-20 text-right tabular-nums text-primary">
                     {formatNumber(broadcast.delivered_count)}
                   </span>
 
                   {/* Lus */}
-                  <span className="hidden sm:block text-[12px] w-16 text-right tabular-nums" style={{ color: "#E15701" }}>
+                  <span className="hidden sm:block text-[12px] w-16 text-right tabular-nums text-muted-foreground">
                     {formatNumber(broadcast.read_count)}
                   </span>
 
                   {/* Échoués */}
-                  <span className="hidden sm:block text-[12px] w-16 text-right tabular-nums" style={{ color: broadcast.failed_count > 0 ? "#ef4444" : undefined }}>
+                  <span className={`hidden sm:block text-[12px] w-16 text-right tabular-nums ${broadcast.failed_count > 0 ? "text-destructive" : "text-muted-foreground"}`}>
                     {broadcast.failed_count > 0 ? formatNumber(broadcast.failed_count) : "—"}
                   </span>
 
