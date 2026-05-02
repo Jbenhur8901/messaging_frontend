@@ -36,6 +36,7 @@
     "@types/node": "^25.0.10",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3",
+    "agentation-mcp": "^1.2.0",
     "autoprefixer": "^10.4.23",
     "axios": "^1.13.3",
     "class-variance-authority": "^0.7.1",
@@ -60,6 +61,10 @@
   },
   "devDependencies": {
     "@types/papaparse": "^5.5.2",
+    "agentation": "^3.0.2",
     "rimraf": "^6.0.1"
+  },
+  "optionalDependencies": {
+    "@next/swc-darwin-x64": "^16.1.4"
   }
 }

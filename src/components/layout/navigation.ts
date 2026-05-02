@@ -5,9 +5,11 @@ import {
   Gear,
   GridFour,
   MegaphoneSimple,
+  Note,
   PaperPlaneRight,
   Receipt,
   Robot,
+  Sliders,
   Tag,
   Users,
 } from "@phosphor-icons/react"
@@ -39,16 +41,9 @@ export const navigationSections: NavigationSection[] = [
     icon: MegaphoneSimple,
     items: [
       { name: "Campagnes", href: "/campaigns/whatsapp", icon: PaperPlaneRight },
-      {
-        name: "Messagerie",
-        href: "/conversations",
-        icon: ChatCircleDots,
-        children: [
-          { name: "Conversations", href: "/conversations" },
-          { name: "Templates WhatsApp", href: "/templates/whatsapp" },
-          { name: "Configuration", href: "/whatsapp/config" },
-        ],
-      },
+      { name: "Conversations", href: "/conversations", icon: ChatCircleDots },
+      { name: "Modèle de message", href: "/templates/whatsapp", icon: Note },
+      { name: "Configuration", href: "/whatsapp/config", icon: Sliders },
       { name: "Agents IA", href: "/whatsapp/ai-tools", icon: Robot },
     ],
   },
@@ -65,25 +60,8 @@ export const navigationSections: NavigationSection[] = [
     icon: Buildings,
     items: [
       { name: "Organisation", href: "/organization", icon: Buildings, ownerOnly: true },
-      {
-        name: "Facturation",
-        href: "/whatsapp/credits",
-        icon: Receipt,
-        ownerOnly: true,
-        children: [
-          { name: "Crédits WhatsApp", href: "/whatsapp/credits" },
-          { name: "Crédits IA", href: "/whatsapp/ai-credits" },
-        ],
-      },
-      {
-        name: "Paramètres",
-        href: "/settings",
-        icon: Gear,
-        children: [
-          { name: "Compte", href: "/settings" },
-          { name: "Exportation", href: "/settings/exportation" },
-        ],
-      },
+      { name: "Facturation", href: "/whatsapp/credits", icon: Receipt, ownerOnly: true },
+      { name: "Paramètres", href: "/settings", icon: Gear },
     ],
   },
 ]

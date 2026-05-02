@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { dashboardService, whatsappService } from "@/services"
+import { aiCreditsService } from "@/services/ai-credits"
 import type { DailyStat, Broadcast, WhatsAppStats } from "@/types"
 import { formatNumber } from "@/lib/utils"
 import { authStorage } from "@/lib/auth-storage"
@@ -18,7 +19,7 @@ import {
   Plus,
   Eye,
   BarChart3,
-  MessageSquare,
+  Bot,
 } from "lucide-react"
 import {
   AreaChart,
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
   const [recentBroadcasts, setRecentBroadcasts] = useState<Broadcast[]>([])
   const [whatsappStats, setWhatsappStats] = useState<WhatsAppStats | null>(null)
+  const [aiBalance, setAiBalance] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -58,11 +60,14 @@ export default function DashboardPage() {
       try {
         await fetchBalance().catch(() => undefined)
 
-        const [statsData, broadcastsData, fallbackStats] = await Promise.all([
+        const [statsData, broadcastsData, fallbackStats, aiBalanceRes] = await Promise.all([
           dashboardService.getDailyStats(PERIOD_DAYS, "whatsapp").catch(() => null),
           dashboardService.getRecentBroadcasts(5, "whatsapp").catch(() => ({ broadcasts: [] })),
           whatsappService.getStats(PERIOD_DAYS).catch(() => null),
+          aiCreditsService.getBalance().catch(() => null),
         ])
+
+        if (aiBalanceRes) setAiBalance(aiBalanceRes.balance)
 
         setRecentBroadcasts(broadcastsData.broadcasts || [])
 
@@ -152,18 +157,12 @@ export default function DashboardPage() {
       </div>
 
       <div style={stagger(1)}>
-        <div className="flex items-center gap-2 mb-3">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
-            WhatsApp · {whatsappSummary.period_days}j
-          </h2>
-        </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Link href="/whatsapp/credits" className="block" style={stagger(2)}>
             <Card className="group h-full border-transparent hover:border-border/50 transition-all duration-300 cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[12px] font-medium text-muted-foreground">Wallet</span>
+                  <span className="text-[12px] font-medium text-muted-foreground">Wallet WhatsApp</span>
                   <Wallet className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary/60 transition-colors duration-300" />
                 </div>
                 <p className="text-xl font-semibold tracking-tight">
@@ -171,17 +170,37 @@ export default function DashboardPage() {
                   <span className="text-[11px] font-normal text-muted-foreground ml-1">FCFA</span>
                 </p>
                 {walletBalance && (
-                  <div className="flex items-center gap-2.5 mt-1.5">
-                    <span className="text-[10px] text-blue-500/80 font-medium">M {formatNumber(walletBalance.marketing.available)}</span>
-                    <span className="text-[10px] text-blue-500/80 font-medium">U {formatNumber(walletBalance.utility.available)}</span>
-                    <span className="text-[10px] text-emerald-500/80 font-medium">A {formatNumber(walletBalance.authentication.available)}</span>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span className="text-[10px] text-violet-500/80 font-medium">~{formatNumber(Math.floor(walletBalance.marketing.available / 18))} mkt</span>
+                    <span className="text-[10px] text-blue-500/80 font-medium">~{formatNumber(Math.floor(walletBalance.utility.available / 6))} util</span>
+                    <span className="text-[10px] text-emerald-500/80 font-medium">~{formatNumber(Math.floor(walletBalance.authentication.available / 6))} auth</span>
                   </div>
                 )}
               </CardContent>
             </Card>
           </Link>
 
-          <Card className="border-transparent hover:border-border/50 transition-all duration-300" style={stagger(3)}>
+          <Link href="/whatsapp/ai-credits" className="block" style={stagger(3)}>
+            <Card className="group h-full border-transparent hover:border-border/50 transition-all duration-300 cursor-pointer">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[12px] font-medium text-muted-foreground">Crédits IA</span>
+                  <Bot className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary/60 transition-colors duration-300" />
+                </div>
+                <p className="text-xl font-semibold tracking-tight">
+                  {aiBalance !== null ? formatNumber(aiBalance) : "—"}
+                  <span className="text-[11px] font-normal text-muted-foreground ml-1">crédits</span>
+                </p>
+                {aiBalance !== null && (
+                  <p className="text-[10px] text-muted-foreground mt-1.5">
+                    ~{formatNumber(Math.floor(aiBalance / 1.8))} msgs IA
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Card className="border-transparent hover:border-border/50 transition-all duration-300" style={stagger(4)}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] font-medium text-muted-foreground">Messages</span>
