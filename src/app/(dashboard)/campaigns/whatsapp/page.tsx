@@ -229,9 +229,9 @@ export default function WhatsAppCampaignsPage() {
           <div className="flex items-center gap-4 px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
             <div className="min-w-0 flex-1">Campagne</div>
             <div className="hidden sm:block w-20 text-right">Dest.</div>
-            <div className="hidden sm:block w-20 text-right" className="text-primary">Livrés</div>
-            <div className="hidden sm:block w-16 text-right" className="text-muted-foreground">Lus</div>
-            <div className="hidden sm:block w-16 text-right" className="text-destructive/80">Échoués</div>
+            <div className="hidden sm:block w-20 text-right text-primary">Livrés</div>
+            <div className="hidden sm:block w-16 text-right text-muted-foreground">Lus</div>
+            <div className="hidden sm:block w-16 text-right text-destructive/80">Échoués</div>
             <div className="hidden lg:block w-20 text-right">Date</div>
             <div className="w-24 text-center">Statut</div>
             <div className="w-4" />

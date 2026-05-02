@@ -10,7 +10,9 @@
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('peerDependencies', {}\\), indent=2\\)\\); print\\(json.dumps\\(d.get\\('dependencies', {}\\), indent=2\\)\\)\")",
       "Bash(node *)",
       "Bash(python3 *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(npm run)",
+      "Bash(npm install *)"
     ]
   },
   "enableAllProjectMcpServers": true,
