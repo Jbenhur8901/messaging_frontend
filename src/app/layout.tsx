@@ -3,7 +3,6 @@ import { headers } from "next/headers"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers"
-import { Agentation } from "agentation"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,7 +32,6 @@ export default async function RootLayout({
       <head />
       <body className={`${inter.variable} font-sans`}>
         <Providers nonce={nonce}>{children}</Providers>
-        {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
     </html>
   )
