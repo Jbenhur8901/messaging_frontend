@@ -12,7 +12,10 @@
       "Bash(python3 *)",
       "Bash(npx tsc *)",
       "Bash(npm run)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(mkdir -p /Users/BenhurEssissongo/Documents/GitHub/messaging_frontend/src/app/\\\\\\(dashboard\\\\\\)/agents/\\\\[agentId\\\\]/connaissances)",
+      "Bash(mkdir -p /Users/BenhurEssissongo/Documents/GitHub/messaging_frontend/src/app/\\\\\\(dashboard\\\\\\)/agents/\\\\[agentId\\\\]/documents)"
     ]
   },
   "enableAllProjectMcpServers": true,

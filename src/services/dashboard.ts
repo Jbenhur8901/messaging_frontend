@@ -12,6 +12,102 @@ const toNumber = (value: unknown) => {
   return 0
 }
 
+const pickNumber = (...values: unknown[]) => {
+  for (const value of values) {
+    const parsed = toNumber(value)
+    if (parsed > 0) return parsed
+  }
+  return 0
+}
+
+const unwrapBroadcastsPayload = (data: unknown) => {
+  const root = data as any
+  return (
+    (Array.isArray(root) ? root : null) ??
+    root?.broadcasts ??
+    root?.whatsapp_broadcasts ??
+    root?.sms_broadcasts ??
+    root?.data?.broadcasts ??
+    root?.data?.whatsapp_broadcasts ??
+    root?.data?.sms_broadcasts ??
+    root?.result?.broadcasts ??
+    root?.result?.whatsapp_broadcasts ??
+    root?.result?.sms_broadcasts ??
+    root?.payload?.broadcasts ??
+    root?.payload?.whatsapp_broadcasts ??
+    root?.payload?.sms_broadcasts ??
+    []
+  )
+}
+
+const normalizeBroadcast = (broadcast: any): Broadcast => {
+  const totalRecipients = pickNumber(
+    broadcast?.total_recipients,
+    broadcast?.recipients_count,
+    broadcast?.recipient_count,
+    broadcast?.total
+  )
+  const sentCount = pickNumber(
+    broadcast?.sent_count,
+    broadcast?.messages_sent,
+    broadcast?.total_sent,
+    broadcast?.sent,
+    totalRecipients
+  )
+  const deliveredCount = pickNumber(
+    broadcast?.delivered_count,
+    broadcast?.messages_delivered,
+    broadcast?.total_delivered,
+    broadcast?.delivered
+  )
+  const readCount = pickNumber(
+    broadcast?.read_count,
+    broadcast?.messages_read,
+    broadcast?.total_read,
+    broadcast?.read
+  )
+  const failedCount = pickNumber(
+    broadcast?.failed_count,
+    broadcast?.messages_failed,
+    broadcast?.total_failed,
+    broadcast?.failed
+  )
+  const deliveryRate = pickNumber(
+    broadcast?.delivery_rate,
+    broadcast?.delivery_rate_percent,
+    broadcast?.delivered_rate
+  ) || (sentCount > 0 ? (deliveredCount / sentCount) * 100 : 0)
+  const readRate = pickNumber(
+    broadcast?.read_rate,
+    broadcast?.read_rate_percent
+  ) || (sentCount > 0 ? (readCount / sentCount) * 100 : 0)
+
+  return {
+    ...broadcast,
+    broadcast_id: broadcast?.broadcast_id || broadcast?.id,
+    status: broadcast?.status ?? "pending",
+    total_recipients: totalRecipients,
+    sent_count: sentCount,
+    failed_count: failedCount,
+    pending_count: toNumber(broadcast?.pending_count ?? broadcast?.pending),
+    progress_percent: toNumber(broadcast?.progress_percent ?? broadcast?.progress),
+    segments_per_message: toNumber(broadcast?.segments_per_message) || 1,
+    total_segments: toNumber(broadcast?.total_segments),
+    credits_consumed: toNumber(broadcast?.credits_consumed ?? broadcast?.credits_used),
+    credits_reserved: toNumber(broadcast?.credits_reserved),
+    message_encoding: broadcast?.message_encoding ?? "GSM-7",
+    campaign_name: broadcast?.campaign_name ?? broadcast?.name ?? broadcast?.title ?? null,
+    created_at: broadcast?.created_at ?? broadcast?.createdAt ?? "",
+    completed_at: broadcast?.completed_at ?? broadcast?.completedAt ?? null,
+    channel: broadcast?.channel ?? "whatsapp",
+    template_name: broadcast?.template_name,
+    delivered_count: deliveredCount,
+    read_count: readCount,
+    delivery_rate: deliveryRate,
+    read_rate: readRate,
+  }
+}
+
 const unwrapDashboardPayload = (data: unknown) => {
   const root = data as any
   return (
@@ -219,11 +315,8 @@ export const dashboardService = {
     const { data } = await api.get("/v1/dashboard/recent-broadcasts", {
       params: { limit, ...(channel && { channel }) },
     })
-    const raw = data.broadcasts || data.whatsapp_broadcasts || data.sms_broadcasts || []
-    const broadcasts = raw.map((b: Broadcast & { id?: string }) => ({
-      ...b,
-      broadcast_id: b.broadcast_id || b.id,
-    }))
+    const raw = unwrapBroadcastsPayload(data)
+    const broadcasts = Array.isArray(raw) ? raw.map(normalizeBroadcast) : []
     return { broadcasts }
   },
 

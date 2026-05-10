@@ -39,6 +39,29 @@ const stagger = (i: number) => ({
 
 const PERIOD_DAYS = 14
 
+const finiteNumber = (value: unknown) => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  return 0
+}
+
+const campaignBaseCount = (broadcast: Broadcast) => {
+  const sentCount = finiteNumber(broadcast.sent_count)
+  return sentCount > 0 ? sentCount : finiteNumber(broadcast.total_recipients)
+}
+
+const campaignMetricCount = (broadcast: Broadcast, count: number | undefined, rate: number | undefined) => {
+  const parsedCount = finiteNumber(count)
+  if (parsedCount > 0) return parsedCount
+
+  const base = campaignBaseCount(broadcast)
+  const parsedRate = finiteNumber(rate)
+  return base > 0 && parsedRate > 0 ? Math.round((base * parsedRate) / 100) : 0
+}
+
 export default function DashboardPage() {
   const { currentOrganization } = useOrganizationStore()
   const { walletBalance, walletTotal, fetchBalance } = useCreditsStore()
@@ -61,21 +84,56 @@ export default function DashboardPage() {
       try {
         await fetchBalance().catch(() => undefined)
 
-        const [statsData, broadcastsData, fallbackStats, aiBalanceRes] = await Promise.all([
+        const [statsData, broadcastsData, waBroadcastsData, fallbackStats, aiBalanceRes] = await Promise.all([
           dashboardService.getDailyStats(PERIOD_DAYS, "whatsapp").catch(() => null),
           dashboardService.getRecentBroadcasts(100, "whatsapp").catch(() => ({ broadcasts: [] })),
+          whatsappService.getBroadcasts(100).catch(() => ({ broadcasts: [] })),
           whatsappService.getStats(PERIOD_DAYS).catch(() => null),
           aiCreditsService.getBalance().catch(() => null),
         ])
 
         if (aiBalanceRes) setAiBalance(aiBalanceRes.balance)
 
-        const allBroadcasts = broadcastsData.broadcasts || []
+        // Prefer dashboard endpoint; fall back to whatsapp broadcasts if empty
+        let allBroadcasts = broadcastsData.broadcasts || []
+        if (allBroadcasts.length === 0 && waBroadcastsData.broadcasts.length > 0) {
+          allBroadcasts = waBroadcastsData.broadcasts.map((b) => ({
+            broadcast_id: b.id,
+            status: b.status,
+            total_recipients: b.total_recipients,
+            sent_count: b.sent_count,
+            failed_count: b.failed_count,
+            pending_count: b.pending_count,
+            progress_percent: b.progress_percent,
+            segments_per_message: 1,
+            total_segments: 0,
+            credits_consumed: 0,
+            credits_reserved: 0,
+            message_encoding: "GSM-7" as const,
+            campaign_name: b.campaign_name,
+            template_name: b.template_name,
+            created_at: b.created_at,
+            completed_at: b.completed_at,
+            channel: "whatsapp" as const,
+            delivered_count: b.delivered_count,
+            read_count: b.read_count,
+            delivery_rate: b.sent_count > 0 ? (b.delivered_count / b.sent_count) * 100 : 0,
+            read_rate: b.sent_count > 0 ? (b.read_count / b.sent_count) * 100 : 0,
+          }))
+        }
+
         setRecentBroadcasts(allBroadcasts.slice(0, 5))
 
-        const campaignTotalSent = allBroadcasts.reduce((s, b) => s + (b.total_recipients || 0), 0)
-        const campaignDelivered = allBroadcasts.reduce((s, b) => s + Math.round((b.total_recipients || 0) * (b.delivery_rate ?? 0) / 100), 0)
-        const campaignRead = allBroadcasts.reduce((s, b) => s + Math.round((b.total_recipients || 0) * (b.read_rate ?? 0) / 100), 0)
+        // Use campaign counters directly, with rates as a fallback when the API only exposes percentages.
+        const campaignTotalSent = allBroadcasts.reduce((s, b) => s + campaignBaseCount(b), 0)
+        const campaignDelivered = allBroadcasts.reduce(
+          (s, b) => s + campaignMetricCount(b, b.delivered_count, b.delivery_rate),
+          0
+        )
+        const campaignRead = allBroadcasts.reduce(
+          (s, b) => s + campaignMetricCount(b, b.read_count, b.read_rate),
+          0
+        )
         setCampaignStats({
           deliveryRate: campaignTotalSent > 0 ? (campaignDelivered / campaignTotalSent) * 100 : 0,
           readRate: campaignTotalSent > 0 ? (campaignRead / campaignTotalSent) * 100 : 0,
@@ -211,11 +269,11 @@ export default function DashboardPage() {
             </Card>
           </Link>
 
-          <Card className="border-transparent hover:border-border/50 transition-all duration-300" style={stagger(4)}>
+          <Card className="group border-transparent hover:border-border/50 transition-all duration-300" style={stagger(4)}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] font-medium text-muted-foreground">Messages</span>
-                <Send className="h-3.5 w-3.5 text-muted-foreground/60" />
+                <Send className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary/60 transition-colors duration-300" />
               </div>
               <p className="text-xl font-semibold tracking-tight">{formatNumber(whatsappSummary.total_messages || 0)}</p>
               <p className="text-[11px] text-muted-foreground mt-1">
@@ -224,11 +282,11 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-transparent hover:border-border/50 transition-all duration-300" style={stagger(4)}>
+          <Card className="group border-transparent hover:border-border/50 transition-all duration-300" style={stagger(4)}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] font-medium text-muted-foreground">Livraison</span>
-                <CheckCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                <CheckCircle className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary/60 transition-colors duration-300" />
               </div>
               <p className="text-xl font-semibold tracking-tight">{campaignStats.deliveryRate.toFixed(1)}%</p>
               <div className="mt-2 h-1 w-full rounded-full bg-muted overflow-hidden">
@@ -240,11 +298,11 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-transparent hover:border-border/50 transition-all duration-300" style={stagger(5)}>
+          <Card className="group border-transparent hover:border-border/50 transition-all duration-300" style={stagger(5)}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] font-medium text-muted-foreground">Lecture</span>
-                <Eye className="h-3.5 w-3.5 text-muted-foreground/60" />
+                <Eye className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary/60 transition-colors duration-300" />
               </div>
               <p className="text-xl font-semibold tracking-tight">{campaignStats.readRate.toFixed(1)}%</p>
               <p className="text-[11px] text-muted-foreground mt-1">

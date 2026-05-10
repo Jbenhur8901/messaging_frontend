@@ -39,14 +39,95 @@ import type {
 const stripBearerPrefix = (value: string): string =>
   value.replace(/^\s*bearer\s*:/i, "").trim()
 
+const toFiniteNumber = (value: unknown) => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  return 0
+}
+
+const pickPositiveNumber = (...values: unknown[]) => {
+  for (const value of values) {
+    const parsed = toFiniteNumber(value)
+    if (parsed > 0) return parsed
+  }
+  return 0
+}
+
+const unwrapListPayload = <T = unknown>(data: unknown, keys: string[]): { items: T[]; pagination?: Pagination } => {
+  const root = data as any
+  const containers = [root, root?.data, root?.result, root?.payload]
+  for (const container of containers) {
+    if (Array.isArray(container)) return { items: container as T[] }
+    if (!container) continue
+    for (const key of keys) {
+      if (Array.isArray(container[key])) {
+        return { items: container[key] as T[], pagination: container.pagination }
+      }
+    }
+  }
+  return { items: [], pagination: root?.pagination }
+}
+
+const normalizeWhatsAppBroadcast = (broadcast: any): WhatsAppBroadcast => {
+  const totalRecipients = pickPositiveNumber(
+    broadcast?.total_recipients,
+    broadcast?.recipients_count,
+    broadcast?.recipient_count,
+    broadcast?.total
+  )
+  const sentCount = pickPositiveNumber(
+    broadcast?.sent_count,
+    broadcast?.messages_sent,
+    broadcast?.total_sent,
+    broadcast?.sent,
+    totalRecipients
+  )
+
+  return {
+    ...broadcast,
+    id: broadcast?.id ?? broadcast?.broadcast_id,
+    campaign_name: broadcast?.campaign_name ?? broadcast?.name ?? broadcast?.title ?? null,
+    template_name: broadcast?.template_name ?? "",
+    template_language: broadcast?.template_language ?? broadcast?.language ?? "",
+    status: broadcast?.status ?? "pending",
+    total_recipients: totalRecipients,
+    sent_count: sentCount,
+    delivered_count: pickPositiveNumber(
+      broadcast?.delivered_count,
+      broadcast?.messages_delivered,
+      broadcast?.total_delivered,
+      broadcast?.delivered
+    ),
+    read_count: pickPositiveNumber(
+      broadcast?.read_count,
+      broadcast?.messages_read,
+      broadcast?.total_read,
+      broadcast?.read
+    ),
+    failed_count: pickPositiveNumber(
+      broadcast?.failed_count,
+      broadcast?.messages_failed,
+      broadcast?.total_failed,
+      broadcast?.failed
+    ),
+    pending_count: toFiniteNumber(broadcast?.pending_count ?? broadcast?.pending),
+    progress_percent: toFiniteNumber(broadcast?.progress_percent ?? broadcast?.progress),
+    created_at: broadcast?.created_at ?? broadcast?.createdAt ?? "",
+    completed_at: broadcast?.completed_at ?? broadcast?.completedAt ?? null,
+  }
+}
+
 export const whatsappService = {
   // ============ Configuration ============
 
   async getConfig(
     organizationId: string
-  ): Promise<{ config: WhatsAppConfig | null; is_configured: boolean }> {
-    const { data } = await api.get<{ config: WhatsAppConfig | null; is_configured: boolean }>(
-      `/v1/organizations/${organizationId}/whatsapp`
+  ): Promise<{ success: boolean; config: WhatsAppConfig | null; is_configured: boolean }> {
+    const { data } = await api.get<{ success: boolean; config: WhatsAppConfig | null; is_configured: boolean }>(
+      `/v1/app/organizations/${organizationId}/whatsapp`
     )
     return data
   },
@@ -58,26 +139,30 @@ export const whatsappService = {
       business_account_id?: string
       enabled?: boolean
       ai_enabled?: boolean
+      ai_agent_name?: string
       ai_instructions?: string
       ai_model?: string
       ai_timeline?: string
+      ai_temperature?: string
       ai_tools?: string
       ai_vector_store_ids?: string
     }
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; config: WhatsAppConfig | null; message?: string }> {
     const formData = new URLSearchParams()
     if (config.phone_number_id) formData.append("phone_number_id", config.phone_number_id)
     if (config.business_account_id) formData.append("business_account_id", config.business_account_id)
     if (config.enabled !== undefined) formData.append("enabled", String(config.enabled))
     if (config.ai_enabled !== undefined) formData.append("ai_enabled", String(config.ai_enabled))
+    if (config.ai_agent_name !== undefined) formData.append("ai_agent_name", config.ai_agent_name)
     if (config.ai_instructions !== undefined) formData.append("ai_instructions", config.ai_instructions)
     if (config.ai_model !== undefined) formData.append("ai_model", config.ai_model)
     if (config.ai_timeline !== undefined) formData.append("ai_timeline", config.ai_timeline)
+    if (config.ai_temperature !== undefined) formData.append("ai_temperature", config.ai_temperature)
     if (config.ai_tools !== undefined) formData.append("ai_tools", config.ai_tools)
     if (config.ai_vector_store_ids !== undefined) formData.append("ai_vector_store_ids", config.ai_vector_store_ids)
 
-    const { data } = await api.put<{ success: boolean; message: string }>(
-      `/v1/organizations/${organizationId}/whatsapp`,
+    const { data } = await api.put<{ success: boolean; config: WhatsAppConfig | null; message?: string }>(
+      `/v1/app/organizations/${organizationId}/whatsapp`,
       formData
     )
     return data
@@ -348,7 +433,11 @@ export const whatsappService = {
         params: { limit, offset, status },
       }
     )
-    return data
+    const { items, pagination } = unwrapListPayload<WhatsAppBroadcast>(data, ["broadcasts", "whatsapp_broadcasts"])
+    return {
+      broadcasts: items.map(normalizeWhatsAppBroadcast),
+      pagination: pagination ?? data.pagination ?? { total: items.length, limit, offset, has_more: false },
+    }
   },
 
   async getBroadcast(broadcastId: string): Promise<WhatsAppBroadcast> {

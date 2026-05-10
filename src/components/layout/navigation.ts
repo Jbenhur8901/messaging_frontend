@@ -44,7 +44,7 @@ export const navigationSections: NavigationSection[] = [
       { name: "Conversations", href: "/conversations", icon: ChatCircleDots },
       { name: "Modèle de message", href: "/templates/whatsapp", icon: Note },
       { name: "Canaux", href: "/whatsapp/config", icon: Sliders },
-      { name: "Agents IA", href: "/whatsapp/ai-tools", icon: Robot },
+      { name: "Agents IA", href: "/agents", icon: Robot },
     ],
   },
   {

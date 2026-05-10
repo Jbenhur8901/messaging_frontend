@@ -18,7 +18,7 @@ interface WhatsAppState {
     phone_number_id: string
     business_account_id: string
     enabled: boolean
-  }) => Promise<{ success: boolean; message: string }>
+  }) => Promise<{ success: boolean; message?: string; config?: WhatsAppConfig | null }>
   testConfig: () => Promise<{ success: boolean; message: string; phone_number?: string }>
   syncTemplates: () => Promise<{ success: boolean; synced: number; message: string }>
   fetchTemplates: () => Promise<void>
@@ -73,7 +73,7 @@ export const useWhatsAppStore = create<WhatsAppState>()(
         } catch (error) {
           const message = error instanceof Error ? error.message : "Erreur lors de la sauvegarde"
           set({ error: message, isLoading: false })
-          return { success: false, message }
+          return { success: false, message, config: null }
         }
       },
 

@@ -9,6 +9,7 @@ const APP_NAMESPACE_PREFIXES = [
   "/v1/contacts",
   "/v1/custom-fields",
   "/v1/dashboard",
+  "/v1/agents",
   "/v1/tags",
   "/v1/vector-stores",
   "/v1/whatsapp",

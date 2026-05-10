@@ -468,6 +468,19 @@ export interface WhatsAppConfig {
   enabled?: boolean | null
   is_configured: boolean
   last_verified_at?: string
+  // WhatsApp infos
+  whatsapp_enabled?: boolean | null
+  whatsapp_business_account_id?: string | null
+  whatsapp_phone_number_id?: string | null
+  // AI config
+  ai_enabled?: boolean | null
+  ai_agent_name?: string | null
+  ai_instructions?: string | null
+  ai_model?: string | null
+  ai_timeline?: string | null
+  ai_temperature?: string | null
+  ai_tools?: string | null
+  ai_vector_store_ids?: string | null
 }
 
 export type WhatsAppTemplateStatus = "APPROVED" | "PENDING" | "REJECTED"
