@@ -342,22 +342,18 @@ export const whatsappService = {
       .map((recipient) => recipient.trim())
       .filter(Boolean)
 
-    const formData = new URLSearchParams()
-    formData.append("recipients", normalizedRecipients.join(","))
-    formData.append("template_name", templateName)
-    formData.append("language_code", language)
-    if (campaignName) {
-      formData.append("campaign_name", campaignName)
+    const payload: Record<string, unknown> = {
+      recipients: normalizedRecipients,
+      template_name: templateName,
+      language_code: language,
     }
-    if (components) {
-      formData.append("components", JSON.stringify(components))
-    }
-    if (callbackUrl) {
-      formData.append("callback_url", callbackUrl)
-    }
-    const { data } = await api.post<WhatsAppBroadcastResult>(
-      "/v1/whatsapp/broadcasts",
-      formData
+    if (campaignName) payload.campaign_name = campaignName
+    if (components) payload.components = components
+    if (callbackUrl) payload.callback_url = callbackUrl
+
+    const { data } = await apiJson.post<WhatsAppBroadcastResult>(
+      "/v1/whatsapp/broadcasts/json",
+      payload
     )
     return data
   },
