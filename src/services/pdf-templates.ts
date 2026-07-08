@@ -42,6 +42,10 @@ export interface PdfStyles {
   // Totals
   show_sous_total: boolean
   show_tva: boolean
+  tva_taux: number
+  centime_additionnel_enabled: boolean
+  centime_additionnel_taux: number
+  centime_additionnel_label: string
 
   // Sections
   show_notes: boolean
@@ -82,6 +86,10 @@ export const DEFAULT_PDF_STYLES: PdfStyles = {
 
   show_sous_total: true,
   show_tva: true,
+  tva_taux: 18,
+  centime_additionnel_enabled: false,
+  centime_additionnel_taux: 1,
+  centime_additionnel_label: "Centime additionnel",
 
   show_notes: true,
   label_notes: "Notes & Conditions",

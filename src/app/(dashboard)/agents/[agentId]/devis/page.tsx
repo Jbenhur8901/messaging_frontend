@@ -785,6 +785,53 @@ export default function DevisPage({ params }: { params: Promise<{ agentId: strin
                   onChange={(v) => set("show_tva", v)}
                 />
               </div>
+            </div>
+            <Field label="Taux TVA (%)">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={styles.tva_taux}
+                onChange={(e) => set("tva_taux", parseFloat(e.target.value) || 0)}
+                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+              />
+            </Field>
+
+            <div className="divide-y divide-border/40 rounded-xl border border-border/60">
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <label className="text-sm text-foreground">Centime additionnel</label>
+                <Switch
+                  checked={styles.centime_additionnel_enabled}
+                  onCheckedChange={(v) => set("centime_additionnel_enabled", v)}
+                />
+              </div>
+            </div>
+
+            {styles.centime_additionnel_enabled && (
+              <>
+                <Field label="Taux centime additionnel (%)">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={styles.centime_additionnel_taux}
+                    onChange={(e) => set("centime_additionnel_taux", parseFloat(e.target.value) || 0)}
+                    className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                  />
+                </Field>
+                <Field label="Libellé centime additionnel">
+                  <Input
+                    value={styles.centime_additionnel_label}
+                    onChange={(v) => set("centime_additionnel_label", v)}
+                    placeholder="Centime additionnel"
+                  />
+                </Field>
+              </>
+            )}
+
+            <div className="divide-y divide-border/40 rounded-xl border border-border/60">
               <div className="px-3">
                 <ToggleRow
                   label="Afficher les notes"
