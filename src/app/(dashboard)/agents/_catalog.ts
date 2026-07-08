@@ -98,6 +98,7 @@ export const TOOLS_CATALOG: ToolItem[] = [
   { code: "get_customer_profile", label: "Fiche client",                    description: "Retrouve le profil client, son historique récent et les champs utiles pour la conversation.", required: true, obligatoire: true },
   { code: "file_search",         label: "Recherche dans les fichiers",     description: "Recherche dans les fichiers reliés au workspace ou aux vector stores pour retrouver des informations pertinentes." },
   { code: "send_document",       label: "Envoi de documents WhatsApp",     description: "Envoie des documents (PDF, images, fichiers) directement dans la conversation WhatsApp du client." },
+  { code: "generate_pdf_quote",  label: "Génération de devis PDF",        description: "Génère un devis PDF personnalisé à partir des informations collectées dans la conversation, et l'envoie automatiquement au client via WhatsApp." },
 ]
 
 // Optional tools enabled by default (required ones are always on)

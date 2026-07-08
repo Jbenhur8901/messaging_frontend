@@ -16,6 +16,7 @@ const APP_NAMESPACE_PREFIXES = [
   "/v1/ai/credits/balance",
   "/v1/ai/credits/check",
   "/v1/ai/credits/transactions",
+  "/v1/ai/pdf",
 ] as const
 
 const APP_NAMESPACE_EXCLUSIONS = new Set([

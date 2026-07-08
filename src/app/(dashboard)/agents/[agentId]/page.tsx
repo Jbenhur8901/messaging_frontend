@@ -96,8 +96,8 @@ export default function AgentDetailPage({ params }: { params: Promise<{ agentId:
           setVectorStores(stores)
         }
         if (docsResult.status === "fulfilled") setWhatsappDocsCount(docsResult.value.documents?.length ?? 0)
-      } catch {
-        toast.error("Erreur de chargement")
+      } catch (error) {
+        toast.error(handleApiError(error).message)
         router.replace("/agents")
       } finally {
         if (active) setIsLoading(false)
@@ -399,13 +399,16 @@ export default function AgentDetailPage({ params }: { params: Promise<{ agentId:
                   const isEnabled = isRequired || enabledTools.has(tool.code)
                   const isFileSearch = tool.code === "file_search"
                   const isWhatsappDoc = tool.code === "send_document"
+                  const isPdfQuote = tool.code === "generate_pdf_quote"
                   const connectedVsId = vectorStoreIds.split(",").filter(Boolean)[0]
                   const connectedVs = vectorStores.find((vs) => vs.id === connectedVsId)
                   const toolConfigHref = isFileSearch
                     ? `/agents/${agentId}/connaissances`
                     : isWhatsappDoc
                       ? `/agents/${agentId}/documents`
-                      : null
+                      : isPdfQuote
+                        ? `/agents/${agentId}/devis`
+                        : null
 
                   const handleToggle = () => {
                     if (isRequired) return
@@ -416,6 +419,10 @@ export default function AgentDetailPage({ params }: { params: Promise<{ agentId:
                       }
                       if (isWhatsappDoc && whatsappDocsCount === 0) {
                         router.push(`/agents/${agentId}/documents`)
+                        return
+                      }
+                      if (isPdfQuote) {
+                        router.push(`/agents/${agentId}/devis`)
                         return
                       }
                     }
@@ -454,6 +461,17 @@ export default function AgentDetailPage({ params }: { params: Promise<{ agentId:
                               className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
                             >
                               {whatsappDocsCount} document{whatsappDocsCount !== 1 ? "s" : ""} configuré{whatsappDocsCount !== 1 ? "s" : ""}
+                              <Pencil className="h-3 w-3" weight="regular" />
+                            </Link>
+                          </div>
+                        )}
+                        {isPdfQuote && isEnabled && (
+                          <div className="mt-2 flex items-center gap-1.5">
+                            <Link
+                              href={`/agents/${agentId}/devis`}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              Configurer le template
                               <Pencil className="h-3 w-3" weight="regular" />
                             </Link>
                           </div>
