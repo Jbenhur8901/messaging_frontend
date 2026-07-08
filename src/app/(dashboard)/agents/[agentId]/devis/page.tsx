@@ -397,8 +397,9 @@ export default function DevisPage({ params }: { params: Promise<{ agentId: strin
         setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
         toast.success("Template enregistré")
       }
-    } catch {
-      toast.error("Erreur lors de l'enregistrement")
+    } catch (err) {
+      const { message } = handleApiError(err)
+      toast.error(`Erreur: ${message}`)
     } finally {
       setIsSaving(false)
     }
