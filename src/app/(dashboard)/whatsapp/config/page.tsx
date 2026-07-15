@@ -43,6 +43,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
+import { CoexistenceSignupButton } from "@/components/whatsapp/coexistence-signup-button"
 
 const stagger = (i: number) => ({
   opacity: 0,
@@ -374,6 +375,17 @@ export default function WhatsAppConfigPage() {
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-3 pt-1">
+                  <CoexistenceSignupButton
+                    onConnected={async () => {
+                      setIsDialogOpen(false)
+                      await Promise.all([loadConfig(), loadAccounts()])
+                    }}
+                  />
+                  <div className="flex items-center gap-3 py-1" aria-hidden="true">
+                    <span className="h-px flex-1 bg-border/60" />
+                    <span className="text-[11px] text-muted-foreground">ou configuration manuelle</span>
+                    <span className="h-px flex-1 bg-border/60" />
+                  </div>
                   <div className="space-y-1.5">
                     <Label className="text-[13px]">Phone Number ID *</Label>
                     <Input className="h-9 text-[13px]" value={formPhoneNumberId} onChange={(e) => setFormPhoneNumberId(e.target.value)} placeholder="109999999999999" />

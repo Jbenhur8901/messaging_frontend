@@ -123,6 +123,25 @@ const normalizeWhatsAppBroadcast = (broadcast: any): WhatsAppBroadcast => {
 export const whatsappService = {
   // ============ Configuration ============
 
+  async getEmbeddedSignupConfig(): Promise<{
+    enabled: boolean
+    app_id: string | null
+    config_id: string | null
+    graph_api_version: string
+  }> {
+    const { data } = await api.get("/v1/app/whatsapp/embedded-signup/config")
+    return data
+  },
+
+  async completeEmbeddedSignup(payload: {
+    code: string
+    waba_id: string
+    phone_number_id: string
+  }): Promise<{ success: boolean; mode: "coexistence"; phone_number_id: string; waba_id: string }> {
+    const { data } = await api.post("/v1/app/whatsapp/embedded-signup/complete", payload)
+    return data
+  },
+
   async getConfig(
     organizationId: string
   ): Promise<{ success: boolean; config: WhatsAppConfig | null; is_configured: boolean }> {
