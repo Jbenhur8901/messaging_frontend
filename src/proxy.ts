@@ -39,14 +39,17 @@ export function proxy(request: NextRequest) {
 
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'`,
+    // connect.facebook.net requis pour le SDK Meta (WhatsApp Embedded Signup)
+    `script-src 'self' 'nonce-${nonce}' https://connect.facebook.net`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https:",
     "connect-src 'self' https: http: ws: wss:",
+    // Iframes Facebook nécessaires pour le login popup Meta SDK
+    "frame-src 'self' https://www.facebook.com https://web.facebook.com https://business.facebook.com https://staticxx.facebook.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    "form-action 'self' https://www.facebook.com",
     "object-src 'none'",
     !isDev ? "upgrade-insecure-requests" : "",
   ]

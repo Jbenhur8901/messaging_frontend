@@ -63,25 +63,47 @@ export function CoexistenceSignupButton({ onConnected }: CoexistenceSignupButton
   const loadFacebookSdk = (appId: string, version: string): Promise<void> => {
     if (window.FB) return Promise.resolve()
     return new Promise((resolve, reject) => {
+      let settled = false
       window.fbAsyncInit = () => {
         window.FB?.init({ appId, autoLogAppEvents: true, xfbml: true, version })
+        settled = true
         resolve()
       }
-      const existing = document.getElementById("facebook-jssdk")
-      if (existing) {
-        existing.addEventListener("load", () => {
-          if (!window.FB) reject(new Error("Le SDK Meta n’est pas disponible."))
-        }, { once: true })
-        existing.addEventListener("error", () => reject(new Error("Impossible de charger le SDK Meta.")), { once: true })
-        return
+
+      // Nonce CSP depuis les scripts déjà présents dans le DOM
+      const cspNonce = document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce ?? ""
+
+      const appendScript = (src: string, isFallback: boolean) => {
+        const script = document.createElement("script")
+        script.id = isFallback ? "facebook-jssdk-fallback" : "facebook-jssdk"
+        script.src = src
+        script.async = true
+        script.defer = true
+        if (cspNonce) script.nonce = cspNonce
+        script.onerror = () => {
+          script.remove()
+          if (!isFallback) {
+            console.warn("[WhatsApp Coexistence] SDK Meta direct bloqué, tentative via le proxy local")
+            appendScript("/api/meta-sdk", true)
+            return
+          }
+          reject(new Error("Impossible de charger le SDK Meta directement ou via le serveur local."))
+        }
+        script.onload = () => {
+          window.setTimeout(() => {
+            if (!settled && !window.FB) {
+              reject(new Error("Le fichier SDK Meta a été chargé, mais l’objet FB est indisponible."))
+            }
+          }, 1500)
+        }
+        document.head.appendChild(script)
       }
-      const script = document.createElement("script")
-      script.id = "facebook-jssdk"
-      script.src = "https://connect.facebook.net/fr_FR/sdk.js"
-      script.async = true
-      script.defer = true
-      script.onerror = () => reject(new Error("Impossible de charger le SDK Meta."))
-      document.head.appendChild(script)
+
+      // Si un script précédent est encore dans le DOM (retry après échec), le retirer
+      document.getElementById("facebook-jssdk")?.remove()
+      document.getElementById("facebook-jssdk-fallback")?.remove()
+
+      appendScript("https://connect.facebook.net/fr_FR/sdk.js", false)
     })
   }
 
