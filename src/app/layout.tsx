@@ -12,8 +12,9 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Flow - Marketing interactif et agents IA",
-  description: "Plateforme WhatsApp de marketing interactif, conversations automatisees et agents IA.",
+  title: "Flow — Marketing WhatsApp ciblé pour les entreprises africaines",
+  description:
+    "Flow vous permet d'envoyer des campagnes WhatsApp ciblées, segmenter votre base, automatiser vos relances et mesurer vos résultats en temps réel. Solution congolaise, basée à Brazzaville.",
   icons: {
     icon: "/logo-nodes-badge.svg",
     apple: "/logo-nodes-badge.svg",

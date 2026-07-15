@@ -14,9 +14,8 @@ const createNonce = () => {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Keep only admin auth at middleware level.
-  // User routes are checked client-side because browser session state lives outside middleware.
-  const publicRoutes = ["/auth/", "/terms", "/invite/"]
+  // Public routes — no auth needed
+  const publicRoutes = ["/auth/", "/terms", "/invite/", "/flow"]
   const isPublicRoute = publicRoutes.some((r) => pathname.startsWith(r))
 
   // Static files in /public (e.g. /rr.jpg) should never require auth.

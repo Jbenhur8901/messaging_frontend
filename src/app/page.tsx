@@ -1,5 +1,1 @@
-import { HomeHero } from "@/components/marketing/HomeHero"
-
-export default function Home() {
-  return <HomeHero />
-}
+export { default } from "./flow/page"

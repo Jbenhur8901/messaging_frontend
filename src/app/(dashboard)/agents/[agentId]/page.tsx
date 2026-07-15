@@ -15,6 +15,7 @@ import {
   Spinner,
 } from "@phosphor-icons/react"
 import { AGENT_CATALOG, TOOLS_CATALOG, DEFAULT_ENABLED_TOOLS } from "../_catalog"
+import { ProGate } from "@/components/ui/pro-gate"
 
 type Tab = "configuration" | "capacites"
 
@@ -30,7 +31,7 @@ const MODEL_OPTIONS = [
   { value: "gpt-4o-mini", label: "GPT-4o Mini" },
 ]
 
-export default function AgentDetailPage({ params }: { params: Promise<{ agentId: string }> }) {
+function AgentDetailPageContent({ params }: { params: Promise<{ agentId: string }> }) {
   const { agentId } = use(params)
   const router = useRouter()
 
@@ -421,10 +422,6 @@ export default function AgentDetailPage({ params }: { params: Promise<{ agentId:
                         router.push(`/agents/${agentId}/documents`)
                         return
                       }
-                      if (isPdfQuote) {
-                        router.push(`/agents/${agentId}/devis`)
-                        return
-                      }
                     }
                     toggleTool(tool.code)
                   }
@@ -516,4 +513,8 @@ export default function AgentDetailPage({ params }: { params: Promise<{ agentId:
       </div>
     </div>
   )
+}
+
+export default function AgentDetailPage({ params }: { params: Promise<{ agentId: string }> }) {
+  return <ProGate feature="Agents IA"><AgentDetailPageContent params={params} /></ProGate>
 }

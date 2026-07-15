@@ -6,11 +6,12 @@ import { ArrowRight } from "@phosphor-icons/react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { agentsService, type Agent } from "@/services/agents"
 import { AGENT_CATALOG } from "./_catalog"
+import { ProGate } from "@/components/ui/pro-gate"
 
 const getPresentation = (agent: Agent) =>
   AGENT_CATALOG.find((item) => item.id === agent.slug || item.label === agent.name)
 
-export default function AgentsPage() {
+function AgentsPageContent() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [activeAgent, setActiveAgent] = useState<Agent | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -120,4 +121,8 @@ export default function AgentsPage() {
       )}
     </div>
   )
+}
+
+export default function AgentsPage() {
+  return <ProGate feature="Agents IA"><AgentsPageContent /></ProGate>
 }

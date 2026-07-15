@@ -20,6 +20,9 @@ export interface Organization {
   name: string
   credit_balance: number
   is_active: boolean
+  plan: "base" | "pro"
+  plan_expires_at?: string
+  plan_started_at?: string
 }
 
 export interface OrganizationSummary {
@@ -27,6 +30,7 @@ export interface OrganizationSummary {
   name: string
   role: "owner" | "admin" | "member" | "viewer"
   joined_at?: string
+  plan?: "base" | "pro"
 }
 
 export interface Session {

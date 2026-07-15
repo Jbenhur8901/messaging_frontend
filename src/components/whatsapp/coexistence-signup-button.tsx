@@ -88,14 +88,17 @@ export function CoexistenceSignupButton({ onConnected }: CoexistenceSignupButton
   const handleConnect = async () => {
     setIsConnecting(true)
     sessionRef.current = null
+    let stage = "Chargement de la configuration"
     try {
       const config = await whatsappService.getEmbeddedSignupConfig()
       if (!config.enabled || !config.app_id || !config.config_id) {
         setIsAvailable(false)
         throw new Error("La connexion Coexistence n’est pas encore configurée sur le serveur.")
       }
+      stage = "Chargement du SDK Meta"
       await loadFacebookSdk(config.app_id, config.graph_api_version)
 
+      stage = "Connexion à Meta"
       const code = await new Promise<string>((resolve, reject) => {
         if (!window.FB) {
           reject(new Error("Le SDK Meta n’est pas disponible."))
@@ -116,13 +119,16 @@ export function CoexistenceSignupButton({ onConnected }: CoexistenceSignupButton
         })
       })
 
+      stage = "Récupération du numéro sélectionné"
       const session = await waitForSession()
+      stage = "Finalisation de la connexion"
       await whatsappService.completeEmbeddedSignup({ code, ...session })
       toast.success("Numéro existant connecté en mode Coexistence")
       await onConnected()
     } catch (error) {
       const apiError = handleApiError(error)
-      toast.error(apiError.message)
+      console.error(`[WhatsApp Coexistence] ${stage}`, error)
+      toast.error(`${stage} : ${apiError.message}`, { duration: 8000 })
     } finally {
       setIsConnecting(false)
     }

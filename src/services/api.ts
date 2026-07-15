@@ -17,6 +17,8 @@ const APP_NAMESPACE_PREFIXES = [
   "/v1/ai/credits/check",
   "/v1/ai/credits/transactions",
   "/v1/ai/pdf",
+  "/v1/segments",
+  "/v1/automations",
 ] as const
 
 const APP_NAMESPACE_EXCLUSIONS = new Set([
@@ -344,6 +346,10 @@ export const handleApiError = (error: unknown): APIError => {
           return { type: "server", message: detailMessage || "Erreur serveur", status, correlationId }
       }
     }
+  }
+
+  if (error instanceof Error && error.message) {
+    return { type: "network", message: error.message }
   }
 
   return { type: "network", message: "Erreur de connexion" }

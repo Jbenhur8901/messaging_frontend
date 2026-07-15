@@ -19,6 +19,8 @@ import {
   getFilteredNavigationSections,
 } from "./navigation"
 import { NavIcon } from "./nav-icon"
+import { ProBadge } from "@/components/ui/pro-gate"
+import { usePlan } from "@/hooks"
 
 interface SidebarProps {
   collapsed: boolean
@@ -31,6 +33,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const { organizations, currentOrganization } = useOrganizationStore()
   const currentRole = organizations.find((org) => org.id === currentOrganization?.id)?.role
   const sections = getFilteredNavigationSections(currentRole === "owner")
+  const { isPro } = usePlan()
   const activeHref = getActiveHref(pathname, sections)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
 
@@ -185,6 +188,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                           className="h-3.5 w-3.5 shrink-0"
                                         />
                                         <span className="truncate">{item.name}</span>
+                                        {item.proOnly && !isPro && <ProBadge />}
                                       </Link>
                                       {hasChildren && (
                                         <button
@@ -280,6 +284,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                             >
                               <NavIcon icon={item.icon} active={isActive} className="h-[18px] w-[18px] shrink-0" />
                               <span className="truncate">{item.name}</span>
+                              {item.proOnly && !isPro && <ProBadge />}
                             </Link>
                           )
                         })}

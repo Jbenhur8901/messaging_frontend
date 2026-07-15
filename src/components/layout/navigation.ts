@@ -12,6 +12,8 @@ import {
   Sliders,
   Tag,
   Users,
+  Funnel,
+  Lightning,
 } from "@phosphor-icons/react"
 
 export interface NavigationItem {
@@ -19,6 +21,7 @@ export interface NavigationItem {
   href: string
   icon: Icon
   ownerOnly?: boolean
+  proOnly?: boolean
   children?: Array<{
     name: string
     href: string
@@ -41,10 +44,11 @@ export const navigationSections: NavigationSection[] = [
     icon: MegaphoneSimple,
     items: [
       { name: "Campagnes", href: "/campaigns/whatsapp", icon: PaperPlaneRight },
+      { name: "Automatisations", href: "/automations", icon: Lightning, proOnly: true },
       { name: "Conversations", href: "/conversations", icon: ChatCircleDots },
       { name: "Modèle de message", href: "/templates/whatsapp", icon: Note },
       { name: "Canaux", href: "/whatsapp/config", icon: Sliders },
-      { name: "Agents IA", href: "/agents", icon: Robot },
+      { name: "Agents IA", href: "/agents", icon: Robot, proOnly: true },
     ],
   },
   {
@@ -52,6 +56,7 @@ export const navigationSections: NavigationSection[] = [
     icon: Users,
     items: [
       { name: "Contacts", href: "/contacts", icon: Users },
+      { name: "Segments", href: "/contacts/segments", icon: Funnel, proOnly: true },
       { name: "Tags", href: "/contacts/tags", icon: Tag },
     ],
   },

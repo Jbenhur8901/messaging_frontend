@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow — Marketing WhatsApp ciblé pour les entreprises africaines</title>
+  <meta name="description" content="Flow vous permet d'envoyer des campagnes WhatsApp ciblées, segmenter votre base, automatiser vos relances et mesurer vos résultats en temps réel.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --void: #050505;
+      --surface: #0c0c0c;
+      --raised: #131313;
+      --border: #1e1e1e;
+      --border-mid: #272727;
+      --signal: #FFCC00;
+      --signal-dim: rgba(255, 204, 0, 0.10);
+      --signal-glow: 0 10px 40px -10px rgba(255, 204, 0, 0.4);
+      --ink: #ffffff;
+      --muted: #a1a1aa;
+      --muted-dim: #6b6b72;
+      --whatsapp: #25D366;
+      --whatsapp-dark: #128C7E;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Manrope', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--void);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ─── Typography ─── */
+    .t-display { font-size: clamp(2.75rem, 6.5vw, 5.25rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; text-wrap: balance; }
+    .t-headline { font-size: clamp(1.75rem, 3.5vw, 2.75rem); font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; text-wrap: balance; }
+    .t-title { font-size: 1.0625rem; font-weight: 700; line-height: 1.4; letter-spacing: -0.01em; }
+    .t-body { font-size: 0.9375rem; line-height: 1.7; text-wrap: pretty; }
+    .t-small { font-size: 0.8125rem; line-height: 1.55; text-wrap: pretty; }
+    .t-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .t-muted { color: var(--muted); }
+    .t-signal { color: var(--signal); }
+
+    /* ─── Focus ─── */
+    :focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; border-radius: 4px; }
+    .btn:focus-visible { outline-offset: 4px; }
+
+    /* ─── Layout ─── */
+    .container { max-width: 1160px; margin: 0 auto; padding: 0 clamp(1.25rem, 4vw, 3rem); }
+
+    /* ─── Reveal — JS sets inline styles only on below-fold elements ─── */
+    /* Content is always visible by default. Animations are additive. */
+    @media (prefers-reduced-motion: reduce) {
+      .reveal, .reveal-scale { transition: none !important; }
+    }
+
+    /* ─── Buttons ─── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.625rem 1.25rem; border-radius: 12px; font-size: 0.875rem; font-weight: 600;
+      text-decoration: none; cursor: pointer; border: none; transition: all 0.15s ease; white-space: nowrap;
+    }
+    .btn-primary { background: var(--signal); color: #080808; box-shadow: var(--signal-glow); }
+    .btn-primary:hover { background: #e6b800; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(1px); }
+    .btn-ghost { background: transparent; color: rgba(255,255,255,0.7); border: 1px solid var(--border-mid); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.05); color: var(--ink); }
+    .btn-lg { padding: 0.875rem 2rem; font-size: 1rem; border-radius: 14px; }
+    .btn-xl { padding: 1.0625rem 2.5rem; font-size: 1.0625rem; border-radius: 16px; }
+
+    /* ─── Section header ─── */
+    .section-header { text-align: center; max-width: 680px; margin: 0 auto 4rem; }
+    .section-header .t-headline { margin-top: 0; }
+    .section-header .t-body { margin-top: 1rem; color: var(--muted); max-width: 540px; margin-left: auto; margin-right: auto; }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 1.125rem 0; border-bottom: 1px solid transparent;
+      transition: background 0.3s, border-color 0.3s, backdrop-filter 0.3s;
+    }
+    nav.scrolled { background: rgba(5,5,5,0.88); border-color: var(--border); backdrop-filter: blur(16px); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 2rem; }
+    .nav-logo { display: flex; align-items: center; gap: 0.625rem; text-decoration: none; }
+    .nav-logo img { height: 24px; width: auto; }
+    .nav-logo .wordmark { font-size: 1.0625rem; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+    .nav-links { display: flex; align-items: center; gap: 0.25rem; list-style: none; }
+    .nav-links a { font-size: 0.875rem; font-weight: 500; color: var(--muted); text-decoration: none; padding: 0.375rem 0.75rem; border-radius: 8px; transition: color 0.15s; }
+    .nav-links a:hover { color: var(--ink); }
+    .nav-cta { display: flex; align-items: center; gap: 0.75rem; }
+
+    /* ════════════════ HERO ════════════════ */
+    #hero {
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      padding: 8rem 0 5rem;
+      overflow: hidden;
+    }
+    .hero-inner { max-width: 860px; margin: 0 auto; text-align: center; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.375rem 1rem; background: var(--signal-dim); border: 1px solid rgba(255,204,0,0.22);
+      border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: var(--signal);
+      letter-spacing: 0.04em; margin-bottom: 2rem;
+    }
+    .hero-badge .dot { width: 6px; height: 6px; background: var(--signal); border-radius: 50%; animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .hero-title { text-wrap: balance; }
+    .hero-title em { font-style: normal; color: var(--signal); }
+    .hero-sub { margin-top: 1.5rem; font-size: 1.125rem; line-height: 1.65; color: var(--muted); max-width: 620px; margin-left: auto; margin-right: auto; }
+    .hero-actions { display: flex; align-items: center; justify-content: center; gap: 0.875rem; margin-top: 2.5rem; flex-wrap: wrap; }
+    /* Data strip — instrument panel style, not SaaS metric grid */
+    .hero-data-strip {
+      display: flex; align-items: center; margin-top: 3.5rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+    }
+    .ds-item {
+      flex: 1; padding: 1rem 1.25rem;
+      display: flex; align-items: baseline; gap: 0.625rem; flex-wrap: wrap;
+      border-right: 1px solid var(--border);
+    }
+    .ds-item:last-child { border-right: none; }
+    .ds-val { font-size: 1.375rem; font-weight: 800; letter-spacing: -0.03em; color: var(--signal); line-height: 1; white-space: nowrap; }
+    .ds-label { font-size: 0.75rem; color: var(--muted); line-height: 1.35; }
+
+    /* WhatsApp preview strip */
+    /* ─── ARROW STAGE ─── */
+    .arrow-stage {
+      position: relative; height: 240px; margin-top: 3rem;
+      border-radius: 18px; border: 1px solid var(--border-mid);
+      background: var(--raised); overflow: hidden;
+    }
+    .arrow-origin {
+      position: absolute; left: 52px; top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .origin-dot-wrap { position: relative; width: 12px; height: 12px; }
+    .origin-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--signal);
+      box-shadow: 0 0 0 3px rgba(255,204,0,0.15), 0 0 20px rgba(255,204,0,0.5);
+      position: relative; z-index: 1;
+    }
+    .origin-ring {
+      position: absolute; top: 50%; left: 50%;
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 1.5px solid rgba(255,204,0,0.4);
+      transform: translate(-50%, -50%) scale(1);
+      animation: ring-pulse 2.6s ease-out infinite;
+    }
+    .origin-ring.r2 { animation-delay: 1.3s; }
+    @keyframes ring-pulse {
+      0%   { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+      100% { transform: translate(-50%, -50%) scale(4.5); opacity: 0; }
+    }
+    .origin-label {
+      font-size: 0.6rem; font-weight: 800; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--signal);
+    }
+    .wa-shot {
+      position: absolute; left: 72px; top: 50%;
+      background: #1d1d1d; border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 13px 13px 13px 3px;
+      padding: 7px 13px; font-size: 0.775rem; font-weight: 500;
+      color: rgba(255,255,255,0.88); white-space: nowrap;
+      opacity: 0; will-change: transform, opacity, filter;
+      animation: shoot-arrow var(--dur, 2.8s) cubic-bezier(0.06,0,0.18,1) var(--delay,0s) infinite;
+    }
+    .wa-shot .tick { color: #4fc3f7; font-size: 0.62rem; letter-spacing: -0.5px; margin-right: 3px; }
+    @keyframes shoot-arrow {
+      0%   { opacity: 0; filter: blur(5px);  transform: translate(0px, -50%) scale(0.78); }
+      7%   { opacity: 1; filter: blur(0.5px); transform: translate(22px, calc(-50% + var(--ty,0px) * 0.06)) scale(1); }
+      65%  { opacity: 1; filter: blur(0px);  transform: translate(var(--dist,460px), calc(-50% + var(--ty,0px))); }
+      88%  { opacity: 0.35; filter: blur(1px); transform: translate(calc(var(--dist,460px) + 52px), calc(-50% + var(--ty,0px))); }
+      100% { opacity: 0; filter: blur(3px);  transform: translate(calc(var(--dist,460px) + 90px), calc(-50% + var(--ty,0px))); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wa-shot { animation: none !important; }
+      .origin-ring { animation: none !important; }
+    }
+
+    /* ════════════════ COMPARISON ════════════════ */
+    #comparison { padding: clamp(4rem,9vw,7rem) 0; border-top: 1px solid var(--border); }
+    .cmp-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; margin-top: 3.5rem; }
+    .cmp-card { background: var(--surface); padding: 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+    .cmp-card.active { background: var(--raised); position: relative; }
+    .cmp-card.active::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--signal); }
+    .cmp-channel { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-dim); }
+    .cmp-card.active .cmp-channel { color: var(--signal); }
+    .cmp-open { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+    .cmp-card.active .cmp-open { color: var(--signal); }
+    .cmp-open span { font-size: 1.25rem; }
+    .cmp-rows { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+    .cmp-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; padding: 0.5rem 0; border-top: 1px solid var(--border); }
+    .cmp-row .k { color: var(--muted); }
+    .cmp-row .v { font-weight: 600; }
+
+    /* ════════════════ SEGMENTATION ════════════════ */
+    #segmentation { padding: clamp(4rem,9vw,7rem) 0; }
+    .seg-layout { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2.5rem,5vw,5rem); align-items: center; margin-top: 4rem; }
+    .seg-features { display: flex; flex-direction: column; gap: 1.25rem; }
+    .seg-feat { display: flex; align-items: flex-start; gap: 1rem; padding: 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; transition: border-color 0.2s; }
+    .seg-feat:hover { border-color: rgba(255,204,0,0.15); }
+    .seg-feat-icon { width: 38px; height: 38px; background: var(--signal-dim); border: 1px solid rgba(255,204,0,0.18); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .seg-feat-body .t-title { font-size: 0.9375rem; }
+    .seg-feat-body .t-small { color: var(--muted); margin-top: 0.25rem; }
+    /* Segment builder UI mock */
+    .seg-mock { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+    .seg-mock-head { background: var(--raised); padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .seg-mock-head .title { font-size: 0.8125rem; font-weight: 600; }
+    .seg-mock-head .count { font-size: 0.75rem; font-weight: 700; color: var(--signal); background: var(--signal-dim); border: 1px solid rgba(255,204,0,0.2); padding: 0.2rem 0.6rem; border-radius: 6px; }
+    .seg-mock-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+    .seg-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--raised); border: 1px solid var(--border-mid); border-radius: 10px; }
+    .seg-row-icon { font-size: 1rem; flex-shrink: 0; }
+    .seg-row-label { font-size: 0.8125rem; flex: 1; }
+    .seg-row-val { font-size: 0.75rem; font-weight: 600; color: var(--signal); }
+    .seg-mock-footer { padding: 0.875rem 1.25rem; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .seg-total { font-size: 0.8125rem; color: var(--muted); }
+    .seg-total strong { color: var(--ink); }
+
+    /* ════════════════ CAMPAIGNS ════════════════ */
+    #campaigns { padding: clamp(4rem,9vw,7rem) 0; border-top: 1px solid var(--border); }
+    /* Top row: featured card + template mock */
+    .camp-top { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 4rem; }
+    .camp-featured { background: var(--surface); border: 1px solid rgba(255,204,0,0.15); border-radius: 20px; padding: 2rem; display: flex; flex-direction: column; gap: 0.875rem; position: relative; overflow: hidden; }
+    .camp-featured::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--signal); }
+    .camp-featured .t-title { font-size: 1.125rem; }
+    .camp-featured .t-body { font-size: 0.875rem; color: var(--muted); line-height: 1.65; }
+    /* Template preview mock inside the featured card */
+    .tpl-mock { margin-top: 0.5rem; background: var(--raised); border: 1px solid var(--border-mid); border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .tpl-header { display: flex; align-items: center; justify-content: space-between; }
+    .tpl-name { font-size: 0.75rem; font-weight: 600; }
+    .tpl-status { font-size: 0.625rem; color: #34d399; font-weight: 600; background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); padding: 0.2rem 0.5rem; border-radius: 4px; }
+    .tpl-body-text { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+    .tpl-var { display: inline; background: rgba(255,204,0,0.12); color: var(--signal); padding: 0 3px; border-radius: 3px; font-weight: 600; font-size: 0.6875rem; }
+    .tpl-actions { display: flex; gap: 0.375rem; margin-top: 0.25rem; }
+    .tpl-btn { font-size: 0.6875rem; font-weight: 600; padding: 0.3rem 0.75rem; border-radius: 6px; background: var(--signal-dim); border: 1px solid rgba(255,204,0,0.2); color: var(--signal); }
+    .camp-second { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; display: flex; flex-direction: column; gap: 0.875rem; }
+    .camp-second .t-title { font-size: 1.125rem; }
+    .camp-second .t-body { font-size: 0.875rem; color: var(--muted); line-height: 1.65; }
+    .perso-vars { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.375rem; }
+    .perso-var { font-size: 0.6875rem; font-weight: 600; padding: 0.25rem 0.625rem; border-radius: 6px; background: var(--signal-dim); border: 1px solid rgba(255,204,0,0.15); color: var(--signal); }
+    /* Bottom row: compact feature list */
+    .camp-list { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-top: 1rem; }
+    .camp-list-item { background: var(--surface); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; transition: background 0.15s; }
+    .camp-list-item:hover { background: var(--raised); }
+    .cli-icon { font-size: 1.25rem; line-height: 1; }
+    .cli-title { font-size: 0.875rem; font-weight: 700; }
+    .cli-desc { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+
+    /* ════════════════ REPORTING ════════════════ */
+    #reporting { padding: clamp(4rem,9vw,7rem) 0; }
+    .report-layout { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2.5rem,5vw,5rem); align-items: center; margin-top: 4rem; }
+    .report-mock { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+    .report-head { background: var(--raised); padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .report-title { font-size: 0.8125rem; font-weight: 600; }
+    .report-tag { font-size: 0.625rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--whatsapp); background: rgba(37,211,102,0.08); border: 1px solid rgba(37,211,102,0.2); padding: 0.2rem 0.6rem; border-radius: 6px; }
+    .report-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+    .report-kpi-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.75rem; }
+    .report-kpi { background: var(--raised); border-radius: 10px; padding: 0.875rem; }
+    .report-kpi .n { font-size: 1.375rem; font-weight: 800; letter-spacing: -0.03em; }
+    .report-kpi .l { font-size: 0.625rem; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .report-kpi .delta { font-size: 0.6875rem; font-weight: 600; color: #34d399; margin-top: 4px; }
+    .report-bar-row { display: flex; flex-direction: column; gap: 0.625rem; }
+    .report-bar-item { display: flex; align-items: center; gap: 0.75rem; }
+    .report-bar-label { font-size: 0.75rem; color: var(--muted); width: 90px; flex-shrink: 0; }
+    .report-bar-track { flex: 1; height: 6px; background: var(--raised); border-radius: 999px; overflow: hidden; }
+    .report-bar-fill { height: 100%; border-radius: 999px; background: var(--signal); }
+    .report-bar-val { font-size: 0.75rem; font-weight: 600; width: 36px; text-align: right; flex-shrink: 0; }
+    .report-features { display: flex; flex-direction: column; gap: 1rem; }
+    .report-feat { display: flex; align-items: flex-start; gap: 0.875rem; }
+    .report-check { width: 22px; height: 22px; background: var(--signal-dim); border: 1px solid rgba(255,204,0,0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; color: var(--signal); margin-top: 1px; }
+    .report-feat .t-title { font-size: 0.9375rem; }
+    .report-feat .t-small { color: var(--muted); margin-top: 0.25rem; }
+
+    /* ════════════════ AGENTS ════════════════ */
+    #agents { padding: clamp(4rem,9vw,7rem) 0; border-top: 1px solid var(--border); }
+    .agent-layout { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2.5rem,5vw,5rem); align-items: center; margin-top: 4rem; }
+    .agent-points { display: flex; flex-direction: column; gap: 0.875rem; }
+    .agent-point { display: flex; align-items: flex-start; gap: 0.875rem; padding: 1.125rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; transition: border-color 0.2s; }
+    .agent-point:hover { border-color: rgba(255,204,0,0.15); }
+    .ap-num { font-size: 0.75rem; font-weight: 800; color: var(--signal); background: var(--signal-dim); border: 1px solid rgba(255,204,0,0.2); width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .agent-point .t-title { font-size: 0.9375rem; }
+    .agent-point .t-small { color: var(--muted); margin-top: 0.25rem; }
+    /* Agent activation mock */
+    .agent-mock { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+    .agent-mock-head { background: var(--raised); padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+    .agent-mock-head .t { font-size: 0.8125rem; font-weight: 600; }
+    .agent-mock-head .s { font-size: 0.6875rem; color: var(--muted); margin-top: 2px; }
+    .agent-list { padding: 1rem; display: flex; flex-direction: column; gap: 0.625rem; }
+    .agent-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem; background: var(--raised); border: 1px solid var(--border-mid); border-radius: 10px; }
+    .agent-emoji { font-size: 1.25rem; flex-shrink: 0; }
+    .agent-info { flex: 1; min-width: 0; }
+    .agent-name { font-size: 0.8125rem; font-weight: 600; }
+    .agent-desc { font-size: 0.6875rem; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .agent-toggle { width: 36px; height: 20px; border-radius: 999px; position: relative; flex-shrink: 0; transition: background 0.2s; }
+    .agent-toggle.on { background: var(--signal); }
+    .agent-toggle.off { background: var(--border-mid); }
+    .agent-toggle::after { content: ''; position: absolute; top: 3px; width: 14px; height: 14px; background: white; border-radius: 50%; transition: left 0.2s; }
+    .agent-toggle.on::after { left: calc(100% - 17px); }
+    .agent-toggle.off::after { left: 3px; }
+
+    /* ════════════════ USE CASES ════════════════ */
+    #usecases { padding: clamp(4rem,9vw,7rem) 0; background: linear-gradient(180deg, transparent 0%, rgba(255,204,0,0.015) 50%, transparent 100%); }
+    .uc-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; margin-top: 4rem; }
+    .uc-card { background: var(--surface); padding: 2.25rem; display: flex; flex-direction: column; gap: 1.125rem; transition: background 0.2s; }
+    .uc-card:hover { background: var(--raised); }
+    .uc-tag { display: inline-block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.25rem 0.625rem; border-radius: 6px; }
+    .uc-tag.relance { color: var(--signal); background: rgba(255,204,0,0.08); border: 1px solid rgba(255,204,0,0.2); }
+    .uc-tag.acquisition { color: #38bdf8; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2); }
+    .uc-tag.reconquete { color: #fb7185; background: rgba(251,113,133,0.08); border: 1px solid rgba(251,113,133,0.2); }
+    .uc-icon { font-size: 2.25rem; line-height: 1; }
+    .uc-card .t-title { font-size: 1.0625rem; }
+    .uc-card .t-body { font-size: 0.875rem; color: var(--muted); line-height: 1.65; }
+    .uc-bullets { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem; }
+    .uc-bullet { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8125rem; color: rgba(255,255,255,0.7); }
+    .uc-bullet::before { content: '→'; color: var(--signal); flex-shrink: 0; font-weight: 700; }
+
+    /* ════════════════ PRICING ════════════════ */
+    #pricing { padding: clamp(4rem,9vw,7rem) 0; border-top: 1px solid var(--border); }
+    .pricing-intro { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem,4vw,4rem); align-items: start; margin-top: 4rem; }
+    .pricing-note { background: var(--surface); border: 1px solid rgba(255,204,0,0.15); border-radius: 16px; padding: 1.5rem; }
+    .pricing-note .t-label { color: var(--signal); }
+    .pricing-note .t-body { font-size: 0.875rem; color: var(--muted); margin-top: 0.75rem; line-height: 1.65; }
+    .msg-types { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-radius: 18px; overflow: hidden; }
+    .msg-type-header { background: var(--raised); padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; }
+    .msg-type-header span { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-dim); }
+    .msg-type-row { background: var(--surface); padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; transition: background 0.15s; }
+    .msg-type-row:last-child { border-bottom: none; }
+    .msg-type-row:hover { background: var(--raised); }
+    .msg-type-info { }
+    .msg-type-name { font-size: 0.9375rem; font-weight: 600; }
+    .msg-type-desc { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+    .msg-type-eg { font-size: 0.6875rem; color: var(--muted-dim); margin-top: 2px; font-style: italic; }
+    .msg-price { text-align: right; }
+    .msg-price .amount { font-size: 1rem; font-weight: 700; color: var(--ink); }
+    .msg-price .per { font-size: 0.6875rem; color: var(--muted-dim); }
+    .msg-badge { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.5rem; border-radius: 5px; white-space: nowrap; }
+    .badge-marketing { color: var(--signal); background: rgba(255,204,0,0.08); border: 1px solid rgba(255,204,0,0.2); }
+    .badge-utility { color: #38bdf8; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2); }
+    .badge-auth { color: #a78bfa; background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); }
+    .badge-service { color: #34d399; background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); }
+    .pricing-footer { margin-top: 1.5rem; padding: 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .pricing-footer .t-small { color: var(--muted); flex: 1; min-width: 200px; }
+    .pricing-full { grid-column: 1 / -1; }
+
+    /* ════════════════ CTA ════════════════ */
+    #cta { padding: clamp(4rem,9vw,6.5rem) 0; }
+    .cta-box {
+      background: var(--surface); border: 1px solid rgba(255,204,0,0.2); border-radius: 28px;
+      padding: clamp(2.5rem,6vw,5rem) clamp(2rem,5vw,4rem); text-align: center; position: relative; overflow: hidden;
+    }
+    .cta-box::before {
+      content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 700px; height: 200px; background: radial-gradient(ellipse at top, rgba(255,204,0,0.06) 0%, transparent 70%); pointer-events: none;
+    }
+    .cta-box .t-body { color: var(--muted); margin-top: 1rem; max-width: 520px; margin-left: auto; margin-right: auto; }
+    .cta-actions { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 2.5rem; flex-wrap: wrap; }
+    .cta-note { font-size: 0.75rem; color: var(--muted-dim); margin-top: 1rem; }
+
+    /* ════════════════ FOOTER ════════════════ */
+    footer { border-top: 1px solid var(--border); padding: 2.5rem 0; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
+    .footer-logo { display: flex; align-items: center; gap: 0.625rem; text-decoration: none; }
+    .footer-logo img { height: 22px; filter: brightness(0) invert(1); opacity: 0.6; }
+    .footer-logo span { font-size: 0.875rem; font-weight: 700; color: rgba(255,255,255,0.4); }
+    .footer-origin { font-size: 0.75rem; color: var(--muted-dim); display: flex; align-items: center; gap: 0.4rem; }
+    .footer-links { display: flex; gap: 1.5rem; }
+    .footer-links a { font-size: 0.8125rem; color: var(--muted-dim); text-decoration: none; transition: color 0.15s; }
+    .footer-links a:hover { color: var(--muted); }
+    .footer-copy { font-size: 0.8125rem; color: var(--muted-dim); }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 900px) {
+      .seg-layout, .report-layout, .agent-layout, .pricing-intro { grid-template-columns: 1fr; }
+      .camp-top, .uc-grid { grid-template-columns: 1fr; }
+      .camp-list { grid-template-columns: repeat(2,1fr); }
+      .cmp-grid { grid-template-columns: 1fr; }
+      .hero-data-strip { flex-direction: column; }
+      .ds-item { border-right: none; border-bottom: 1px solid var(--border); }
+      .ds-item:last-child { border-bottom: none; }
+      .nav-links { display: none; }
+    }
+    @media (max-width: 600px) {
+      .camp-list { grid-template-columns: 1fr; }
+      .report-kpi-row { grid-template-columns: repeat(3,1fr); }
+      .arrow-stage { height: 200px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── NAV ─── -->
+  <nav id="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a href="#hero" class="nav-logo">
+          <img src="./logo_flow_blanc.png" alt="Flow" onerror="this.style.display='none'">
+          <span class="wordmark">Flow</span>
+        </a>
+        <ul class="nav-links">
+          <li><a href="#segmentation">Segmentation</a></li>
+          <li><a href="#campaigns">Campagnes</a></li>
+          <li><a href="#reporting">Reporting</a></li>
+          <li><a href="#usecases">Cas d'usage</a></li>
+          <li><a href="#pricing">Tarifs</a></li>
+        </ul>
+        <div class="nav-cta">
+          <a href="#cta" class="btn btn-ghost">Contactez-nous</a>
+          <a href="#cta" class="btn btn-primary">Réserver une démo</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── HERO ─── -->
+  <section id="hero">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="hero-badge reveal">
+          <span class="dot"></span>
+          Marketing WhatsApp · Fait au Congo
+        </div>
+        <h1 class="t-display hero-title reveal" style="--delay:60ms">
+          Touchez vos clients<br>là où ils <em>sont le plus actifs.</em>
+        </h1>
+        <p class="hero-sub reveal" style="--delay:120ms">
+          Flow est une plateforme de marketing interactif WhatsApp. Segmentez votre base, lancez des campagnes ciblées, mesurez vos résultats et activez vos agents IA pour prendre en charge les réponses.
+        </p>
+        <div class="hero-actions reveal" style="--delay:180ms">
+          <a href="#cta" class="btn btn-primary btn-lg">Réserver une démo →</a>
+          <a href="#segmentation" class="btn btn-ghost btn-lg">Voir la plateforme</a>
+        </div>
+
+        <div class="hero-data-strip reveal" style="--delay:260ms">
+          <div class="ds-item">
+            <span class="ds-val">98%</span>
+            <span class="ds-label">taux d'ouverture · 4× l'email</span>
+          </div>
+          <div class="ds-item">
+            <span class="ds-val">3 min</span>
+            <span class="ds-label">délai de lecture moyen</span>
+          </div>
+          <div class="ds-item">
+            <span class="ds-val">45%</span>
+            <span class="ds-label">taux de réponse · vs 6% sur email</span>
+          </div>
+          <div class="ds-item">
+            <span class="ds-val">n°1</span>
+            <span class="ds-label">app de messagerie en Afrique sub-saharienne</span>
+          </div>
+        </div>
+
+        <div class="arrow-stage reveal" style="--delay:320ms" aria-hidden="true">
+          <div class="arrow-origin">
+            <div class="origin-dot-wrap">
+              <div class="origin-dot"></div>
+              <div class="origin-ring r1"></div>
+              <div class="origin-ring r2"></div>
+            </div>
+            <div class="origin-label">Flow</div>
+          </div>
+          <div class="wa-shot" style="--dist:490px;--ty:-76px;--delay:0s;--dur:2.9s">
+            <span class="tick">✓✓</span> 🎁 -20% ce weekend · Code PROMO24
+          </div>
+          <div class="wa-shot" style="--dist:510px;--ty:-38px;--delay:0.65s;--dur:2.7s">
+            <span class="tick">✓✓</span> 📦 Commande #4821 · Livraison demain matin
+          </div>
+          <div class="wa-shot" style="--dist:525px;--ty:0px;--delay:1.3s;--dur:3.1s">
+            <span class="tick">✓✓</span> 🔔 Votre rapport mensuel est disponible
+          </div>
+          <div class="wa-shot" style="--dist:510px;--ty:38px;--delay:1.95s;--dur:2.8s">
+            <span class="tick">✓✓</span> 📍 Colis en route · Arrivée estimée 14h
+          </div>
+          <div class="wa-shot" style="--dist:490px;--ty:76px;--delay:2.6s;--dur:3s">
+            <span class="tick">✓✓</span> 💬 Réservation confirmée · Africafé 20h
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── COMPARISON ─── -->
+  <section id="comparison">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="t-headline reveal">Le canal qui performe.<br>De loin.</h2>
+        <p class="t-body reveal" style="--delay:80ms">Vos clients n'ouvrent plus leurs emails. Ils lisent leurs messages WhatsApp en moins de 3 minutes. Les chiffres ne laissent aucun doute.</p>
+      </div>
+      <div class="cmp-grid">
+        <div class="cmp-card reveal" style="--delay:0ms">
+          <div class="cmp-channel">Email</div>
+          <div class="cmp-open" style="color:var(--muted-dim)">22<span>%</span></div>
+          <div class="cmp-rows">
+            <div class="cmp-row"><span class="k">Taux d'ouverture</span><span class="v" style="color:var(--muted)">22%</span></div>
+            <div class="cmp-row"><span class="k">Taux de clic</span><span class="v" style="color:var(--muted)">2–4%</span></div>
+            <div class="cmp-row"><span class="k">Délai de lecture</span><span class="v" style="color:var(--muted)">26h</span></div>
+            <div class="cmp-row"><span class="k">Taux de réponse</span><span class="v" style="color:var(--muted)">6%</span></div>
+          </div>
+        </div>
+        <div class="cmp-card reveal" style="--delay:80ms">
+          <div class="cmp-channel">SMS</div>
+          <div class="cmp-open" style="color:var(--muted)">55<span>%</span></div>
+          <div class="cmp-rows">
+            <div class="cmp-row"><span class="k">Taux d'ouverture</span><span class="v">55%</span></div>
+            <div class="cmp-row"><span class="k">Taux de clic</span><span class="v">6–8%</span></div>
+            <div class="cmp-row"><span class="k">Délai de lecture</span><span class="v">4h</span></div>
+            <div class="cmp-row"><span class="k">Taux de réponse</span><span class="v">16%</span></div>
+          </div>
+        </div>
+        <div class="cmp-card active reveal" style="--delay:160ms">
+          <div class="cmp-channel">WhatsApp via Flow</div>
+          <div class="cmp-open">98<span>%</span></div>
+          <div class="cmp-rows">
+            <div class="cmp-row"><span class="k">Taux d'ouverture</span><span class="v" style="color:var(--signal)">98%</span></div>
+            <div class="cmp-row"><span class="k">Taux de clic</span><span class="v" style="color:var(--signal)">25–45%</span></div>
+            <div class="cmp-row"><span class="k">Délai de lecture</span><span class="v" style="color:var(--signal)">3 min</span></div>
+            <div class="cmp-row"><span class="k">Taux de réponse</span><span class="v" style="color:var(--signal)">45%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── SEGMENTATION ─── -->
+  <section id="segmentation">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="t-headline reveal">Le bon message.<br>À la bonne personne.</h2>
+        <p class="t-body reveal" style="--delay:80ms">Découpez votre base de contacts selon des critères précis. Chaque segment reçoit exactement le message qui le concerne.</p>
+      </div>
+      <div class="seg-layout">
+        <div class="seg-features">
+          <div class="seg-feat reveal" style="--delay:0ms">
+            <div class="seg-feat-icon">🎯</div>
+            <div class="seg-feat-body">
+              <p class="t-title">Filtres comportementaux</p>
+              <p class="t-small">Dernière interaction, historique d'achat, fréquence de commande, statut de fidélité. Filtrez selon le comportement réel de chaque contact.</p>
+            </div>
+          </div>
+          <div class="seg-feat reveal" style="--delay:80ms">
+            <div class="seg-feat-icon">📍</div>
+            <div class="seg-feat-body">
+              <p class="t-title">Segmentation géographique</p>
+              <p class="t-small">Ciblez par ville, quartier ou zone de livraison. Idéal pour les promotions localisées ou les ouvertures d'agences.</p>
+            </div>
+          </div>
+          <div class="seg-feat reveal" style="--delay:160ms">
+            <div class="seg-feat-icon">🏷️</div>
+            <div class="seg-feat-body">
+              <p class="t-title">Tags personnalisés</p>
+              <p class="t-small">Étiquetez vos contacts librement (VIP, prospect chaud, inactif 90j) et construisez vos audiences autour de ces tags.</p>
+            </div>
+          </div>
+          <div class="seg-feat reveal" style="--delay:240ms">
+            <div class="seg-feat-icon">⚡</div>
+            <div class="seg-feat-body">
+              <p class="t-title">Audiences dynamiques</p>
+              <p class="t-small">Les segments se mettent à jour automatiquement. Un contact qui redevient actif sort de la liste "inactifs" sans intervention manuelle.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="seg-mock reveal-scale" style="--delay:100ms">
+          <div class="seg-mock-head">
+            <span class="title">Nouveau segment</span>
+            <span class="count">2 847 contacts</span>
+          </div>
+          <div class="seg-mock-body">
+            <div class="seg-row">
+              <div class="seg-row-icon">📍</div>
+              <div class="seg-row-label">Ville</div>
+              <div class="seg-row-val">Kinshasa</div>
+            </div>
+            <div class="seg-row">
+              <div class="seg-row-icon">🛒</div>
+              <div class="seg-row-label">Dernière commande</div>
+              <div class="seg-row-val">il y a &gt; 60j</div>
+            </div>
+            <div class="seg-row">
+              <div class="seg-row-icon">💰</div>
+              <div class="seg-row-label">Panier moyen</div>
+              <div class="seg-row-val">&gt; 50 000 CDF</div>
+            </div>
+            <div class="seg-row">
+              <div class="seg-row-icon">🏷️</div>
+              <div class="seg-row-label">Tag</div>
+              <div class="seg-row-val">Client fidèle</div>
+            </div>
+          </div>
+          <div class="seg-mock-footer">
+            <span class="seg-total">Audience estimée : <strong>2 847 contacts</strong></span>
+            <a href="#" class="btn btn-primary" style="padding:.5rem 1rem;font-size:.8125rem">Créer →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CAMPAIGNS ─── -->
+  <section id="campaigns">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="t-headline reveal">Lancez en quelques clics.<br>Mesurez tout.</h2>
+        <p class="t-body reveal" style="--delay:80ms">Créez, planifiez et envoyez vos campagnes WhatsApp depuis une interface conçue pour aller vite. Personnalisation, pièces jointes, boutons d'action.</p>
+      </div>
+
+      <div class="camp-top">
+        <div class="camp-featured reveal" style="--delay:0ms">
+          <p class="t-title">Templates approuvés Meta</p>
+          <p class="t-body">Créez vos messages depuis des modèles validés par Meta. Texte, images, vidéos et boutons CTA conformes aux règles WhatsApp Business.</p>
+          <div class="tpl-mock">
+            <div class="tpl-header">
+              <span class="tpl-name">Promo_Ramadan_v2</span>
+              <span class="tpl-status">Approuvé ✓</span>
+            </div>
+            <p class="tpl-body-text">Bonjour <span class="tpl-var">{{prénom}}</span> 👋 Profitez de <strong>-20%</strong> sur vos prochaines commandes jusqu'au 30 mars. Offre réservée à nos clients <span class="tpl-var">{{ville}}</span>.</p>
+            <div class="tpl-actions">
+              <span class="tpl-btn">Voir l'offre →</span>
+              <span class="tpl-btn">Se désabonner</span>
+            </div>
+          </div>
+        </div>
+        <div class="camp-second reveal" style="--delay:80ms">
+          <p class="t-title">Personnalisation dynamique</p>
+          <p class="t-body">Insérez le prénom, la ville, le montant du panier ou tout autre champ de votre base. Chaque contact reçoit un message qui lui est adressé.</p>
+          <div class="perso-vars">
+            <span class="perso-var">{{prénom}}</span>
+            <span class="perso-var">{{ville}}</span>
+            <span class="perso-var">{{panier_moyen}}</span>
+            <span class="perso-var">{{dernière_commande}}</span>
+            <span class="perso-var">{{statut}}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="camp-list">
+        <div class="camp-list-item reveal" style="--delay:0ms">
+          <div class="cli-icon">🕐</div>
+          <p class="cli-title">Envoi planifié</p>
+          <p class="cli-desc">Date, heure et fuseau horaire. Flow envoie au moment optimal.</p>
+        </div>
+        <div class="camp-list-item reveal" style="--delay:60ms">
+          <div class="cli-icon">🔀</div>
+          <p class="cli-title">A/B Testing</p>
+          <p class="cli-desc">Deux variantes sur un échantillon, le gagnant s'envoie automatiquement.</p>
+        </div>
+        <div class="camp-list-item reveal" style="--delay:120ms">
+          <div class="cli-icon">📎</div>
+          <p class="cli-title">Médias & pièces jointes</p>
+          <p class="cli-desc">PDF, images, vidéos produit directement dans la campagne.</p>
+        </div>
+        <div class="camp-list-item reveal" style="--delay:180ms">
+          <div class="cli-icon">🔁</div>
+          <p class="cli-title">Campagnes récurrentes</p>
+          <p class="cli-desc">Anniversaire client, rappel mensuel, relance hebdomadaire automatisée.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── REPORTING ─── -->
+  <section id="reporting">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="t-headline reveal">Mesurez ce qui<br>génère du chiffre.</h2>
+        <p class="t-body reveal" style="--delay:80ms">Chaque campagne produit un rapport complet en temps réel. Pas de tableur, pas d'export manuel. Les données arrivent directement dans votre tableau de bord.</p>
+      </div>
+      <div class="report-layout">
+        <div class="report-mock reveal-scale" style="--delay:0ms">
+          <div class="report-head">
+            <span class="report-title">Campagne — Relance Inactifs Mai</span>
+            <span class="report-tag">Terminée</span>
+          </div>
+          <div class="report-body">
+            <div class="report-kpi-row">
+              <div class="report-kpi">
+                <div class="n" style="color:var(--signal)">5 200</div>
+                <div class="l">Envoyés</div>
+                <div class="delta">100%</div>
+              </div>
+              <div class="report-kpi">
+                <div class="n">97%</div>
+                <div class="l">Livrés</div>
+                <div class="delta">+2% vs moy.</div>
+              </div>
+              <div class="report-kpi">
+                <div class="n" style="color:var(--signal)">94%</div>
+                <div class="l">Lus</div>
+                <div class="delta">↑ élevé</div>
+              </div>
+            </div>
+            <div class="report-bar-row">
+              <div class="report-bar-item">
+                <span class="report-bar-label">Répondu</span>
+                <div class="report-bar-track"><div class="report-bar-fill" style="width:41%"></div></div>
+                <span class="report-bar-val">41%</span>
+              </div>
+              <div class="report-bar-item">
+                <span class="report-bar-label">Clic bouton</span>
+                <div class="report-bar-track"><div class="report-bar-fill" style="width:29%;background:#34d399"></div></div>
+                <span class="report-bar-val">29%</span>
+              </div>
+              <div class="report-bar-item">
+                <span class="report-bar-label">Converti</span>
+                <div class="report-bar-track"><div class="report-bar-fill" style="width:18%;background:#38bdf8"></div></div>
+                <span class="report-bar-val">18%</span>
+              </div>
+              <div class="report-bar-item">
+                <span class="report-bar-label">Désabonné</span>
+                <div class="report-bar-track"><div class="report-bar-fill" style="width:2%;background:#ff4545"></div></div>
+                <span class="report-bar-val">0.4%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="report-features">
+          <div class="report-feat reveal" style="--delay:0ms">
+            <div class="report-check">✓</div>
+            <div>
+              <p class="t-title">Rapports en temps réel</p>
+              <p class="t-small t-muted">Suivez les livraisons, lectures et réponses au fur et à mesure de l'envoi. Pas d'attente.</p>
+            </div>
+          </div>
+          <div class="report-feat reveal" style="--delay:80ms">
+            <div class="report-check">✓</div>
+            <div>
+              <p class="t-title">Export automatique</p>
+              <p class="t-small t-muted">Chaque rapport de campagne est exportable en CSV ou PDF. Envoi automatique à votre équipe à la fin de chaque campagne.</p>
+            </div>
+          </div>
+          <div class="report-feat reveal" style="--delay:160ms">
+            <div class="report-check">✓</div>
+            <div>
+              <p class="t-title">Historique et comparaison</p>
+              <p class="t-small t-muted">Comparez vos campagnes entre elles. Identifiez les messages, horaires et segments les plus performants.</p>
+            </div>
+          </div>
+          <div class="report-feat reveal" style="--delay:240ms">
+            <div class="report-check">✓</div>
+            <div>
+              <p class="t-title">Alertes automatiques</p>
+              <p class="t-small t-muted">Recevez une notification si le taux de désabonnement dépasse un seuil défini. Corrigez avant que ça s'emballe.</p>
+            </div>
+          </div>
+          <div class="report-feat reveal" style="--delay:320ms">
+            <div class="report-check">✓</div>
+            <div>
+              <p class="t-title">ROI par campagne</p>
+              <p class="t-small t-muted">Associez vos campagnes à des revenus générés. Calculez le retour sur investissement de chaque envoi.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── AGENTS ─── -->
+  <section id="agents">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="t-headline reveal">Envoyez. Laissez<br>les agents répondre.</h2>
+        <p class="t-body reveal" style="--delay:80ms">Après une campagne, les réponses arrivent. Activez un agent IA pour les traiter automatiquement, sans mobiliser votre équipe.</p>
+      </div>
+      <div class="agent-layout">
+        <div class="agent-points">
+          <div class="agent-point reveal" style="--delay:0ms">
+            <div class="ap-num">1</div>
+            <div>
+              <p class="t-title">Activation par campagne</p>
+              <p class="t-small t-muted">Choisissez quel agent gère les réponses d'une campagne spécifique. L'agent Livraison pour les commandes, l'agent Commercial pour les prospects.</p>
+            </div>
+          </div>
+          <div class="agent-point reveal" style="--delay:80ms">
+            <div class="ap-num">2</div>
+            <div>
+              <p class="t-title">Réponse en moins de 2 secondes</p>
+              <p class="t-small t-muted">L'agent IA répond immédiatement à chaque contact qui interagit avec la campagne. Aucun message laissé sans réponse.</p>
+            </div>
+          </div>
+          <div class="agent-point reveal" style="--delay:160ms">
+            <div class="ap-num">3</div>
+            <div>
+              <p class="t-title">Escalade intelligente</p>
+              <p class="t-small t-muted">Si la requête dépasse les capacités de l'agent, la conversation est transférée à un opérateur humain, avec tout le contexte préservé.</p>
+            </div>
+          </div>
+          <div class="agent-point reveal" style="--delay:240ms">
+            <div class="ap-num">4</div>
+            <div>
+              <p class="t-title">Désactivation en un clic</p>
+              <p class="t-small t-muted">Reprenez le contrôle à tout moment. Désactivez l'agent et traitez les conversations manuellement si nécessaire.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="agent-mock reveal-scale" style="--delay:120ms">
+          <div class="agent-mock-head">
+            <p class="t">Agents disponibles</p>
+            <p class="s">Activez un agent pour cette campagne</p>
+          </div>
+          <div class="agent-list">
+            <div class="agent-row">
+              <div class="agent-emoji">🧑‍💼</div>
+              <div class="agent-info">
+                <div class="agent-name">Assistant Commercial</div>
+                <div class="agent-desc">Qualification, réponse aux questions, prise de RDV</div>
+              </div>
+              <div class="agent-toggle on"></div>
+            </div>
+            <div class="agent-row">
+              <div class="agent-emoji">🚚</div>
+              <div class="agent-info">
+                <div class="agent-name">Agent Livraison</div>
+                <div class="agent-desc">Suivi commande, confirmation d'adresse, délais</div>
+              </div>
+              <div class="agent-toggle off"></div>
+            </div>
+            <div class="agent-row">
+              <div class="agent-emoji">🛒</div>
+              <div class="agent-info">
+                <div class="agent-name">Agent E-commerce</div>
+                <div class="agent-desc">Commandes, recommandations, support après-vente</div>
+              </div>
+              <div class="agent-toggle off"></div>
+            </div>
+            <div class="agent-row">
+              <div class="agent-emoji">🍽️</div>
+              <div class="agent-info">
+                <div class="agent-name">Agent Restauration</div>
+                <div class="agent-desc">Réservations, menu, commandes à emporter</div>
+              </div>
+              <div class="agent-toggle off"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── USE CASES ─── -->
+  <section id="usecases">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="t-headline reveal">Trois stratégies.<br>Des résultats concrets.</h2>
+        <p class="t-body reveal" style="--delay:80ms">Flow est utilisé pour trois grandes stratégies marketing. Chacune avec ses objectifs, ses segments et ses messages types.</p>
+      </div>
+      <div class="uc-grid">
+        <div class="uc-card reveal" style="--delay:0ms">
+          <span class="uc-tag relance">Relance client</span>
+          <div class="uc-icon">🔁</div>
+          <p class="t-title">Réactivez vos clients dormants</p>
+          <p class="t-body">Vos clients n'ont pas commandé depuis 60 jours ? Segmentez-les, envoyez une offre exclusive et regardez le taux de réactivation grimper.</p>
+          <div class="uc-bullets">
+            <div class="uc-bullet">Segmenter les inactifs depuis N jours</div>
+            <div class="uc-bullet">Envoyer une offre limitée dans le temps</div>
+            <div class="uc-bullet">Activer l'agent pour traiter les réponses</div>
+            <div class="uc-bullet">Mesurer le taux de réactivation</div>
+          </div>
+        </div>
+        <div class="uc-card reveal" style="--delay:100ms">
+          <span class="uc-tag acquisition">Acquisition</span>
+          <div class="uc-icon">🚀</div>
+          <p class="t-title">Convertissez vos prospects</p>
+          <p class="t-body">Vos prospects ont donné leur numéro mais n'ont jamais acheté. Une séquence de messages bien structurée fait la différence entre un prospect froid et un premier achat.</p>
+          <div class="uc-bullets">
+            <div class="uc-bullet">Importer la liste de prospects</div>
+            <div class="uc-bullet">Séquence de 3 messages sur 7 jours</div>
+            <div class="uc-bullet">Bouton CTA vers votre catalogue ou site</div>
+            <div class="uc-bullet">Agent commercial pour les curieux</div>
+          </div>
+        </div>
+        <div class="uc-card reveal" style="--delay:200ms">
+          <span class="uc-tag reconquete">Reconquête</span>
+          <div class="uc-icon">♻️</div>
+          <p class="t-title">Récupérez vos clients perdus</p>
+          <p class="t-body">Un client est parti chez un concurrent ? Il n'est pas perdu pour autant. Une offre de reconquête ciblée, au bon moment, peut inverser la tendance.</p>
+          <div class="uc-bullets">
+            <div class="uc-bullet">Identifier la base perdue (inactifs +6 mois)</div>
+            <div class="uc-bullet">Message personnalisé + remise de bienvenue retour</div>
+            <div class="uc-bullet">Suivi automatique à J+3 sans réponse</div>
+            <div class="uc-bullet">Rapport de reconquête par segment</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── PRICING ─── -->
+  <section id="pricing">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="t-headline reveal">Payez uniquement<br>ce que vous envoyez.</h2>
+        <p class="t-body reveal" style="--delay:80ms">Flow fonctionne au message. Le coût varie selon la nature du message, définie par Meta. Notre tarif plateforme s'ajoute de manière transparente.</p>
+      </div>
+
+      <div class="pricing-intro">
+        <div class="pricing-note reveal" style="--delay:0ms">
+          <p class="t-label" style="color:var(--signal)">Comment ça fonctionne</p>
+          <p class="t-body">WhatsApp Business API facture chaque conversation selon sa nature. Flow ajoute un tarif plateforme transparent par-dessus, sans abonnement minimum.</p>
+          <p class="t-body" style="margin-top:.75rem;">Vous ne payez que les messages envoyés. Pas de frais fixes, pas de surprise. Simulez votre coût mensuel selon votre volume avant de vous engager.</p>
+          <div style="margin-top:1.25rem;">
+            <a href="#cta" class="btn btn-primary" style="width:100%">Simuler mon coût →</a>
+          </div>
+        </div>
+
+        <div class="msg-types reveal-scale" style="--delay:80ms">
+          <div class="msg-type-header">
+            <span>Type de message</span>
+            <span>Coût / message</span>
+            <span>Catégorie</span>
+          </div>
+          <div class="msg-type-row">
+            <div class="msg-type-info">
+              <div class="msg-type-name">Marketing</div>
+              <div class="msg-type-desc">Promotions, offres, campagnes commerciales</div>
+              <div class="msg-type-eg">Ex : "Profitez de -20% ce weekend"</div>
+            </div>
+            <div class="msg-price">
+              <div class="amount">Sur devis</div>
+              <div class="per">/ message</div>
+            </div>
+            <span class="msg-badge badge-marketing">Marketing</span>
+          </div>
+          <div class="msg-type-row">
+            <div class="msg-type-info">
+              <div class="msg-type-name">Utilitaire</div>
+              <div class="msg-type-desc">Confirmations, notifications, rappels</div>
+              <div class="msg-type-eg">Ex : "Votre commande #1234 est expédiée"</div>
+            </div>
+            <div class="msg-price">
+              <div class="amount">Sur devis</div>
+              <div class="per">/ message</div>
+            </div>
+            <span class="msg-badge badge-utility">Utilitaire</span>
+          </div>
+          <div class="msg-type-row">
+            <div class="msg-type-info">
+              <div class="msg-type-name">Authentification</div>
+              <div class="msg-type-desc">OTP, codes de vérification, connexion</div>
+              <div class="msg-type-eg">Ex : "Votre code : 482910"</div>
+            </div>
+            <div class="msg-price">
+              <div class="amount">Sur devis</div>
+              <div class="per">/ message</div>
+            </div>
+            <span class="msg-badge badge-auth">Auth</span>
+          </div>
+          <div class="msg-type-row">
+            <div class="msg-type-info">
+              <div class="msg-type-name">Service (entrant)</div>
+              <div class="msg-type-desc">Réponses dans la fenêtre 24h client</div>
+              <div class="msg-type-eg">Ex : réponse à une question reçue</div>
+            </div>
+            <div class="msg-price">
+              <div class="amount">Offert</div>
+              <div class="per">fenêtre 24h</div>
+            </div>
+            <span class="msg-badge badge-service">Service</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pricing-footer reveal" style="--delay:200ms">
+        <p class="t-small">Les tarifs Meta varient selon le pays de destination. Le tarif Flow plateforme est fixe et transparent. Contactez-nous pour une simulation sur votre volume exact.</p>
+        <a href="#cta" class="btn btn-ghost">Obtenir un devis →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CTA ─── -->
+  <section id="cta">
+    <div class="container">
+      <div class="cta-box reveal-scale">
+        <h2 class="t-headline">Prêt à lancer votre première<br>campagne WhatsApp ?</h2>
+        <p class="t-body">Réservez une démo de 30 minutes. Notre équipe vous montre Flow en action sur votre propre base de contacts. Sans engagement.</p>
+        <div class="cta-actions">
+          <a href="mailto:contact@nodes.cd" class="btn btn-primary btn-xl">Réserver une démo →</a>
+          <a href="mailto:contact@nodes.cd" class="btn btn-ghost btn-xl">Nous écrire</a>
+        </div>
+        <p class="cta-note">Réponse sous 24h · Démo en français · Équipe basée à Kinshasa</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <a href="#hero" class="footer-logo">
+          <img src="./logo_flow_blanc.png" alt="Flow" onerror="this.style.display='none'">
+          <span>Flow by Nodes Technology</span>
+        </a>
+        <div class="footer-origin">
+          <span>🇨🇩</span>
+          <span>Kinshasa, République Démocratique du Congo</span>
+        </div>
+        <div class="footer-links">
+          <a href="mailto:contact@nodes.cd">Contact</a>
+          <a href="#pricing">Tarifs</a>
+          <a href="#usecases">Cas d'usage</a>
+        </div>
+        <p class="footer-copy">© 2024 Nodes Technology. Tous droits réservés.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Scroll-reveal: only hide elements that are genuinely below the fold
+    // at page load. Never touch elements already in / above the viewport.
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function setupReveal() {
+      const vh = window.innerHeight;
+      const els = document.querySelectorAll('.reveal, .reveal-scale');
+
+      els.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        // Only animate elements that start strictly below the current viewport
+        if (rect.top > vh + 20 && !prefersReduced) {
+          const isScale = el.classList.contains('reveal-scale');
+          const delay = el.style.getPropertyValue('--delay') || '0ms';
+          el.style.opacity = '0';
+          el.style.transform = isScale ? 'scale(0.97) translateY(12px)' : 'translateY(24px)';
+          el.style.transition = isScale
+            ? `opacity 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}, transform 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}`
+            : `opacity 0.55s cubic-bezier(0.16,1,0.3,1) ${delay}, transform 0.55s cubic-bezier(0.16,1,0.3,1) ${delay}`;
+          el._needsReveal = true;
+        }
+      });
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && entry.target._needsReveal) {
+            const el = entry.target;
+            el.style.opacity = '1';
+            el.style.transform = el.classList.contains('reveal-scale') ? 'scale(1) translateY(0)' : 'translateY(0)';
+            el._needsReveal = false;
+            observer.unobserve(el);
+          }
+        });
+      }, { threshold: 0.05 });
+
+      els.forEach(el => { if (el._needsReveal) observer.observe(el); });
+    }
+
+    // Run after paint so getBoundingClientRect reflects hash-scroll position
+    requestAnimationFrame(() => requestAnimationFrame(setupReveal));
+
+    // Nav scroll state
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 40);
+    }, { passive: true });
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const target = document.querySelector(a.getAttribute('href'));
+        if (target) {
+          e.preventDefault();
+          window.scrollTo({ top: target.offsetTop - 80, behavior: 'smooth' });
+        }
+      });
+    });
+  </script>
+
+  <!-- Agentation toolbar -->
+  <script type="module">
+    import React from "https://esm.sh/react@18";
+    import { createRoot } from "https://esm.sh/react-dom@18/client";
+    import { Agentation } from "https://esm.sh/agentation@3.0.2?deps=react@18,react-dom@18";
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    createRoot(el).render(React.createElement(Agentation));
+  </script>
+</body>
+</html>

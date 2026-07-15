@@ -138,7 +138,7 @@ export const whatsappService = {
     waba_id: string
     phone_number_id: string
   }): Promise<{ success: boolean; mode: "coexistence"; phone_number_id: string; waba_id: string }> {
-    const { data } = await api.post("/v1/app/whatsapp/embedded-signup/complete", payload)
+    const { data } = await apiJson.post("/v1/app/whatsapp/embedded-signup/complete", payload)
     return data
   },
 
@@ -411,6 +411,31 @@ export const whatsappService = {
     const { data } = await apiJson.post<WhatsAppBroadcastResult>(
       "/v1/whatsapp/broadcasts/personalized",
       normalizedPayload
+    )
+    return data
+  },
+
+  async createSegmentBroadcast(payload: {
+    segment_id: string
+    template_name: string
+    language_code: string
+    campaign_name?: string
+    components?: Array<{
+      type: "header" | "body" | "button"
+      sub_type?: string
+      index?: string
+      parameters: Array<{
+        type: "text" | "image" | "video" | "document"
+        text?: string
+        image?: { link: string }
+        video?: { link: string }
+        document?: { link: string; filename?: string }
+      }>
+    }>
+  }): Promise<WhatsAppBroadcastResult & { segment_id: string; resolved_count: number }> {
+    const { data } = await apiJson.post<WhatsAppBroadcastResult & { segment_id: string; resolved_count: number }>(
+      "/v1/whatsapp/broadcasts/segment",
+      payload
     )
     return data
   },

@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { whatsappService, contactsService, tagsService, customFieldsService, handleApiError } from "@/services"
+import { whatsappService, contactsService, tagsService, customFieldsService, segmentsService, handleApiError } from "@/services"
 import type { WhatsAppTemplate, Contact, Tag, CustomField } from "@/types"
+import type { Segment } from "@/services/segments"
 import { uploadMediaToSupabase } from "@/lib/supabase"
 import { fetchAllContactsPaged, getCachedContacts, setCachedContacts } from "@/lib/contacts-cache"
 import { useOrganizationStore } from "@/stores"
@@ -45,7 +46,7 @@ import { PersonalizationDialog } from "@/components/whatsapp/campaign/personaliz
 import { CampaignSummary } from "@/components/whatsapp/campaign/campaign-summary"
 import { HeaderMediaUpload } from "@/components/whatsapp/campaign/header-media-upload"
 
-type RecipientMode = "contacts" | "tags"
+type RecipientMode = "contacts" | "tags" | "segment"
 type SendMode = "standard" | "personalized"
 type MissingCustomFieldDetail = {
   field: string
@@ -108,6 +109,8 @@ export default function NewWhatsAppCampaignPage() {
   const [tagContactsTotalCount, setTagContactsTotalCount] = useState<number | null>(null)
   const [tagContactsLimitReached, setTagContactsLimitReached] = useState(false)
   const [recipientsBootstrapDone, setRecipientsBootstrapDone] = useState(false)
+  const [segments, setSegments] = useState<Segment[]>([])
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string>("")
 
   useEffect(() => {
     setRecipientsBootstrapDone(false)
@@ -198,10 +201,11 @@ export default function NewWhatsAppCampaignPage() {
       setIsConfigured(configResult.is_configured)
 
       if (configResult.is_configured) {
-        const [templatesResult, tagsResult, customFieldsResult] = await Promise.all([
+        const [templatesResult, tagsResult, customFieldsResult, segmentsResult] = await Promise.all([
           whatsappService.getTemplates(undefined, undefined, 100, 0),
           tagsService.getTags(),
           customFieldsService.getCustomFields(),
+          segmentsService.listSegments({ limit: 100 }).catch(() => ({ segments: [] })),
         ])
 
         setTemplates((templatesResult.templates || []).filter((t) => t.status === "APPROVED"))
@@ -211,6 +215,7 @@ export default function NewWhatsAppCampaignPage() {
             (field) => !field.is_system && field.is_active !== false
           )
         )
+        setSegments(segmentsResult.segments || [])
       }
     } catch (error) {
       setIsConfigured(false)
@@ -391,10 +396,14 @@ export default function NewWhatsAppCampaignPage() {
         return tags
           .filter((t) => selectedTagIds.includes(t.id))
           .reduce((sum, t) => sum + t.contact_count, 0)
+      case "segment": {
+        const seg = segments.find((s) => s.id === selectedSegmentId)
+        return seg?.estimated_count ?? 0
+      }
       default:
         return 0
     }
-  }, [recipientMode, selectedContactIds.length, selectedTagIds, tags])
+  }, [recipientMode, selectedContactIds.length, selectedTagIds, tags, segments, selectedSegmentId])
 
   const templateCategory = selectedTemplate?.category || null
 
@@ -658,6 +667,30 @@ export default function NewWhatsAppCampaignPage() {
           toast.error("Erreur lors de la création de la campagne")
         }
       } else {
+        // Segment mode — resolve server-side
+        if (recipientMode === "segment") {
+          if (!selectedSegmentId) {
+            toast.error("Veuillez sélectionner un segment")
+            setIsSending(false)
+            return
+          }
+          const headerMediaComp = buildHeaderMediaComponent()
+          const result = await whatsappService.createSegmentBroadcast({
+            segment_id: selectedSegmentId,
+            template_name: selectedTemplate.name,
+            language_code: selectedTemplate.language,
+            campaign_name: campaignName.trim(),
+            components: headerMediaComp ? [headerMediaComp] : undefined,
+          })
+          if (result.success) {
+            toast.success(`Campagne créée pour ${result.resolved_count} contacts du segment`)
+            router.push(`/campaigns/whatsapp/${result.broadcast_id}`)
+          } else {
+            toast.error("Erreur lors de la création de la campagne")
+          }
+          return
+        }
+
         let recipients = getRecipients()
         if (recipientMode === "tags") {
           if (selectedTagIds.length === 0) {
@@ -714,7 +747,7 @@ export default function NewWhatsAppCampaignPage() {
     !contactsLoading &&
     !!campaignName.trim() &&
     !!selectedTemplate &&
-    recipientCount > 0 &&
+    (recipientMode === "segment" ? !!selectedSegmentId : recipientCount > 0) &&
     (creditCheck === null || creditCheck.can_send)
 
   const recipientsBootstrapping = !recipientsBootstrapDone && contactsLoading
@@ -883,6 +916,8 @@ export default function NewWhatsAppCampaignPage() {
                     {!recipientsBootstrapping && !tagContactsLoading && recipientMode === "tags" && `~${recipientCount} destinataire(s) estimé(s)`}
                     {!recipientsBootstrapping && contactsLoading && recipientMode === "contacts" && `Chargement... ${contactsLoadedCount}${contactsTotalCount !== null ? ` / ${contactsTotalCount}` : ""}`}
                     {!recipientsBootstrapping && !contactsLoading && recipientMode === "contacts" && `${selectedContactIds.length} contact(s) sélectionné(s)`}
+                    {recipientMode === "segment" && selectedSegmentId && `~${recipientCount} contact(s) dans le segment`}
+                    {recipientMode === "segment" && !selectedSegmentId && "Choisissez un segment"}
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -908,6 +943,16 @@ export default function NewWhatsAppCampaignPage() {
                   >
                     <Users className="h-3.5 w-3.5" />
                     Contacts
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={recipientMode === "segment" ? "default" : "ghost"}
+                    className="h-7 gap-1.5 text-[11px] rounded-lg"
+                    onClick={() => setRecipientMode("segment")}
+                    disabled={recipientsBootstrapping || tagContactsLoading || contactsLoading}
+                  >
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z"/><path d="M8 5a3 3 0 100 6A3 3 0 008 5z"/></svg>
+                    Segment
                   </Button>
                 </div>
               </div>
@@ -939,6 +984,45 @@ export default function NewWhatsAppCampaignPage() {
                   })}
                   {tags.length === 0 && (
                     <p className="text-[12px] text-muted-foreground">Aucun tag disponible</p>
+                  )}
+                </div>
+              )}
+
+              {/* Segment picker */}
+              {recipientMode === "segment" && (
+                <div className="space-y-2">
+                  {segments.length === 0 ? (
+                    <p className="text-[12px] text-muted-foreground">
+                      Aucun segment disponible.{" "}
+                      <a href="/contacts/segments/new" className="underline text-primary">Créer un segment</a>
+                    </p>
+                  ) : (
+                    segments.map((seg) => {
+                      const isSelected = selectedSegmentId === seg.id
+                      return (
+                        <button
+                          key={seg.id}
+                          type="button"
+                          onClick={() => setSelectedSegmentId(isSelected ? "" : seg.id)}
+                          className={`w-full flex items-center justify-between rounded-xl px-4 py-2.5 text-left transition-colors ${
+                            isSelected
+                              ? "bg-primary/10 border border-primary/30"
+                              : "bg-muted/40 border border-transparent hover:bg-muted/60"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                            <span className="text-[13px] font-medium">{seg.name}</span>
+                            {seg.description && (
+                              <span className="text-[11px] text-muted-foreground hidden sm:block truncate max-w-40">— {seg.description}</span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-muted-foreground shrink-0">
+                            {seg.estimated_count != null ? `~${seg.estimated_count.toLocaleString()}` : "—"}
+                          </span>
+                        </button>
+                      )
+                    })
                   )}
                 </div>
               )}
