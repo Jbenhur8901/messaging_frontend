@@ -2,8 +2,6 @@
    Flow Presentation — CSS Module
    ═══════════════════════════════════════════════ */
 
-:global(html) { scroll-behavior: smooth; }
-
 /* ─── Page root + CSS vars ─── */
 .page {
   --void: #050505;

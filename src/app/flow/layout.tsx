@@ -7,5 +7,10 @@ export const metadata: Metadata = {
 }
 
 export default function FlowLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+  return (
+    <>
+      <style>{`html { scroll-behavior: smooth; }`}</style>
+      {children}
+    </>
+  )
 }
