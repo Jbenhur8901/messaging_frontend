@@ -43,7 +43,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
-import { CoexistenceSignupButton } from "@/components/whatsapp/coexistence-signup-button"
+import { ManualOnboardingForm } from "@/components/whatsapp/manual-onboarding-form"
 
 const stagger = (i: number) => ({
   opacity: 0,
@@ -116,8 +116,8 @@ export default function WhatsAppConfigPage() {
       setIsEnabled(enabledValue ?? true)
       const phoneId = (nested?.phone_number_id ?? r.whatsapp_phone_number_id ?? "") as string
       const wabaId = (nested?.business_account_id ?? r.whatsapp_business_account_id ?? "") as string
-      if (phoneId) setConfigPhoneNumberId(phoneId)
-      if (wabaId) setConfigWabaId(wabaId)
+      setConfigPhoneNumberId(phoneId)
+      setConfigWabaId(wabaId)
 
     } catch (error) {
       const apiError = handleApiError(error)
@@ -226,8 +226,31 @@ export default function WhatsAppConfigPage() {
   }
 
   // ── Account detail dialog ──
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+
   const handleAccountClick = (account: WhatsAppAccount) => {
     setSelectedAccount(account)
+  }
+
+  const handleDeleteFromDialog = async (account: WhatsAppAccount) => {
+    setIsDeletingAccount(true)
+    try {
+      const result = await whatsappService.deleteAccount(account.id)
+      if (result.meta_disconnected) {
+        toast.success("Session WhatsApp supprimée complètement")
+      } else {
+        toast.warning("Session locale supprimée, mais Meta n’a pas pu être désabonné", {
+          description: result.warning || undefined,
+        })
+      }
+      setSelectedAccount(null)
+      await Promise.all([loadConfig(), loadAccounts()])
+    } catch (error) {
+      const apiError = handleApiError(error)
+      toast.error(apiError.message)
+    } finally {
+      setIsDeletingAccount(false)
+    }
   }
 
   const handleToggleActive = async (account: WhatsAppAccount, active: boolean) => {
@@ -283,9 +306,15 @@ export default function WhatsAppConfigPage() {
 
   const handleDeleteAccount = async (id: string) => {
     try {
-      await whatsappService.deleteAccount(id)
-      toast.success("Compte supprimé")
-      loadAccounts()
+      const result = await whatsappService.deleteAccount(id)
+      if (result.meta_disconnected) {
+        toast.success("Session WhatsApp supprimée complètement")
+      } else {
+        toast.warning("Session locale supprimée, mais Meta n’a pas pu être désabonné", {
+          description: result.warning || undefined,
+        })
+      }
+      await Promise.all([loadConfig(), loadAccounts()])
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)
@@ -375,17 +404,13 @@ export default function WhatsAppConfigPage() {
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-3 pt-1">
-                  <CoexistenceSignupButton
-                    onConnected={async () => {
+                  <ManualOnboardingForm
+                    onSubmitted={async () => {
                       setIsDialogOpen(false)
-                      await Promise.all([loadConfig(), loadAccounts()])
+                      await loadAccounts()
                     }}
                   />
-                  <div className="flex items-center gap-3 py-1" aria-hidden="true">
-                    <span className="h-px flex-1 bg-border/60" />
-                    <span className="text-[11px] text-muted-foreground">ou configuration manuelle</span>
-                    <span className="h-px flex-1 bg-border/60" />
-                  </div>
+                  <div className="hidden">
                   <div className="space-y-1.5">
                     <Label className="text-[13px]">Phone Number ID *</Label>
                     <Input className="h-9 text-[13px]" value={formPhoneNumberId} onChange={(e) => setFormPhoneNumberId(e.target.value)} placeholder="109999999999999" />
@@ -450,6 +475,7 @@ export default function WhatsAppConfigPage() {
                       Enregistrer
                     </Button>
                   </div>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -497,6 +523,42 @@ export default function WhatsAppConfigPage() {
               ) : (
                 <Badge variant="secondary" className="text-[10px] shrink-0">Désactivé</Badge>
               )}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500" title="Supprimer">
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Supprimer la configuration ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        La configuration WhatsApp de cette organisation sera supprimée. Cette action est irréversible.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={async () => {
+                          try {
+                            await whatsappService.setConfig(currentOrganization!.id, { enabled: false })
+                            setIsConfigured(false)
+                            setConfigPhoneNumberId("")
+                            setConfigWabaId("")
+                            toast.success("Configuration supprimée")
+                          } catch (error) {
+                            toast.error(handleApiError(error).message)
+                          }
+                        }}
+                      >
+                        Supprimer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </div>
         ) : (
@@ -577,15 +639,15 @@ export default function WhatsAppConfigPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Supprimer ce compte ?</AlertDialogTitle>
+                          <AlertDialogTitle>Supprimer complètement cette session ?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Le compte &quot;{account.business_name}&quot; sera définitivement supprimé.
+                            Le compte &quot;{account.business_name}&quot; sera déconnecté de Meta et ses identifiants, son token et sa configuration locale seront effacés. Cette action est irréversible.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Annuler</AlertDialogCancel>
                           <AlertDialogAction onClick={() => handleDeleteAccount(account.id)}>
-                            Supprimer
+                            Supprimer la session
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -637,6 +699,42 @@ export default function WhatsAppConfigPage() {
                     Activation en cours...
                   </div>
                 )}
+
+                <div className="pt-2 border-t border-border/40">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-full text-[13px] text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
+                        disabled={isDeletingAccount}
+                      >
+                        {isDeletingAccount
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Trash2 className="h-3.5 w-3.5" />
+                        }
+                        Supprimer ce compte
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer complètement cette session ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Le compte &quot;{selectedAccount.business_name}&quot; sera déconnecté de Meta et ses identifiants, son token et sa configuration locale seront effacés. Cette action est irréversible.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => handleDeleteFromDialog(selectedAccount)}
+                        >
+                          Supprimer la session
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </>
           )}

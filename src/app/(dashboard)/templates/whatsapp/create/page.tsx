@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -181,6 +182,7 @@ export default function WhatsAppTemplateCreatePage() {
   const [buttons, setButtons] = useState<
     Array<{ type: ButtonType; text: string; url?: string; phone_number?: string }>
   >([])
+  const [trackingEnabled, setTrackingEnabled] = useState(false)
   const bodyVariableIndexes = useMemo(() => extractBodyVariableIndexes(templateBody), [templateBody])
 
   const resetCreateForm = () => {
@@ -203,6 +205,7 @@ export default function WhatsAppTemplateCreatePage() {
     setFooterText("")
     setIncludeButtons(false)
     setButtons([])
+    setTrackingEnabled(false)
   }
 
   const handleHeaderMediaUpload = useCallback(async (file: File) => {
@@ -485,6 +488,10 @@ export default function WhatsAppTemplateCreatePage() {
             language,
             category: templateCategory,
             components,
+            tracking_enabled: trackingEnabled,
+            tracking_destination_url: trackingEnabled
+              ? buttons.find((button) => button.type === "URL")?.url?.trim()
+              : undefined,
           })
 
       if (result.success) {
@@ -914,6 +921,22 @@ export default function WhatsAppTemplateCreatePage() {
                               )
                             }
                           />
+                          {index === buttons.findIndex((button) => button.type === "URL") && (
+                            <div className="flex items-start justify-between gap-4 rounded-lg bg-muted/40 p-3">
+                              <div className="space-y-1">
+                                <Label htmlFor="template-click-tracking">Suivre les clics</Label>
+                                <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
+                                  Identifiez les contacts ayant cliqué. Le lien passera brièvement par Nodes Flow avant la redirection.
+                                </p>
+                              </div>
+                              <Switch
+                                id="template-click-tracking"
+                                checked={trackingEnabled}
+                                onCheckedChange={setTrackingEnabled}
+                                aria-label="Activer le suivi individuel des clics"
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
                       {btn.type === "PHONE_NUMBER" && (

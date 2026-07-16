@@ -4,12 +4,25 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { whatsappService, handleApiError } from "@/services"
-import type { WhatsAppTemplate } from "@/types"
-import { WhatsAppTemplateCard } from "@/components/whatsapp/whatsapp-template-card"
+import type { TemplateAnalytics, WhatsAppTemplate } from "@/types"
 import { useOrganizationStore } from "@/stores"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -25,6 +38,10 @@ import {
   AlertTriangle,
   Settings,
   Loader2,
+  BarChart3,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
 } from "lucide-react"
 
 export default function WhatsAppTemplatesPage() {
@@ -38,6 +55,9 @@ export default function WhatsAppTemplatesPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [filterCategory, setFilterCategory] = useState<string>("all")
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null)
+  const [analyticsTemplate, setAnalyticsTemplate] = useState<WhatsAppTemplate | null>(null)
+  const [templateAnalytics, setTemplateAnalytics] = useState<TemplateAnalytics | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const hasProcessedRedirectFeedback = useRef(false)
 
   useEffect(() => {
@@ -130,6 +150,26 @@ export default function WhatsAppTemplatesPage() {
       toast.error(apiError.message)
     } finally {
       setDeletingTemplateId(null)
+    }
+  }
+
+  const handleViewAnalytics = async (template: WhatsAppTemplate) => {
+    setAnalyticsTemplate(template)
+    setTemplateAnalytics(null)
+    setAnalyticsLoading(true)
+    const endDate = new Date()
+    const startDate = new Date("2000-01-01T00:00:00Z")
+    try {
+      const analytics = await whatsappService.getTemplateAnalyticsDetail(
+        template.id,
+        startDate.toISOString().slice(0, 10),
+        endDate.toISOString().slice(0, 10)
+      )
+      setTemplateAnalytics(analytics)
+    } catch (error) {
+      toast.error(handleApiError(error).message)
+    } finally {
+      setAnalyticsLoading(false)
     }
   }
 
@@ -276,7 +316,7 @@ export default function WhatsAppTemplatesPage() {
         </span>
       </div>
 
-      {/* Templates Grid */}
+      {/* Templates table */}
       {filteredTemplates.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
@@ -300,30 +340,114 @@ export default function WhatsAppTemplatesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredTemplates.map((template) => (
-            <WhatsAppTemplateCard
-              key={template.id}
-              template={template}
-              actions={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs h-7"
-                  onClick={() => handleDeleteTemplate(template)}
-                  disabled={deletingTemplateId === template.id}
-                >
-                  {deletingTemplateId === template.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    "Supprimer"
-                  )}
-                </Button>
-              }
-            />
-          ))}
+        <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nom</TableHead>
+                <TableHead className="hidden sm:table-cell">Langue</TableHead>
+                <TableHead className="hidden md:table-cell">Catégorie</TableHead>
+                <TableHead className="hidden sm:table-cell">Statut</TableHead>
+                <TableHead className="text-right"><span className="sm:hidden">Options</span><span className="hidden sm:inline">Actions</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredTemplates.map((template) => (
+                <TableRow key={template.id}>
+                  <TableCell className="max-w-[220px] font-medium">
+                    <span className="block truncate">{template.name}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground sm:hidden">
+                      {template.language} · {template.category.toLowerCase()}
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden text-muted-foreground sm:table-cell">{template.language}</TableCell>
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
+                    {{ UTILITY: "Utilitaire", MARKETING: "Marketing", AUTHENTICATION: "Authentification" }[template.category]}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    <span className={
+                      template.status === "APPROVED"
+                        ? "font-medium text-emerald-500"
+                        : template.status === "REJECTED"
+                          ? "font-medium text-destructive"
+                          : "text-muted-foreground"
+                    }>
+                      {{ APPROVED: "Approuvé", REJECTED: "Rejeté", PENDING: "En attente" }[template.status]}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="hidden items-center justify-end gap-1 sm:flex">
+                      <Button variant="ghost" size="icon" className="h-9 w-9" asChild title="Modifier">
+                        <Link href={`/templates/whatsapp/create?id=${template.id}`}><Pencil className="h-4 w-4" /><span className="sr-only">Modifier</span></Link>
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-9 w-9" title="Statistiques" onClick={() => handleViewAnalytics(template)}>
+                        <BarChart3 className="h-4 w-4" /><span className="sr-only">Statistiques</span>
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive" title="Supprimer" onClick={() => handleDeleteTemplate(template)} disabled={deletingTemplateId === template.id}>
+                        {deletingTemplateId === template.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}<span className="sr-only">Supprimer</span>
+                      </Button>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild className="sm:hidden">
+                        <Button variant="outline" size="sm">Options<MoreHorizontal className="ml-2 h-4 w-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild><Link href={`/templates/whatsapp/create?id=${template.id}`}><Pencil className="mr-2 h-4 w-4" />Modifier</Link></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewAnalytics(template)}><BarChart3 className="mr-2 h-4 w-4" />Statistiques</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteTemplate(template)}><Trash2 className="mr-2 h-4 w-4" />Supprimer</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
+
+      <Dialog open={Boolean(analyticsTemplate)} onOpenChange={(open) => !open && setAnalyticsTemplate(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Statistiques du template</DialogTitle>
+            <DialogDescription>{analyticsTemplate?.name} · Toutes les campagnes</DialogDescription>
+          </DialogHeader>
+          {analyticsLoading ? (
+            <div className="grid grid-cols-2 gap-3" aria-label="Chargement des statistiques">
+              {[0, 1, 2, 3].map((item) => <Skeleton key={item} className="h-20 rounded-lg" />)}
+            </div>
+          ) : templateAnalytics ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[["Envoyés", templateAnalytics.total_sent], ["Livrés", templateAnalytics.delivered], ["Lus", templateAnalytics.read], ["Échecs", templateAnalytics.failed]].map(([label, value]) => (
+                  <div key={String(label)} className="rounded-lg bg-muted/40 p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold tabular-nums">{value}</p></div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Campagnes utilisant ce template</p>
+                {templateAnalytics.campaigns?.length ? (
+                  <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Campagne</TableHead><TableHead className="text-right">Envoyés</TableHead><TableHead className="hidden text-right sm:table-cell">Livrés</TableHead><TableHead className="hidden text-right sm:table-cell">Lus</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {templateAnalytics.campaigns.map((campaign) => (
+                          <TableRow key={campaign.id}>
+                            <TableCell><p className="max-w-[240px] truncate font-medium">{campaign.campaign_name || "Campagne sans nom"}</p><p className="text-xs text-muted-foreground">{new Date(campaign.created_at).toLocaleDateString("fr-FR")}</p></TableCell>
+                            <TableCell className="text-right tabular-nums">{campaign.sent_count}</TableCell>
+                            <TableCell className="hidden text-right tabular-nums sm:table-cell">{campaign.delivered_count}</TableCell>
+                            <TableCell className="hidden text-right tabular-nums sm:table-cell">{campaign.read_count}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : <p className="rounded-lg bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">Aucune campagne n’a encore utilisé ce template sur cette période.</p>}
+              </div>
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">Aucune statistique disponible.</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

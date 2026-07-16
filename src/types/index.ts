@@ -528,6 +528,9 @@ export interface WhatsAppTemplate {
   status: WhatsAppTemplateStatus
   category: WhatsAppTemplateCategory
   components: WhatsAppTemplateComponent[]
+  tracking_enabled?: boolean
+  tracking_destination_url?: string | null
+  tracking_button_index?: number | null
   created_at?: string
   updated_at?: string
 }
@@ -769,6 +772,18 @@ export interface TemplateAnalytics {
   failed: number
   delivery_rate: number
   read_rate: number
+  campaign_count?: number
+  campaigns?: Array<{
+    id: string
+    campaign_name: string | null
+    status: string
+    total_recipients: number
+    sent_count: number
+    delivered_count: number
+    read_count: number
+    failed_count: number
+    created_at: string
+  }>
 }
 
 export interface DeliveryRatePoint {

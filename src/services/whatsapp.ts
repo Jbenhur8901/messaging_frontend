@@ -123,6 +123,16 @@ const normalizeWhatsAppBroadcast = (broadcast: any): WhatsAppBroadcast => {
 export const whatsappService = {
   // ============ Configuration ============
 
+  async getOnboardingRequests(): Promise<{ requests: Array<{ id: string; status: "pending" | "approved" | "rejected" }> }> {
+    const { data } = await api.get("/v1/whatsapp/onboarding-requests")
+    return data
+  },
+
+  async createOnboardingRequest(payload: { phone_number: string; legal_business_name: string; display_name: string; business_vertical: string; website_url?: string }) {
+    const { data } = await apiJson.post("/v1/whatsapp/onboarding-requests", payload)
+    return data
+  },
+
   async getEmbeddedSignupConfig(): Promise<{
     enabled: boolean
     app_id: string | null
@@ -232,12 +242,18 @@ export const whatsappService = {
     language: string
     category: string
     components: unknown[]
+    tracking_enabled?: boolean
+    tracking_destination_url?: string
   }): Promise<{ success: boolean; template: WhatsAppTemplate }> {
     const formData = new URLSearchParams()
     formData.append("name", template.name)
     formData.append("language", template.language)
     formData.append("category", template.category)
     formData.append("components", JSON.stringify(template.components))
+    formData.append("tracking_enabled", String(template.tracking_enabled ?? false))
+    if (template.tracking_destination_url) {
+      formData.append("tracking_destination_url", template.tracking_destination_url)
+    }
 
     const { data } = await api.post<{ success: boolean; template: WhatsAppTemplate }>(
       "/v1/whatsapp/templates",
@@ -717,10 +733,43 @@ export const whatsappService = {
     startDate: string,
     endDate: string
   ): Promise<TemplateAnalytics> {
-    const { data } = await api.get<TemplateAnalytics>(
+    const { data } = await api.get<TemplateAnalytics | {
+      totals: Record<string, number>
+      campaigns?: TemplateAnalytics["campaigns"]
+    }>(
       `/v1/whatsapp/analytics/templates/${templateId}`,
       { params: { start_date: startDate, end_date: endDate } }
     )
+    if ("totals" in data) {
+      return {
+        template_id: templateId,
+        template_name: "",
+        total_sent: data.totals.sent_count || 0,
+        delivered: data.totals.delivered_count || 0,
+        read: data.totals.read_count || 0,
+        failed: data.totals.failed_count || 0,
+        delivery_rate: data.totals.delivery_rate || 0,
+        read_rate: data.totals.read_rate || 0,
+        campaign_count: data.totals.campaign_count || 0,
+        campaigns: data.campaigns || [],
+      }
+    }
+    return data
+  },
+
+  async getTemplateClickContacts(templateId: string): Promise<{
+    contacts: Array<{
+      contact_id: string | null
+      phone_number: string
+      click_count: number
+      last_clicked_at: string
+      button_index: number
+      contact: { id: string; first_name: string | null; last_name: string | null; phone_number: string } | null
+    }>
+    unique_clicks: number
+    total_clicks: number
+  }> {
+    const { data } = await api.get(`/v1/whatsapp/templates/${templateId}/click-contacts`)
     return data
   },
 
@@ -891,8 +940,20 @@ export const whatsappService = {
     return data
   },
 
-  async deleteAccount(id: string): Promise<{ success: boolean }> {
-    const { data } = await api.delete<{ success: boolean }>(`/v1/whatsapp/accounts/${id}`)
+  async deleteAccount(id: string): Promise<{
+    success: boolean
+    session_deleted: boolean
+    meta_disconnected: boolean
+    warning?: string | null
+    message: string
+  }> {
+    const { data } = await api.delete<{
+      success: boolean
+      session_deleted: boolean
+      meta_disconnected: boolean
+      warning?: string | null
+      message: string
+    }>(`/v1/whatsapp/accounts/${id}`)
     return data
   },
 
