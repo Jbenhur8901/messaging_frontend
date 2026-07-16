@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { WhatsAppConversationMessage } from "@/types"
 import type { Conversation } from "@/types/conversations"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { MessageBubble } from "./message-bubble"
@@ -138,6 +137,12 @@ export function ConversationThread({
   onMarkRead,
 }: ConversationThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -150,27 +155,38 @@ export function ConversationThread({
   }
 
   const dateGroups = groupMessagesByDate(messages)
+  const serviceWindowExpiresAt = conversation.serviceWindowExpiresAt
+  const serviceWindowOpen = Boolean(
+    serviceWindowExpiresAt && new Date(serviceWindowExpiresAt).getTime() > now
+  )
+  const blockedReason = conversation.status !== "open"
+    ? "Cette conversation est fermée. Rouvrez-la avant d'envoyer un message."
+    : serviceWindowOpen
+      ? null
+      : serviceWindowExpiresAt
+        ? "La fenêtre WhatsApp de 24 h est expirée. Envoyez un template pour relancer la conversation."
+        : "Le client n'a pas encore interagi. Envoyez un template et attendez sa réponse pour écrire librement."
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col bg-background/20">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border/40 px-4 py-3 shrink-0">
+      <div className="flex h-[72px] shrink-0 items-center gap-3 border-b border-border/60 bg-card/90 px-4">
         {onBack && (
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         )}
-        <Avatar className="h-8 w-8">
-          <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-medium">
+        <Avatar className="h-10 w-10">
+          <AvatarFallback className="bg-muted text-xs font-semibold text-foreground">
             {conversation.contactName ? getInitials(conversation) : <Phone className="h-3.5 w-3.5" />}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-[13px] truncate">
+          <div className="truncate text-sm font-semibold">
             {getContactName(conversation)}
           </div>
           {conversation.contactName && (
-            <div className="text-[11px] text-muted-foreground truncate">
+            <div className="mt-0.5 truncate text-xs text-muted-foreground">
               {formatPhoneNumber(conversation.phoneNumber)}
             </div>
           )}
@@ -178,42 +194,40 @@ export function ConversationThread({
         <div className="flex items-center gap-1.5 shrink-0">
           <ConversationStatusBadge status={conversation.status} />
           {conversation.unreadCount > 0 && onMarkRead && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onMarkRead} title="Marquer lu">
-              <CheckCheck className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onMarkRead} title="Marquer comme lue">
+              <CheckCheck className="h-4 w-4" />
             </Button>
           )}
           {conversation.status === "open" && onClose && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} title="Fermer">
-              <XCircle className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onClose} title="Fermer">
+              <XCircle className="h-4 w-4" />
             </Button>
           )}
           {conversation.status === "open" && onArchive && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onArchive} title="Archiver">
-              <Archive className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onArchive} title="Archiver">
+              <Archive className="h-4 w-4" />
             </Button>
           )}
           {(conversation.status === "closed" || conversation.status === "archived") && onReopen && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onReopen} title="Rouvrir">
-              <RotateCcw className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onReopen} title="Rouvrir">
+              <RotateCcw className="h-4 w-4" />
             </Button>
           )}
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth" ref={scrollRef}>
+      <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[radial-gradient(circle_at_20%_10%,rgba(255,204,0,0.025),transparent_26%),radial-gradient(circle_at_80%_72%,rgba(255,255,255,0.018),transparent_24%)] scroll-smooth" ref={scrollRef}>
         {isLoading ? (
           <ThreadSkeleton />
         ) : (
-          <div className="p-4 space-y-4">
+          <div className="mx-auto max-w-4xl space-y-4 px-4 py-5 sm:px-8">
             {Array.from(dateGroups.entries()).map(([dateKey, dayMessages]) => (
               <div key={dateKey}>
-                <div className="flex items-center gap-3 my-3">
-                  <div className="flex-1 h-px bg-border/40" />
-                  <span className="text-[10px] text-muted-foreground/70 font-medium uppercase tracking-wider">
+                <div className="my-4 flex items-center justify-center">
+                  <span className="rounded-md bg-muted/70 px-3 py-1 text-[10px] font-medium text-muted-foreground shadow-sm">
                     {formatDateSeparator(getMessageTimestamp(dayMessages[0]))}
                   </span>
-                  <div className="flex-1 h-px bg-border/40" />
                 </div>
                 <div className="space-y-2">
                   {dayMessages.map((msg) => (
@@ -231,7 +245,7 @@ export function ConversationThread({
         onSendText={onSendText}
         onSendMedia={onSendMedia}
         isSending={isSending}
-        conversationClosed={conversation.status !== "open"}
+        blockedReason={blockedReason}
       />
     </div>
   )

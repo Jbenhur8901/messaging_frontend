@@ -1,14 +1,13 @@
 "use client"
 
 import type { WhatsAppConversationMessage } from "@/types"
-import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Check, CheckCheck, Clock, AlertCircle, FileText, Music, MapPin, SmilePlus, MessageCircle, Bot } from "lucide-react"
+import { Check, CheckCheck, Clock, AlertCircle, FileText, Music, MapPin, SmilePlus, MessageCircle, Bot, ExternalLink, PhoneCall } from "lucide-react"
 import { cn, formatDate } from "@/lib/utils"
 
 interface MessageBubbleProps {
@@ -41,7 +40,8 @@ function formatTime(date: string): string {
 
 /** Resolve message type from API fields: message_type (inbound) or content_type (outbound) */
 function resolveType(message: WhatsAppConversationMessage): string {
-  return message.type || message.message_type || message.content_type || "unknown"
+  const type = message.type || message.message_type || message.content_type || "unknown"
+  return type === "voice" ? "audio" : type
 }
 
 /** Extract text content - API sends text_body */
@@ -61,6 +61,72 @@ function getTimestamp(message: WhatsAppConversationMessage): string {
   return message.created_at || message.timestamp || message.received_at || message.meta_timestamp || ""
 }
 
+function getTemplateDefinition(message: WhatsAppConversationMessage): Array<Record<string, any>> {
+  const relation = message.whatsapp_templates
+  if (Array.isArray(relation)) return relation[0]?.components || []
+  return relation?.components || []
+}
+
+function getSentComponent(message: WhatsAppConversationMessage, type: string): Record<string, any> | undefined {
+  return (message.template_components || []).find(
+    (component) => String(component.type || "").toLowerCase() === type.toLowerCase()
+  )
+}
+
+function resolveTemplateText(text: string, parameters: Array<Record<string, any>> = []): string {
+  return text.replace(/\{\{\s*(\d+)\s*\}\}/g, (_, rawIndex: string) => {
+    const parameter = parameters[Number(rawIndex) - 1]
+    return parameter?.text || parameter?.payload || `{{${rawIndex}}}`
+  })
+}
+
+function TemplateMessageContent({ message }: { message: WhatsAppConversationMessage }) {
+  const definition = getTemplateDefinition(message)
+  const header = definition.find((component) => component.type === "HEADER")
+  const body = definition.find((component) => component.type === "BODY")
+  const footer = definition.find((component) => component.type === "FOOTER")
+  const buttons = definition.find((component) => component.type === "BUTTONS")?.buttons || []
+  const sentHeader = getSentComponent(message, "header")
+  const sentBody = getSentComponent(message, "body")
+
+  if (!definition.length) {
+    return (
+      <div className="space-y-1">
+        <p className="whitespace-pre-wrap text-sm">{getMessageText(message) || "Message template envoyé"}</p>
+        <p className="text-[10px] text-muted-foreground">{message.template_name}</p>
+      </div>
+    )
+  }
+
+  const mediaParameter = sentHeader?.parameters?.[0]
+  const imageUrl = mediaParameter?.image?.link
+  const videoUrl = mediaParameter?.video?.link
+
+  return (
+    <div className="min-w-[220px] max-w-[340px] overflow-hidden">
+      {imageUrl && <img src={imageUrl} alt="Image du template" loading="lazy" className="mb-2 max-h-52 w-full rounded-lg object-cover" />}
+      {videoUrl && <video src={videoUrl} controls playsInline preload="metadata" className="mb-2 max-h-52 w-full rounded-lg bg-black" aria-label="Vidéo du template" />}
+      {header?.format === "DOCUMENT" && (
+        <div className="mb-2 flex items-center gap-2 rounded-lg bg-background/35 p-2.5"><FileText className="h-5 w-5" /><span className="truncate text-xs">{mediaParameter?.document?.filename || "Document"}</span></div>
+      )}
+      {header?.text && <p className="mb-1 text-sm font-semibold">{resolveTemplateText(header.text, sentHeader?.parameters)}</p>}
+      {body?.text && <p className="whitespace-pre-wrap text-sm leading-relaxed">{resolveTemplateText(body.text, sentBody?.parameters)}</p>}
+      {footer?.text && <p className="mt-1.5 text-[11px] text-muted-foreground">{footer.text}</p>}
+      {buttons.length > 0 && (
+        <div className="mt-2 divide-y divide-border/40 border-t border-border/40">
+          {buttons.map((button: Record<string, any>, index: number) => (
+            <div key={`${button.type}-${index}`} className="flex min-h-8 items-center justify-center gap-1.5 px-2 text-xs font-medium text-primary">
+              {button.type === "URL" && <ExternalLink className="h-3.5 w-3.5" />}
+              {button.type === "PHONE_NUMBER" && <PhoneCall className="h-3.5 w-3.5" />}
+              <span>{button.text || "Action"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MessageContent({ message }: { message: WhatsAppConversationMessage }) {
   const msgType = resolveType(message)
   const text = getMessageText(message)
@@ -70,33 +136,17 @@ function MessageContent({ message }: { message: WhatsAppConversationMessage }) {
       return <p className="text-sm whitespace-pre-wrap break-words">{text || "(vide)"}</p>
 
     case "template":
-      return (
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-foreground">
-              {message.template_name || "Template"}
-            </span>
-            {message.template_language && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                {message.template_language}
-              </Badge>
-            )}
-          </div>
-          {text && <p className="text-sm whitespace-pre-wrap mt-1">{text}</p>}
-        </div>
-      )
+      return <TemplateMessageContent message={message} />
 
     case "image": {
       const imgUrl = message.media_url
       const imgCaption = message.caption || message.media_caption || text
       return (
-        <div className="space-y-1">
+        <div className="space-y-2">
           {imgUrl && (
-            <img
-              src={imgUrl}
-              alt={imgCaption || "Image"}
-              className="max-w-[240px] rounded-md"
-            />
+            <a href={imgUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg bg-black/20">
+              <img src={imgUrl} alt={imgCaption || "Image reçue"} loading="lazy" className="max-h-[360px] w-full min-w-[220px] object-contain" />
+            </a>
           )}
           {imgCaption && <p className="text-sm whitespace-pre-wrap">{imgCaption}</p>}
           {!imgUrl && !imgCaption && <p className="text-sm text-muted-foreground italic">Image</p>}
@@ -105,12 +155,13 @@ function MessageContent({ message }: { message: WhatsAppConversationMessage }) {
     }
 
     case "video": {
+      const videoUrl = message.media_url
       const vidCaption = message.caption || message.media_caption || text
       return (
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Video</span>
-          </div>
+        <div className="space-y-2">
+          {videoUrl ? (
+            <video src={videoUrl} controls playsInline preload="metadata" className="max-h-[360px] w-full min-w-[240px] rounded-lg bg-black" aria-label={vidCaption || "Vidéo reçue"} />
+          ) : <p className="text-sm italic text-muted-foreground">Vidéo indisponible</p>}
           {vidCaption && <p className="text-sm whitespace-pre-wrap">{vidCaption}</p>}
         </div>
       )
@@ -132,20 +183,22 @@ function MessageContent({ message }: { message: WhatsAppConversationMessage }) {
       )
     }
 
-    case "audio":
-      return (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Music className="h-4 w-4 shrink-0" />
-          <span>Message audio</span>
+    case "audio": {
+      const audioUrl = message.media_url
+      return audioUrl ? (
+        <div className="flex min-w-[260px] items-center gap-2 py-1">
+          <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <audio src={audioUrl} controls preload="metadata" className="h-9 w-full min-w-0" aria-label="Message audio" />
         </div>
+      ) : (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground"><Music className="h-4 w-4" /><span>Audio indisponible</span></div>
       )
+    }
 
     case "sticker":
-      return (
-        <div className="text-sm text-muted-foreground italic">
-          Sticker
-        </div>
-      )
+      return message.media_url
+        ? <img src={message.media_url} alt="Sticker" loading="lazy" className="h-36 w-36 object-contain" />
+        : <div className="text-sm italic text-muted-foreground">Sticker indisponible</div>
 
     case "reaction": {
       const emoji = message.reaction_emoji || text
@@ -227,12 +280,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           <TooltipTrigger asChild>
             <div
               className={cn(
-                "max-w-[75%] rounded-lg px-3 py-2 border",
+                "max-w-[82%] rounded-xl px-3 py-2 shadow-sm sm:max-w-[68%]",
                 isAiReply
-                  ? "rounded-br-sm bg-violet-500/10 border-violet-500/20"
+                  ? "rounded-br-sm bg-violet-500/10 ring-1 ring-inset ring-violet-500/20"
                   : isOutbound
-                    ? "rounded-br-sm bg-primary/10 border-primary/20"
-                    : "rounded-bl-sm bg-muted border-border"
+                    ? "rounded-br-sm bg-primary/[0.11] ring-1 ring-inset ring-primary/15"
+                    : "rounded-bl-sm bg-[#1a1a1a]"
               )}
             >
               {isAiReply && (
@@ -248,7 +301,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 "flex items-center gap-1.5 mt-1",
                 isOutbound ? "justify-end" : "justify-start"
               )}>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground/80">
                   {ts ? formatTime(ts) : ""}
                 </span>
                 {isOutbound && <StatusIcon status={status} />}

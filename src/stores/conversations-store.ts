@@ -70,13 +70,28 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
   },
 
   selectConversation: async (conversationId: string) => {
-    set({
+    const shouldMarkAsRead = (get().conversations.find((c) => c.id === conversationId)?.unreadCount || 0) > 0
+
+    set((state) => ({
       selectedConversationId: conversationId,
       isLoadingThread: true,
-    })
+      conversations: state.conversations.map((conversation) =>
+        conversation.id === conversationId
+          ? { ...conversation, unreadCount: 0 }
+          : conversation
+      ),
+    }))
 
     try {
-      const result = await conversationsService.getConversationMessages(conversationId)
+      const messagesPromise = conversationsService.getConversationMessages(conversationId)
+      const readPromise = shouldMarkAsRead
+        ? conversationsService.markAsRead(conversationId)
+        : Promise.resolve({ success: true })
+      const [result, readResult] = await Promise.all([messagesPromise, readPromise])
+
+      if (!readResult.success) {
+        void get().fetchConversations()
+      }
       set({ selectedMessages: sortMessages(result.messages || []), isLoadingThread: false })
     } catch (error) {
       set({
@@ -105,7 +120,20 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
       const result = await conversationsService.getConversations(
         conversationStatus === "all" ? undefined : conversationStatus
       )
-      const conversations = (result.conversations || []).map(mapInboxToConversation)
+      let conversations = (result.conversations || []).map(mapInboxToConversation)
+
+      const selectedHasUnread = selectedConversationId
+        ? (conversations.find((conversation) => conversation.id === selectedConversationId)?.unreadCount || 0) > 0
+        : false
+
+      if (selectedConversationId && selectedHasUnread) {
+        conversations = conversations.map((conversation) =>
+          conversation.id === selectedConversationId
+            ? { ...conversation, unreadCount: 0 }
+            : conversation
+        )
+        void conversationsService.markAsRead(selectedConversationId)
+      }
       set({ conversations })
 
       if (selectedConversationId) {
@@ -168,15 +196,20 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
 
     set({ isSending: true })
     try {
-      await whatsappService.sendTextMessage({ to: conversation.phoneNumber, text })
+      const sendResult = await whatsappService.sendTextMessage({ to: conversation.phoneNumber, text })
+      if (!sendResult.success) {
+        throw new Error(sendResult.error || "Le message n'a pas pu être envoyé")
+      }
       // Refresh messages after sending
       const result = await conversationsService.getConversationMessages(selectedConversationId)
       set({ selectedMessages: sortMessages(result.messages || []), isSending: false })
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Erreur d'envoi"
       set({
-        error: error instanceof Error ? error.message : "Erreur d'envoi",
+        error: message,
         isSending: false,
       })
+      throw new Error(message)
     }
   },
 
@@ -188,14 +221,19 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
 
     set({ isSending: true })
     try {
-      await whatsappService.sendMediaMessage({ to: conversation.phoneNumber, ...payload })
+      const sendResult = await whatsappService.sendMediaMessage({ to: conversation.phoneNumber, ...payload })
+      if (!sendResult.success) {
+        throw new Error(sendResult.error || "Le média n'a pas pu être envoyé")
+      }
       const result = await conversationsService.getConversationMessages(selectedConversationId)
       set({ selectedMessages: sortMessages(result.messages || []), isSending: false })
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Erreur d'envoi"
       set({
-        error: error instanceof Error ? error.message : "Erreur d'envoi",
+        error: message,
         isSending: false,
       })
+      throw new Error(message)
     }
   },
 

@@ -7,13 +7,20 @@ import { whatsappService, handleApiError } from "@/services"
 import { uploadMediaToBackend } from "@/lib/media-upload"
 import { useOrganizationStore } from "@/stores"
 import { cn } from "@/lib/utils"
-import { WhatsAppTemplatePreview } from "@/components/whatsapp/whatsapp-template-card"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Select,
   SelectContent,
@@ -22,13 +29,23 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { Loader2, ArrowLeft, Plus, X, FileText as FileTextIcon, Image as ImageIcon } from "lucide-react"
+import { Loader2, ArrowLeft, Plus, X, FileText as FileTextIcon, Image as ImageIcon, ChevronLeft, MoreVertical, Video, Phone, ExternalLink, MessageCircle, CheckCheck, Wifi, Battery, Link2, Reply, PhoneCall, Trash2 } from "lucide-react"
 
 type ButtonType = "QUICK_REPLY" | "URL" | "PHONE_NUMBER"
 type HeaderFormat = "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT"
 
 const BODY_VARIABLE_REGEX = /\{\{\s*(\d+)\s*\}\}/g
 const ACCEPTED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+
+const normalizeTemplateName = (value: string): string =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "")
+    .replace(/_+/g, "_")
+    .replace(/^[^a-z]+/, "")
 
 const extractBodyVariableIndexes = (value: string): number[] => {
   const found = new Set<number>()
@@ -536,12 +553,18 @@ export default function WhatsAppTemplateCreatePage() {
     return buttons.length < 3
   }
 
-  const addButton = () => {
+  const addButton = (type: ButtonType) => {
     if (!canAddButton()) {
       toast.error("Limite de boutons atteinte")
       return
     }
-    setButtons((prev) => [...prev, { type: "QUICK_REPLY", text: "" }])
+    const mode = getButtonMode()
+    if ((mode === "QUICK_REPLY" && type !== "QUICK_REPLY") || (mode === "CTA" && type === "QUICK_REPLY")) {
+      toast.error("Meta ne permet pas de mélanger réponses rapides et boutons d’action")
+      return
+    }
+    setIncludeButtons(true)
+    setButtons((prev) => [...prev, { type, text: "" }])
   }
 
   const addBodyVariable = () => {
@@ -551,67 +574,10 @@ export default function WhatsAppTemplateCreatePage() {
     setBodyVariableExamples((prev) => ({ ...prev, [String(next)]: prev[String(next)] || "" }))
   }
 
-  const draftTemplate = useMemo(() => {
-    return {
-      id: "draft",
-      name: templateName || "Nouveau template",
-      language: templateLanguage || "fr",
-      status: "PENDING" as const,
-      category: templateCategory as "UTILITY" | "MARKETING" | "AUTHENTICATION",
-      components: [
-        ...(includeHeader
-          ? [
-            headerFormat === "TEXT"
-              ? { type: "HEADER" as const, format: "TEXT" as const, text: headerText.trim() || "Titre" }
-              : {
-                  type: "HEADER" as const,
-                  format: headerFormat,
-                  example: {
-                    header_handle: [headerMediaPreviewUrl || headerMediaUrl || "https://example.com/media"],
-                    ...(headerFormat === "DOCUMENT" && headerMediaFilename
-                      ? { filename: headerMediaFilename }
-                      : {}),
-                  },
-                },
-            ]
-          : []),
-        ...(templateBody.trim() ? [{ type: "BODY" as const, text: templateBody.trim() }] : []),
-        ...(includeFooter && footerText.trim()
-          ? [{ type: "FOOTER" as const, text: footerText.trim() }]
-          : []),
-        ...(includeButtons && buttons.length > 0
-          ? [
-              {
-                type: "BUTTONS" as const,
-                buttons: buttons.map((btn) => ({
-                  type: btn.type,
-                  text: btn.text || "Bouton",
-                  ...(btn.type === "URL" ? { url: btn.url || "https://example.com" } : {}),
-                  ...(btn.type === "PHONE_NUMBER"
-                    ? { phone_number: btn.phone_number || "+33123456789" }
-                    : {}),
-                })),
-              },
-            ]
-          : []),
-      ],
-    }
-  }, [
-    buttons,
-    footerText,
-    headerFormat,
-    headerMediaFilename,
-    headerMediaPreviewUrl,
-    headerMediaUrl,
-    headerText,
-    includeButtons,
-    includeFooter,
-    includeHeader,
-    templateBody,
-    templateCategory,
-    templateLanguage,
-    templateName,
-  ])
+  const previewBody = useMemo(
+    () => templateBody.replace(BODY_VARIABLE_REGEX, (_, index: string) => bodyVariableExamples[index]?.trim() || `{{${index}}}`),
+    [bodyVariableExamples, templateBody]
+  )
 
   return (
     <div className={isEmbedded ? "p-6" : "space-y-6"}>
@@ -649,87 +615,62 @@ export default function WhatsAppTemplateCreatePage() {
                 Chargement du template...
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="templateName">Nom du template</Label>
-              <Input
-                id="templateName"
-                placeholder="order_confirmation"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-              />
+            <div className="space-y-4 rounded-xl bg-muted/30 p-4">
+              <div><p className="text-sm font-medium">Configuration</p><p className="mt-1 text-xs text-muted-foreground">Définissez l’identité utilisée par Meta pour classer et valider le template.</p></div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="templateName">Nom du template</Label>
+                  <Input
+                    id="templateName"
+                    placeholder="confirmation_commande"
+                    value={templateName}
+                    onChange={(event) => setTemplateName(normalizeTemplateName(event.target.value))}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                  <p className="text-[11px] text-muted-foreground">Minuscules, chiffres et underscores uniquement.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Catégorie</Label>
+                  <Select value={templateCategory} onValueChange={setTemplateCategory}>
+                    <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                    <SelectContent><SelectItem value="UTILITY">Utilitaire</SelectItem><SelectItem value="MARKETING">Marketing</SelectItem><SelectItem value="AUTHENTICATION">Authentification</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="templateLanguage">Langue</Label>
+                  <Select value={templateLanguage} onValueChange={setTemplateLanguage}>
+                    <SelectTrigger id="templateLanguage"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="fr">Français</SelectItem><SelectItem value="en_US">Anglais (US)</SelectItem><SelectItem value="en">Anglais</SelectItem><SelectItem value="es">Espagnol</SelectItem><SelectItem value="pt_BR">Portugais (Brésil)</SelectItem></SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="templateLanguage">Langue</Label>
-              <Input
-                id="templateLanguage"
-                placeholder="fr"
-                value={templateLanguage}
-                onChange={(e) => setTemplateLanguage(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Catégorie</Label>
-              <Select value={templateCategory} onValueChange={setTemplateCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Catégorie" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="UTILITY">Utilitaire</SelectItem>
-                  <SelectItem value="MARKETING">Marketing</SelectItem>
-                  <SelectItem value="AUTHENTICATION">Authentification</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Header (optionnel)</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setIncludeHeader((prev) => !prev)
-                    if (includeHeader) {
-                      setHeaderText("")
-                      setHeaderFormat("TEXT")
-                      handleHeaderMediaRemove()
+            <div className="space-y-4 rounded-xl bg-muted/30 p-4">
+              <div><p className="text-sm font-medium">Contenu</p><p className="mt-1 text-xs text-muted-foreground">Composez le message tel qu’il sera soumis à Meta.</p></div>
+              <div className="space-y-2">
+                <Label>En-tête <span className="font-normal text-muted-foreground">· Facultatif</span></Label>
+                <Select
+                  value={includeHeader ? headerFormat : "NONE"}
+                  onValueChange={(value) => {
+                    if (value === "NONE") {
+                      setIncludeHeader(false); setHeaderText(""); setHeaderFormat("TEXT"); handleHeaderMediaRemove()
+                    } else {
+                      setIncludeHeader(true); setHeaderFormat(value as HeaderFormat)
+                      if (value === "TEXT") handleHeaderMediaRemove(); else setHeaderText("")
                     }
                   }}
                 >
-                  {includeHeader ? "Retirer" : "Ajouter"}
-                </Button>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="NONE">Aucun</SelectItem><SelectItem value="TEXT">Texte</SelectItem><SelectItem value="IMAGE">Image</SelectItem><SelectItem value="DOCUMENT">Document</SelectItem></SelectContent>
+                </Select>
               </div>
               {includeHeader && (
                 <div className="space-y-3">
-                  <div className="flex gap-2">
-                    {(["TEXT", "IMAGE", "DOCUMENT"] as const).map((fmt) => (
-                      <Button
-                        key={fmt}
-                        type="button"
-                        variant={headerFormat === fmt ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setHeaderFormat(fmt)
-                          if (fmt === "TEXT") {
-                            handleHeaderMediaRemove()
-                          } else {
-                            setHeaderText("")
-                          }
-                        }}
-                      >
-                        {fmt === "TEXT" ? "Texte" : fmt === "IMAGE" ? "Image" : "Document"}
-                      </Button>
-                    ))}
-                  </div>
                   {headerFormat === "TEXT" ? (
-                    <Input
-                      placeholder="Texte du header"
-                      value={headerText}
-                      onChange={(e) => setHeaderText(e.target.value)}
-                    />
+                    <Input placeholder="Texte de l’en-tête" value={headerText} onChange={(event) => setHeaderText(event.target.value)} />
                   ) : (
                     <HeaderMediaUpload
                       format={headerFormat as "IMAGE" | "DOCUMENT"}
@@ -743,11 +684,10 @@ export default function WhatsAppTemplateCreatePage() {
                   )}
                 </div>
               )}
-            </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="templateBody">Contenu (BODY)</Label>
+                <div><Label htmlFor="templateBody">Corps du message</Label><p className="mt-0.5 text-[11px] text-muted-foreground">Obligatoire</p></div>
                 <Button type="button" variant="outline" size="sm" onClick={addBodyVariable}>
                   <Plus className="mr-2 h-3.5 w-3.5" />
                   Ajouter une variable
@@ -808,169 +748,111 @@ export default function WhatsAppTemplateCreatePage() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="footerText">Footer (optionnel)</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIncludeFooter((prev) => !prev)}
-                >
-                  {includeFooter ? "Retirer" : "Ajouter"}
-                </Button>
-              </div>
-              {includeFooter && (
-                <Input
-                  id="footerText"
-                  placeholder="Mentions ou infos complémentaires"
-                  value={footerText}
-                  onChange={(e) => setFooterText(e.target.value)}
-                />
-              )}
+              <Label htmlFor="footerText">Pied de page <span className="font-normal text-muted-foreground">· Facultatif</span></Label>
+              <Input
+                id="footerText"
+                placeholder="Ex. Répondez STOP pour vous désabonner"
+                value={footerText}
+                onChange={(event) => {
+                  setFooterText(event.target.value)
+                  setIncludeFooter(event.target.value.length > 0)
+                }}
+                maxLength={60}
+              />
+              <p className="text-right text-[11px] tabular-nums text-muted-foreground">{footerText.length}/60</p>
+            </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Boutons (optionnels)</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setIncludeButtons((prev) => !prev)
-                    if (includeButtons) setButtons([])
-                  }}
-                >
-                  {includeButtons ? "Retirer" : "Ajouter"}
-                </Button>
+            <div className="space-y-4 rounded-xl bg-muted/30 p-4">
+              <div>
+                <Label className="text-sm">Boutons du message</Label>
+                <p className="mt-1 text-xs text-muted-foreground">Choisissez soit des réponses rapides, soit des boutons d’action conformément aux règles Meta.</p>
               </div>
 
-              {includeButtons && (
-                <div className="space-y-3">
+              {buttons.length > 0 && (
+                <div className="divide-y divide-border/60 rounded-lg bg-muted/25">
                   {buttons.map((btn, index) => (
-                    <div key={index} className="rounded-lg border border-border/40 p-3 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Bouton {index + 1}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setButtons((prev) => prev.filter((_, i) => i !== index))
-                          }
-                        >
-                          Supprimer
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Type</Label>
+                    <div key={index} className="space-y-3 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background text-muted-foreground">
+                          {btn.type === "URL" ? <Link2 className="h-4 w-4" /> : btn.type === "PHONE_NUMBER" ? <PhoneCall className="h-4 w-4" /> : <Reply className="h-4 w-4" />}
+                        </div>
                         <Select
                           value={btn.type}
-                          onValueChange={(value) =>
-                            setButtons((prev) =>
-                              prev.map((b, i) =>
-                                i === index
-                                  ? {
-                                      ...b,
-                                      type: value as ButtonType,
-                                      url: value === "URL" ? b.url : undefined,
-                                      phone_number: value === "PHONE_NUMBER" ? b.phone_number : undefined,
-                                    }
-                                  : b
-                              )
-                            )
-                          }
+                          onValueChange={(value) => setButtons((prev) => prev.map((button, buttonIndex) => buttonIndex === index ? { ...button, type: value as ButtonType, url: value === "URL" ? button.url : undefined, phone_number: value === "PHONE_NUMBER" ? button.phone_number : undefined } : button))}
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Type" />
-                          </SelectTrigger>
+                          <SelectTrigger className="h-9 w-[170px]"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {getButtonModeExcluding(index) !== "CTA" && (
-                              <SelectItem value="QUICK_REPLY">Quick reply</SelectItem>
-                            )}
-                            {getButtonModeExcluding(index) !== "QUICK_REPLY" && (
-                              <SelectItem value="URL">Lien URL</SelectItem>
-                            )}
-                            {getButtonModeExcluding(index) !== "QUICK_REPLY" && (
-                              <SelectItem value="PHONE_NUMBER">Numéro</SelectItem>
-                            )}
+                            {getButtonModeExcluding(index) !== "CTA" && <SelectItem value="QUICK_REPLY">Réponse rapide</SelectItem>}
+                            {getButtonModeExcluding(index) !== "QUICK_REPLY" && <SelectItem value="URL">Lien URL</SelectItem>}
+                            {getButtonModeExcluding(index) !== "QUICK_REPLY" && <SelectItem value="PHONE_NUMBER">Appeler</SelectItem>}
                           </SelectContent>
                         </Select>
+                        <span className="text-xs text-muted-foreground">Bouton {index + 1}</span>
+                        <Button type="button" variant="ghost" size="icon" className="ml-auto h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => setButtons((prev) => prev.filter((_, buttonIndex) => buttonIndex !== index))}>
+                          <Trash2 className="h-4 w-4" /><span className="sr-only">Supprimer le bouton</span>
+                        </Button>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Texte</Label>
-                        <Input
-                          placeholder="Ex: Suivre ma commande"
-                          value={btn.text}
-                          onChange={(e) =>
-                            setButtons((prev) =>
-                              prev.map((b, i) => (i === index ? { ...b, text: e.target.value } : b))
-                            )
-                          }
-                        />
-                      </div>
-                      {btn.type === "URL" && (
-                        <div className="space-y-2">
-                          <Label>URL</Label>
-                          <Input
-                            placeholder="https://example.com"
-                            value={btn.url || ""}
-                            onChange={(e) =>
-                              setButtons((prev) =>
-                                prev.map((b, i) => (i === index ? { ...b, url: e.target.value } : b))
-                              )
-                            }
-                          />
-                          {index === buttons.findIndex((button) => button.type === "URL") && (
-                            <div className="flex items-start justify-between gap-4 rounded-lg bg-muted/40 p-3">
-                              <div className="space-y-1">
-                                <Label htmlFor="template-click-tracking">Suivre les clics</Label>
-                                <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-                                  Identifiez les contacts ayant cliqué. Le lien passera brièvement par Nodes Flow avant la redirection.
-                                </p>
-                              </div>
-                              <Switch
-                                id="template-click-tracking"
-                                checked={trackingEnabled}
-                                onCheckedChange={setTrackingEnabled}
-                                aria-label="Activer le suivi individuel des clics"
-                              />
-                            </div>
-                          )}
+
+                      <div className={cn("grid gap-3", btn.type === "QUICK_REPLY" ? "grid-cols-1" : "sm:grid-cols-2")}>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Libellé</Label>
+                          <Input placeholder={btn.type === "QUICK_REPLY" ? "Ex. Oui, confirmer" : "Ex. Voir l’offre"} value={btn.text} onChange={(event) => setButtons((prev) => prev.map((button, buttonIndex) => buttonIndex === index ? { ...button, text: event.target.value } : button))} />
                         </div>
-                      )}
-                      {btn.type === "PHONE_NUMBER" && (
-                        <div className="space-y-2">
-                          <Label>Numéro</Label>
-                          <Input
-                            placeholder="+33123456789"
-                            value={btn.phone_number || ""}
-                            onChange={(e) =>
-                              setButtons((prev) =>
-                                prev.map((b, i) =>
-                                  i === index ? { ...b, phone_number: e.target.value } : b
-                                )
-                              )
-                            }
-                          />
+                        {btn.type === "URL" && (
+                          <div className="space-y-1.5"><Label className="text-xs">Destination</Label><Input type="url" placeholder="https://example.com" value={btn.url || ""} onChange={(event) => setButtons((prev) => prev.map((button, buttonIndex) => buttonIndex === index ? { ...button, url: event.target.value } : button))} /></div>
+                        )}
+                        {btn.type === "PHONE_NUMBER" && (
+                          <div className="space-y-1.5"><Label className="text-xs">Numéro</Label><Input type="tel" placeholder="+242 06 000 00 00" value={btn.phone_number || ""} onChange={(event) => setButtons((prev) => prev.map((button, buttonIndex) => buttonIndex === index ? { ...button, phone_number: event.target.value } : button))} /></div>
+                        )}
+                      </div>
+
+                      {btn.type === "URL" && index === buttons.findIndex((button) => button.type === "URL") && (
+                        <div className="flex items-center justify-between gap-4 rounded-lg bg-background/70 px-3 py-2.5">
+                          <div><Label htmlFor="template-click-tracking" className="text-xs">Suivre les clics</Label><p className="mt-0.5 text-[11px] text-muted-foreground">Associer chaque clic au contact avant la redirection.</p></div>
+                          <Switch id="template-click-tracking" checked={trackingEnabled} onCheckedChange={setTrackingEnabled} aria-label="Activer le suivi individuel des clics" />
                         </div>
                       )}
                     </div>
                   ))}
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addButton}
-                    disabled={!canAddButton()}
-                  >
-                    Ajouter un bouton
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Quick replies: max 3. Boutons URL/Téléphone: max 2 et non mélangeables avec Quick replies.
-                  </p>
                 </div>
               )}
+
+              <div className="flex flex-col gap-3 rounded-lg bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">
+                    {getButtonMode() === "QUICK_REPLY" ? "Réponses rapides" : getButtonMode() === "CTA" ? "Appels à l’action" : "Aucun bouton ajouté"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {getButtonMode() === "QUICK_REPLY"
+                      ? `${buttons.length}/3 réponses rapides`
+                      : getButtonMode() === "CTA"
+                        ? `${buttons.length}/2 boutons d’action`
+                        : "Meta autorise une seule famille de boutons par template."}
+                  </p>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" disabled={!canAddButton()}>
+                      <Plus className="mr-2 h-3.5 w-3.5" />Ajouter un bouton
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel>Réponses rapides</DropdownMenuLabel>
+                    <DropdownMenuItem disabled={getButtonMode() === "CTA"} onClick={() => addButton("QUICK_REPLY")}>
+                      <Reply className="mr-2 h-4 w-4" />Réponse personnalisée
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Appels à l’action</DropdownMenuLabel>
+                    <DropdownMenuItem disabled={getButtonMode() === "QUICK_REPLY"} onClick={() => addButton("URL")}>
+                      <Link2 className="mr-2 h-4 w-4" />Consulter un site web
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled={getButtonMode() === "QUICK_REPLY"} onClick={() => addButton("PHONE_NUMBER")}>
+                      <PhoneCall className="mr-2 h-4 w-4" />Appeler un numéro
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-2">
@@ -995,31 +877,78 @@ export default function WhatsAppTemplateCreatePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-fit lg:sticky lg:top-6">
           <CardHeader>
             <CardTitle>Aperçu mobile</CardTitle>
-            <CardDescription>Prévisualisation en temps réel.</CardDescription>
+            <CardDescription>Rendu indicatif dans une conversation WhatsApp.</CardDescription>
           </CardHeader>
-          <CardContent>
-            {templateBody.trim() ? (
-              <div className="mx-auto w-full max-w-[320px] rounded-[36px] border border-border/40 bg-gradient-to-b from-muted/60 to-background p-4">
-                <div className="mx-auto mb-3 h-1.5 w-16 rounded-full bg-muted-foreground/30" />
-                <div className="rounded-xl border border-border/40 bg-background p-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-emerald-500/20" />
-                    <div>
-                      <p className="text-xs font-semibold">WhatsApp Business</p>
-                      <p className="text-[10px] text-muted-foreground">Aperçu</p>
-                    </div>
-                  </div>
-                  <WhatsAppTemplatePreview template={draftTemplate} />
+          <CardContent className="pb-6">
+            <div className="mx-auto w-full max-w-[326px] rounded-[42px] bg-[#050505] p-[7px] shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
+              <div className="relative min-h-[620px] overflow-hidden rounded-[36px] bg-[#0b141a] text-white">
+                <div className="relative flex h-11 items-center justify-between px-5 text-[11px] font-semibold">
+                  <span>9:41</span>
+                  <div className="absolute left-1/2 top-2 h-[26px] w-[88px] -translate-x-1/2 rounded-full bg-black" />
+                  <div className="flex items-center gap-1.5"><Wifi className="h-3.5 w-3.5" /><Battery className="h-4 w-4" /></div>
                 </div>
+
+                <div className="flex h-14 items-center gap-2 bg-[#202c33] px-2">
+                  <ChevronLeft className="h-5 w-5 text-[#00a884]" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2a3942]">
+                    <MessageCircle className="h-5 w-5 text-[#00a884]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold">{currentOrganization?.name || "Votre entreprise"}</p>
+                    <p className="text-[10px] text-[#aebac1]">compte professionnel</p>
+                  </div>
+                  <Video className="h-[18px] w-[18px] text-[#aebac1]" />
+                  <Phone className="h-[17px] w-[17px] text-[#aebac1]" />
+                  <MoreVertical className="h-[18px] w-[18px] text-[#aebac1]" />
+                </div>
+
+                <div className="relative flex min-h-[510px] flex-col px-3 py-5">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.025),transparent_28%),radial-gradient(circle_at_80%_62%,rgba(255,255,255,0.02),transparent_24%)]" />
+                  <div className="relative mx-auto mb-5 rounded-md bg-[#182229] px-3 py-1 text-[9px] font-medium text-[#8696a0]">AUJOURD’HUI</div>
+
+                  {templateBody.trim() ? (
+                    <div className="relative ml-auto w-[88%] overflow-hidden rounded-lg rounded-tr-sm bg-[#005c4b] shadow-sm">
+                      {includeHeader && headerFormat === "IMAGE" && (headerMediaPreviewUrl || headerMediaUrl) && (
+                        <img src={headerMediaPreviewUrl || headerMediaUrl} alt="Aperçu du média" className="h-36 w-full object-cover" />
+                      )}
+                      {includeHeader && headerFormat === "DOCUMENT" && (
+                        <div className="m-1.5 flex items-center gap-3 rounded-md bg-[#0b6655] p-3">
+                          <FileTextIcon className="h-8 w-8 text-white/85" />
+                          <span className="truncate text-xs">{headerMediaFilename || "Document.pdf"}</span>
+                        </div>
+                      )}
+                      <div className="px-2.5 pb-1.5 pt-2">
+                        {includeHeader && headerFormat === "TEXT" && headerText.trim() && <p className="mb-1 text-[13px] font-semibold leading-5">{headerText}</p>}
+                        <p className="whitespace-pre-wrap text-[12px] leading-[1.45] text-[#e9edef]">{previewBody}</p>
+                        {includeFooter && footerText.trim() && <p className="mt-1.5 text-[10px] text-[#aebac1]">{footerText}</p>}
+                        <div className="mt-0.5 flex items-center justify-end gap-1 text-[9px] text-[#aebac1]">
+                          <span>09:41</span><CheckCheck className="h-3.5 w-3.5 text-[#53bdeb]" />
+                        </div>
+                      </div>
+                      {includeButtons && buttons.length > 0 && (
+                        <div className="divide-y divide-white/10 border-t border-white/10">
+                          {buttons.map((button, index) => (
+                            <div key={`${button.type}-${index}`} className="flex min-h-9 items-center justify-center gap-2 px-2 text-center text-[11px] font-medium text-[#53bdeb]">
+                              {button.type === "URL" && <ExternalLink className="h-3.5 w-3.5" />}
+                              {button.type === "PHONE_NUMBER" && <Phone className="h-3.5 w-3.5" />}
+                              {button.type === "QUICK_REPLY" && <MessageCircle className="h-3.5 w-3.5" />}
+                              <span className="truncate">{button.text || "Bouton"}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative my-auto rounded-lg bg-[#182229] px-4 py-5 text-center text-xs leading-relaxed text-[#8696a0]">Saisissez le contenu du message pour voir son rendu ici.</div>
+                  )}
+                </div>
+
+                <div className="absolute bottom-2 left-1/2 h-1 w-28 -translate-x-1/2 rounded-full bg-white/80" />
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Ajoutez un contenu BODY pour afficher l&apos;aperçu.
-              </p>
-            )}
+            </div>
           </CardContent>
         </Card>
       </div>

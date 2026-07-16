@@ -16,6 +16,8 @@ export interface Conversation {
   assignedTo?: string | null
   unreadCount: number
   lastMessageAt: string | null
+  lastMessageDirection: string | null
+  serviceWindowExpiresAt: string | null
   lastActivityAt: string
   messageCount: number
   createdAt: string
@@ -37,6 +39,8 @@ export function mapInboxToConversation(inbox: WhatsAppInboxConversation): Conver
     assignedTo: inbox.assigned_to,
     unreadCount: inbox.unread_count ?? 0,
     lastMessageAt: inbox.last_message_at,
+    lastMessageDirection: inbox.last_message_direction || null,
+    serviceWindowExpiresAt: inbox.customer_service_window_expires_at || null,
     lastActivityAt: inbox.last_message_at || inbox.updated_at,
     messageCount: 0,
     createdAt: inbox.created_at,

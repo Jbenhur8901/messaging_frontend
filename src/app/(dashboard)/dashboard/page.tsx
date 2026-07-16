@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { dashboardService, whatsappService } from "@/services"
-import { aiCreditsService } from "@/services/ai-credits"
 import type { DailyStat, Broadcast, WhatsAppStats } from "@/types"
 import { formatNumber } from "@/lib/utils"
 import { authStorage } from "@/lib/auth-storage"
@@ -19,7 +18,6 @@ import {
   Plus,
   Eye,
   BarChart3,
-  Bot,
 } from "lucide-react"
 import {
   AreaChart,
@@ -69,7 +67,6 @@ export default function DashboardPage() {
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
   const [recentBroadcasts, setRecentBroadcasts] = useState<Broadcast[]>([])
   const [whatsappStats, setWhatsappStats] = useState<WhatsAppStats | null>(null)
-  const [aiBalance, setAiBalance] = useState<number | null>(null)
   const [campaignStats, setCampaignStats] = useState({ deliveryRate: 0, readRate: 0, read: 0 })
   const [isLoading, setIsLoading] = useState(true)
 
@@ -84,15 +81,12 @@ export default function DashboardPage() {
       try {
         await fetchBalance().catch(() => undefined)
 
-        const [statsData, broadcastsData, waBroadcastsData, fallbackStats, aiBalanceRes] = await Promise.all([
+        const [statsData, broadcastsData, waBroadcastsData, fallbackStats] = await Promise.all([
           dashboardService.getDailyStats(PERIOD_DAYS, "whatsapp").catch(() => null),
           dashboardService.getRecentBroadcasts(100, "whatsapp").catch(() => ({ broadcasts: [] })),
           whatsappService.getBroadcasts(100).catch(() => ({ broadcasts: [] })),
           whatsappService.getStats(PERIOD_DAYS).catch(() => null),
-          aiCreditsService.getBalance().catch(() => null),
         ])
-
-        if (aiBalanceRes) setAiBalance(aiBalanceRes.balance)
 
         // Prefer dashboard endpoint; fall back to whatsapp broadcasts if empty
         let allBroadcasts = broadcastsData.broadcasts || []
@@ -244,26 +238,6 @@ export default function DashboardPage() {
                     <span className="text-[10px] text-muted-foreground font-medium">~{formatNumber(Math.floor(walletTotal / 6))} util</span>
                     <span className="text-[10px] text-muted-foreground font-medium">~{formatNumber(Math.floor(walletTotal / 6))} auth</span>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/whatsapp/ai-credits" className="block" style={stagger(3)}>
-            <Card className="group h-full border-transparent hover:border-border/50 transition-all duration-300 cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[12px] font-medium text-muted-foreground">Crédits IA</span>
-                  <Bot className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary/60 transition-colors duration-300" />
-                </div>
-                <p className="text-xl font-semibold tracking-tight">
-                  {aiBalance !== null ? formatNumber(aiBalance) : "—"}
-                  <span className="text-[11px] font-normal text-muted-foreground ml-1">crédits</span>
-                </p>
-                {aiBalance !== null && (
-                  <p className="text-[10px] text-muted-foreground mt-1.5">
-                    ~{formatNumber(Math.floor(aiBalance / 3))} msgs IA
-                  </p>
                 )}
               </CardContent>
             </Card>

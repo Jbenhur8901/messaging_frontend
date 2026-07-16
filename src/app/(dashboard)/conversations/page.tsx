@@ -86,10 +86,10 @@ export default function ConversationsPage() {
   }, [selectedConversationId, markAsRead])
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden -my-4">
+    <div className="flex h-[calc(100vh-5rem)] min-h-[620px] flex-col overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm">
       {/* Desktop: side by side */}
       <div className="hidden lg:flex flex-1 min-h-0">
-        <div className="w-[360px] border-r border-border/40 shrink-0">
+        <div className="w-[380px] shrink-0 border-r border-border/60 bg-background/40 xl:w-[420px]">
           <ConversationList
             conversations={conversations}
             selectedConversationId={selectedConversationId}

@@ -23,7 +23,7 @@ interface MessageComposerProps {
   }) => Promise<void>
   isSending: boolean
   disabled?: boolean
-  conversationClosed?: boolean
+  blockedReason?: string | null
 }
 
 export function MessageComposer({
@@ -31,7 +31,7 @@ export function MessageComposer({
   onSendMedia,
   isSending,
   disabled,
-  conversationClosed,
+  blockedReason,
 }: MessageComposerProps) {
   const [text, setText] = useState("")
   const [isUploading, setIsUploading] = useState(false)
@@ -41,8 +41,12 @@ export function MessageComposer({
   const handleSend = useCallback(async () => {
     const trimmed = text.trim()
     if (!trimmed || isSending) return
-    setText("")
-    await onSendText(trimmed)
+    try {
+      await onSendText(trimmed)
+      setText("")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Le message n'a pas pu être envoyé")
+    }
   }, [text, isSending, onSendText])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -70,8 +74,8 @@ export function MessageComposer({
         media_id: result.media_id,
         filename: file.name,
       })
-    } catch {
-      toast.error("Erreur lors de l'upload du fichier")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'envoi du fichier")
     } finally {
       setIsUploading(false)
     }
@@ -90,32 +94,32 @@ export function MessageComposer({
     }
   }
 
-  if (conversationClosed) {
+  if (blockedReason) {
     return (
-      <div className="flex items-center gap-2 border-t px-4 py-3 bg-muted/50 shrink-0">
+      <div className="flex shrink-0 items-center gap-2 border-t border-border/60 bg-card px-4 py-4">
         <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
         <span className="text-xs text-muted-foreground flex-1">
-          Fenêtre de 24h expirée. Seuls les templates peuvent être envoyés.
+          {blockedReason}
         </span>
       </div>
     )
   }
 
   return (
-    <div className="border-t px-3 py-2 shrink-0">
+    <div className="shrink-0 border-t border-border/60 bg-card/95 px-3 py-3 sm:px-4">
       <input
         ref={fileInputRef}
         type="file"
         className="hidden"
         onChange={handleFileSelect}
       />
-      <div className="flex items-end gap-2">
+      <div className="mx-auto flex max-w-4xl items-end gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 shrink-0"
+              className="h-10 w-10 shrink-0 rounded-full"
               disabled={disabled || isSending || isUploading}
             >
               <Paperclip className="h-4 w-4" />
@@ -141,15 +145,15 @@ export function MessageComposer({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Tapez un message..."
-          className="min-h-[36px] max-h-[120px] resize-none text-sm"
+          placeholder="Écrire un message"
+          className="min-h-10 max-h-[120px] resize-none rounded-xl border-transparent bg-muted/50 px-4 py-2.5 text-sm focus-visible:border-primary/30"
           rows={1}
           disabled={disabled || isSending || isUploading}
         />
 
         <Button
           size="icon"
-          className="h-9 w-9 shrink-0"
+          className="h-10 w-10 shrink-0 rounded-full"
           onClick={handleSend}
           disabled={!text.trim() || disabled || isSending || isUploading}
         >

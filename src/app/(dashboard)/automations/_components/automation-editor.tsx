@@ -267,7 +267,7 @@ export function AutomationEditor({ initial, onSave }: AutomationEditorProps) {
     () => !!name.trim(),
     () => {
       if (triggerType === "tag_added") return !!triggerConfig.tag_id
-      if (triggerType === "no_reply") return !!(triggerConfig.days_since_last_message)
+      if (triggerType === "no_reply") return Number(triggerConfig.days_since_last_message ?? 0) > 0
       if (triggerType === "scheduled") return !!triggerConfig.cron
       return false
     },
@@ -363,7 +363,11 @@ export function AutomationEditor({ initial, onSave }: AutomationEditorProps) {
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => { setTriggerType(opt.value); setTriggerConfig({}) }}
+                    onClick={() => {
+                      setTriggerType(opt.value)
+                      if (opt.value === "no_reply") setTriggerConfig({ days_since_last_message: 3 })
+                      else setTriggerConfig({})
+                    }}
                     className={`p-4 rounded-2xl border text-left transition-colors ${
                       triggerType === opt.value
                         ? "border-primary bg-primary/5"
@@ -422,14 +426,14 @@ export function AutomationEditor({ initial, onSave }: AutomationEditorProps) {
                       <div className="space-y-1.5">
                         <Label>Segment <span className="text-muted-foreground">(optionnel)</span></Label>
                         <Select
-                          value={segmentId}
-                          onValueChange={setSegmentId}
+                          value={segmentId || "__all__"}
+                          onValueChange={(v) => setSegmentId(v === "__all__" ? "" : v)}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Tous les contacts actifs" />
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Tous les contacts actifs</SelectItem>
+                            <SelectItem value="__all__">Tous les contacts actifs</SelectItem>
                             {segments.map((s) => (
                               <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                             ))}
@@ -453,14 +457,14 @@ export function AutomationEditor({ initial, onSave }: AutomationEditorProps) {
                       <div className="space-y-1.5">
                         <Label>Segment</Label>
                         <Select
-                          value={segmentId}
-                          onValueChange={setSegmentId}
+                          value={segmentId || "__all__"}
+                          onValueChange={(v) => setSegmentId(v === "__all__" ? "" : v)}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Tous les contacts actifs" />
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Tous les contacts actifs</SelectItem>
+                            <SelectItem value="__all__">Tous les contacts actifs</SelectItem>
                             {segments.map((s) => (
                               <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                             ))}

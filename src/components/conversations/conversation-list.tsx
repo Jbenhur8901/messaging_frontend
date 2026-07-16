@@ -4,7 +4,6 @@ import { useMemo } from "react"
 import type { Conversation } from "@/types/conversations"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useDebounce } from "@/hooks"
 import {
@@ -105,29 +104,33 @@ export function ConversationList({
   }, [conversations, debouncedSearch])
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       {/* Search & Filters */}
-      <div className="p-3 space-y-3">
+      <div className="space-y-4 p-4">
+        <div className="flex items-end justify-between gap-3">
+          <div><h1 className="text-lg font-semibold tracking-tight">Conversations</h1><p className="mt-0.5 text-xs text-muted-foreground">{filteredConversations.length} discussion{filteredConversations.length !== 1 ? "s" : ""}</p></div>
+          <span className="text-[11px] text-muted-foreground">Actualisation auto</span>
+        </div>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Rechercher un contact..."
-            className="pl-9 h-8 text-[13px]"
+            placeholder="Rechercher par nom ou numéro"
+            className="h-10 rounded-lg bg-muted/40 pl-10 text-sm"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
 
-        <div className="flex gap-1.5">
+        <div className="flex gap-1 overflow-x-auto">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
               type="button"
               onClick={() => onStatusChange(tab.value)}
-              className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-all ${
+              className={`min-h-8 whitespace-nowrap rounded-lg px-3 text-xs font-medium transition-colors ${
                 conversationStatus === tab.value
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               {tab.label}
@@ -136,7 +139,7 @@ export function ConversationList({
         </div>
       </div>
 
-      <div className="border-t border-border/40" />
+      <div className="border-t border-border/60" />
 
       {/* List */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -145,28 +148,28 @@ export function ConversationList({
         ) : filteredConversations.length === 0 ? (
           <EmptyList hasFilter={!!debouncedSearch || conversationStatus !== "all"} />
         ) : (
-          <div className="p-1.5 space-y-0.5">
+          <div>
             {filteredConversations.map((conversation) => (
               <button
                 key={conversation.id}
                 className={cn(
-                  "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left transition-colors",
+                  "flex min-h-[72px] w-full items-center gap-3 border-b border-border/40 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50",
                   selectedConversationId === conversation.id
-                    ? "bg-primary/5"
-                    : "hover:bg-muted/40"
+                    ? "bg-primary/[0.08]"
+                    : "hover:bg-muted/35"
                 )}
                 onClick={() => onSelect(conversation.id)}
               >
                 <div className="relative">
-                  <Avatar className="h-9 w-9 shrink-0">
-                    <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-medium">
+                  <Avatar className="h-11 w-11 shrink-0">
+                    <AvatarFallback className="bg-muted text-xs font-semibold text-foreground">
                       {conversation.contactName
                         ? getInitials(conversation)
                         : <Phone className="h-3.5 w-3.5" />}
                     </AvatarFallback>
                   </Avatar>
                   {conversation.unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white ring-2 ring-background">
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground ring-2 ring-background">
                       {conversation.unreadCount > 9 ? "9+" : conversation.unreadCount}
                     </span>
                   )}
@@ -175,24 +178,20 @@ export function ConversationList({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className={cn(
-                      "text-[13px] truncate",
+                      "truncate text-sm",
                       conversation.unreadCount > 0 ? "font-semibold" : "font-medium"
                     )}>
                       {getDisplayName(conversation)}
                     </span>
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                    <span className={cn("shrink-0 whitespace-nowrap text-[10px]", conversation.unreadCount > 0 ? "text-primary" : "text-muted-foreground")}>
                       {conversation.lastActivityAt && formatRelativeTime(conversation.lastActivityAt)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-2 mt-0.5">
-                    <span className="text-[11px] text-muted-foreground truncate">
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span className="truncate text-xs text-muted-foreground">
                       {formatPhoneNumber(conversation.phoneNumber)}
                     </span>
-                    {conversation.unreadCount > 0 && (
-                      <Badge className="text-[9px] px-1.5 py-0 h-3.5 bg-blue-500 rounded-full">
-                        {conversation.unreadCount}
-                      </Badge>
-                    )}
+                    <span className="text-[10px] capitalize text-muted-foreground/70">{conversation.status === "open" ? "ouverte" : conversation.status === "closed" ? "fermée" : "archivée"}</span>
                   </div>
                 </div>
               </button>
