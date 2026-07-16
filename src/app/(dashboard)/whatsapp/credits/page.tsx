@@ -144,6 +144,100 @@ export default function WhatsAppCreditsPage() {
   // Active category tab
   const [activeTab, setActiveTab] = useState<CatKey>("marketing")
 
+  // Subscription payment state
+  type BillingPeriod = "monthly" | "annual"
+  const [subBillingPeriod, setSubBillingPeriod] = useState<BillingPeriod>("monthly")
+  const [subDialogOpen, setSubDialogOpen] = useState(false)
+  const [subPaymentTab, setSubPaymentTab] = useState<"mobile_money" | "card">("mobile_money")
+  const [subStep, setSubStep] = useState<"form" | "processing" | "done">("form")
+  const [subIntentId, setSubIntentId] = useState<string | null>(null)
+  const [subPaying, setSubPaying] = useState(false)
+  const [subFirstName, setSubFirstName] = useState("")
+  const [subLastName, setSubLastName] = useState("")
+  const [subPhoneSuffix, setSubPhoneSuffix] = useState("")
+  const [subOperator, setSubOperator] = useState<MobileMoneyOperator>("mtn")
+
+  const SUB_PLANS = {
+    monthly: { amount: 25_000, label: "Mensuel", priceLabel: "25 000 FCFA / mois" },
+    annual:  { amount: 240_000, label: "Annuel",  priceLabel: "240 000 FCFA / an", savings: "Économisez 20%" },
+  } as const
+
+  const closeSubDialog = () => {
+    setSubDialogOpen(false)
+    setSubStep("form")
+    setSubIntentId(null)
+    setSubPaymentTab("mobile_money")
+    setSubFirstName("")
+    setSubLastName("")
+    setSubPhoneSuffix("")
+    setSubOperator("mtn")
+    setSubPaying(false)
+  }
+
+  const handleSubYabetoo = async () => {
+    if (!subFirstName.trim() || !subLastName.trim() || !subPhoneSuffix.trim()) {
+      toast.error("Veuillez remplir prénom, nom et téléphone.")
+      return
+    }
+    setSubPaying(true)
+    setSubStep("processing")
+    setSubIntentId(null)
+    try {
+      const intentRes = await whatsappService.createSubscriptionYabetooIntent(subBillingPeriod)
+      setSubIntentId(intentRes.intentId)
+      const confirmRes = await whatsappService.confirmSubscriptionYabetoo({
+        intent_id: intentRes.intentId,
+        first_name: subFirstName,
+        last_name: subLastName,
+        phone: `${getPhonePrefix(subOperator)}${subPhoneSuffix}`,
+        operator: subOperator,
+      })
+      if (confirmRes.status === "succeeded") {
+        toast.success("Plan Pro activé !")
+        closeSubDialog()
+        router.refresh()
+      } else {
+        setSubStep("done")
+        try {
+          const waitRes = await whatsappService.waitSubscriptionYabetoo(intentRes.intentId)
+          if (waitRes.status === "succeeded" || waitRes.planActivated) {
+            toast.success("Plan Pro activé !")
+            closeSubDialog()
+            router.refresh()
+          } else if (waitRes.status === "failed") {
+            toast.error(waitRes.failureMessage ?? "Paiement échoué. Veuillez réessayer.")
+            setSubIntentId(null)
+            setSubStep("form")
+          }
+        } catch { /* timeout → "en attente" */ }
+      }
+    } catch (error) {
+      toast.error(handleApiError(error).message)
+      setSubIntentId(null)
+      setSubStep("form")
+    } finally {
+      setSubPaying(false)
+    }
+  }
+
+  const handleSubStripe = async () => {
+    try {
+      const origin = window.location.origin
+      const res = await whatsappService.createSubscriptionStripeCheckout(
+        subBillingPeriod,
+        `${origin}/whatsapp/credits/stripe/success?session_id={CHECKOUT_SESSION_ID}&purpose=subscription`,
+        `${origin}/whatsapp/credits/stripe/cancel`
+      )
+      if (res.checkoutUrl) {
+        window.location.href = res.checkoutUrl
+        return
+      }
+      toast.error("Lien de paiement Stripe indisponible.")
+    } catch (error) {
+      toast.error(handleApiError(error).message)
+    }
+  }
+
   // Transaction pagination
   const [txPage, setTxPage] = useState(1)
   const TX_LIMIT = 20
@@ -1124,56 +1218,187 @@ export default function WhatsAppCreditsPage() {
                   <p className="text-2xl font-semibold mt-1 capitalize">{isPro ? "Pro" : "Base"}</p>
                 </div>
                 {isPro ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-[12px] font-semibold text-emerald-400">
-                    Actif
-                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-[12px] font-semibold text-emerald-400">Actif</span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-3 py-1 text-[12px] font-semibold text-muted-foreground">
-                    Gratuit
-                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-3 py-1 text-[12px] font-semibold text-muted-foreground">Gratuit</span>
                 )}
               </div>
-
-              {isPro ? (
-                <div className="border-t border-border/40 px-5 py-4 space-y-1">
+              <div className="border-t border-border/40 px-5 py-4 space-y-2">
+                {isPro ? (
                   <p className="text-sm text-muted-foreground">Votre organisation bénéficie de toutes les fonctionnalités Pro : agents IA, automatisations, segments avancés.</p>
-                </div>
-              ) : (
-                <div className="border-t border-border/40 px-5 py-4 space-y-3">
-                  <p className="text-sm text-muted-foreground">Passez au plan Pro pour débloquer les agents IA, les automatisations et les segments avancés.</p>
+                ) : (
                   <ul className="space-y-2">
-                    {[
-                      "Agents IA (auto-reply intelligent)",
-                      "Automatisations de campagnes",
-                      "Segments de contacts avancés",
-                      "Accès prioritaire aux nouvelles fonctionnalités",
-                    ].map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm text-foreground">
+                    {["Agents IA (auto-reply intelligent)", "Automatisations de campagnes", "Segments de contacts avancés", "Accès prioritaire aux nouvelles fonctionnalités"].map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-sm text-foreground">
                         <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">✓</span>
-                        {feature}
+                        {f}
                       </li>
                     ))}
                   </ul>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
-          {/* CTA */}
+          {/* Tarifs + activation */}
           {!isPro && (
             <div style={stagger(2)}>
-              <div className="rounded-xl border border-primary/20 bg-primary/5 px-5 py-5 space-y-3">
-                <p className="text-[14px] font-semibold text-foreground">Activer le plan Pro</p>
-                <p className="text-sm text-muted-foreground">Contactez notre équipe pour activer votre abonnement Pro. L&apos;activation est manuelle et effectuée sous 24h.</p>
-                <a
-                  href="mailto:contact@nodes-hub.com?subject=Activation%20plan%20Pro&body=Bonjour%2C%20je%20souhaite%20activer%20le%20plan%20Pro%20pour%20mon%20organisation."
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
-                >
-                  Contacter l&apos;équipe
-                </a>
+              {/* Billing period selector */}
+              <div className="flex gap-2 mb-4">
+                {(["monthly", "annual"] as BillingPeriod[]).map((period) => {
+                  const p = SUB_PLANS[period]
+                  return (
+                    <button
+                      key={period}
+                      type="button"
+                      onClick={() => setSubBillingPeriod(period)}
+                      className={`relative flex-1 rounded-xl border px-4 py-4 text-left transition-all ${
+                        subBillingPeriod === period
+                          ? "border-primary/40 bg-primary/5 ring-1 ring-primary/25"
+                          : "border-border/40 bg-card hover:border-border"
+                      }`}
+                    >
+                      {"savings" in p && (
+                        <span className="absolute -top-2.5 right-3 inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
+                          {(p as typeof SUB_PLANS.annual).savings}
+                        </span>
+                      )}
+                      <p className="text-[12px] font-medium text-muted-foreground">{p.label}</p>
+                      <p className="text-[18px] font-bold text-foreground mt-0.5">{formatNumber(p.amount)} <span className="text-[11px] font-normal text-muted-foreground">FCFA</span></p>
+                    </button>
+                  )
+                })}
               </div>
+
+              <Button
+                className="w-full h-10 text-[13px] rounded-xl"
+                onClick={() => setSubDialogOpen(true)}
+              >
+                Activer le plan Pro — {formatNumber(SUB_PLANS[subBillingPeriod].amount)} XAF
+              </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Subscription Payment Dialog ── */}
+      {subDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={closeSubDialog}
+          onKeyDown={(e) => { if (e.key === "Escape") closeSubDialog() }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-[15px] font-semibold">Passer au plan Pro</h3>
+              <button type="button" className="rounded-full p-1.5 text-muted-foreground/60 hover:bg-muted hover:text-muted-foreground transition-colors" onClick={closeSubDialog}>
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Summary */}
+            <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 mb-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[13px] font-semibold text-foreground">Plan Pro — {SUB_PLANS[subBillingPeriod].label}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Agents IA, automatisations, segments avancés</p>
+                </div>
+                <p className="text-[18px] font-bold text-primary">
+                  {formatNumber(SUB_PLANS[subBillingPeriod].amount)} <span className="text-[11px] font-normal">FCFA</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {subStep === "done" ? (
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/60 p-5 text-center space-y-3">
+                  <Clock className="h-8 w-8 text-amber-500 mx-auto" />
+                  <div>
+                    <p className="text-[14px] font-semibold">Paiement en cours de traitement</p>
+                    <p className="text-[12px] text-muted-foreground mt-1">Validez sur votre téléphone. Le plan Pro sera activé automatiquement.</p>
+                    {subIntentId && <p className="text-[11px] text-muted-foreground/60 mt-2 font-mono">Réf : {subIntentId}</p>}
+                  </div>
+                  <Button className="h-9 rounded-lg px-5 text-[13px]" onClick={closeSubDialog}>Fermer</Button>
+                </div>
+              ) : (
+                <>
+                  {/* Payment tabs */}
+                  <div className="flex gap-1.5">
+                    <button type="button" onClick={() => setSubPaymentTab("mobile_money")}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-all ${subPaymentTab === "mobile_money" ? "border-primary/40 bg-primary/10 text-primary" : "border-border/60 bg-card text-muted-foreground hover:bg-muted/30"}`}>
+                      <Wallet className="h-3.5 w-3.5" />Mobile Money
+                    </button>
+                    <button type="button" onClick={() => setSubPaymentTab("card")}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-all ${subPaymentTab === "card" ? "border-primary/40 bg-primary/10 text-primary" : "border-border/60 bg-card text-muted-foreground hover:bg-muted/30"}`}>
+                      <CreditCard className="h-3.5 w-3.5" />Carte bancaire
+                    </button>
+                  </div>
+
+                  {subPaymentTab === "mobile_money" ? (
+                    <div className="rounded-xl border border-border/40 bg-muted/20 p-4 space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-[13px]">Prénom *</Label>
+                          <Input value={subFirstName} onChange={(e) => setSubFirstName(e.target.value)} className="h-9 rounded-lg text-[13px]" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[13px]">Nom *</Label>
+                          <Input value={subLastName} onChange={(e) => setSubLastName(e.target.value)} className="h-9 rounded-lg text-[13px]" />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[13px]">Téléphone *</Label>
+                        <div className="flex h-9 overflow-hidden rounded-lg border border-border bg-card">
+                          <div className="flex items-center justify-center px-3 text-[13px] font-medium text-muted-foreground">{getPhonePrefix(subOperator)}</div>
+                          <div className="w-px bg-border/60" />
+                          <input
+                            value={subPhoneSuffix}
+                            inputMode="numeric"
+                            onChange={(e) => setSubPhoneSuffix(e.currentTarget.value.replace(/\D/g, "").slice(0, getPhoneSuffixMaxDigits(subOperator)))}
+                            placeholder="XXXXXXX"
+                            className="h-full w-full bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[13px]">Opérateur</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(["mtn", "airtel"] as MobileMoneyOperator[]).map((op) => (
+                            <button key={op} type="button"
+                              onClick={() => { setSubOperator(op); setSubPhoneSuffix((v) => v.slice(0, getPhoneSuffixMaxDigits(op))) }}
+                              className={subOperator === op ? "h-9 rounded-lg border border-primary/40 bg-primary/10 text-[13px] font-medium text-primary" : "h-9 rounded-lg border border-border/60 bg-card text-[13px] font-medium text-muted-foreground hover:bg-muted/30"}>
+                              {op === "mtn" ? "MTN MoMo" : "Airtel Money"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-border/40 bg-muted/20 p-4">
+                      <Button variant="outline" className="w-full h-9 rounded-lg text-[13px] gap-2" onClick={handleSubStripe}>
+                        <CreditCard className="h-3.5 w-3.5" />Payer par carte
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button variant="outline" className="h-9 rounded-lg px-4 text-[13px]" onClick={closeSubDialog}>Annuler</Button>
+                    {subPaymentTab === "mobile_money" && (
+                      <Button className="h-9 rounded-lg px-5 text-[13px] gap-2" onClick={handleSubYabetoo} disabled={subPaying}>
+                        {subPaying && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        Payer {formatNumber(SUB_PLANS[subBillingPeriod].amount)} XAF
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
