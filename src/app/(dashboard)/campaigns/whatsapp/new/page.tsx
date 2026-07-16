@@ -692,6 +692,26 @@ export default function NewWhatsAppCampaignPage() {
         }
 
         let recipients = getRecipients()
+
+        // Si contacts pas encore chargés alors que des IDs sont sélectionnés, re-fetch
+        if (recipientMode === "contacts" && recipients.length === 0 && selectedContactIds.length > 0) {
+          try {
+            const allContactsResult = await fetchAllContacts({ forceRefresh: true })
+            setContacts(allContactsResult.contacts)
+            recipients = allContactsResult.contacts
+              .filter((c) => selectedContactIds.includes(c.id))
+              .map((c) => c.phone_number)
+          } catch {
+            // ignore, l'erreur sera levée si recipients reste vide
+          }
+        }
+
+        if (recipients.length === 0) {
+          toast.error("Aucun numéro de téléphone trouvé pour les destinataires sélectionnés")
+          setIsSending(false)
+          return
+        }
+
         if (recipientMode === "tags") {
           if (selectedTagIds.length === 0) {
             toast.error("Veuillez sélectionner au moins un tag")
