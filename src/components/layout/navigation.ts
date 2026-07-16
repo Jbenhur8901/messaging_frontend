@@ -44,7 +44,7 @@ export const navigationSections: NavigationSection[] = [
     icon: MegaphoneSimple,
     items: [
       { name: "Campagnes", href: "/campaigns/whatsapp", icon: PaperPlaneRight },
-      { name: "Automatisations", href: "/automations", icon: Lightning, proOnly: true },
+      // { name: "Automatisations", href: "/automations", icon: Lightning, proOnly: true },
       { name: "Conversations", href: "/conversations", icon: ChatCircleDots },
       { name: "Modèle de message", href: "/templates/whatsapp", icon: Note },
       { name: "Canaux", href: "/whatsapp/config", icon: Sliders },
