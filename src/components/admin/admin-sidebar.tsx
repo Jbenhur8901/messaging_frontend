@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
   CreditCard,
-  Sparkles,
   Building2,
   Shield,
 } from "lucide-react"
@@ -14,7 +13,6 @@ import {
 const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Demandes de crédits", href: "/admin/credit-requests", icon: CreditCard },
-  { name: "Demandes IA", href: "/admin/ai-credit-requests", icon: Sparkles },
   { name: "Organisations", href: "/admin/organizations", icon: Building2 },
 ]
 

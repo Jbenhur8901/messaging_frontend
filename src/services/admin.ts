@@ -7,7 +7,6 @@ import type {
   AdminDashboard,
   CreditRequest,
   CreditRequestStatus,
-  AICreditRequest,
   Organization,
   OrganizationMember,
   Pagination,
@@ -94,47 +93,6 @@ export const adminService = {
     const formData = new URLSearchParams()
     formData.append("note", note)
     const { data } = await adminApi.post(`/v1/admin/credit-requests/${id}/reject`, formData)
-    return data
-  },
-
-  // AI Credit Requests Management
-  async getAICreditRequests(
-    status?: CreditRequestStatus,
-    limit: number = 50,
-    offset: number = 0
-  ): Promise<{ requests: AICreditRequest[]; pagination: Pagination }> {
-    const params = new URLSearchParams()
-    params.append("limit", limit.toString())
-    params.append("offset", offset.toString())
-    if (status) params.append("status_filter", status)
-    const { data } = await adminApi.get(`/v1/admin/ai-credit-requests?${params}`)
-    return data
-  },
-
-  async getAICreditRequest(id: string): Promise<AICreditRequest> {
-    const { data } = await adminApi.get(`/v1/admin/ai-credit-requests/${id}`)
-    return data
-  },
-
-  async approveAICreditRequest(id: string, note?: string): Promise<{
-    success: boolean
-    request_id: string
-    credits_added: number
-    new_balance: number
-  }> {
-    const formData = new URLSearchParams()
-    if (note) formData.append("note", note)
-    const { data } = await adminApi.post(`/v1/admin/ai-credit-requests/${id}/approve`, formData)
-    return data
-  },
-
-  async rejectAICreditRequest(id: string, note: string): Promise<{
-    success: boolean
-    message: string
-  }> {
-    const formData = new URLSearchParams()
-    formData.append("note", note)
-    const { data } = await adminApi.post(`/v1/admin/ai-credit-requests/${id}/reject`, formData)
     return data
   },
 

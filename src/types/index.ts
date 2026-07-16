@@ -412,28 +412,6 @@ export interface CreditRequest {
   created_at: string
 }
 
-// AI Credit Request types
-export interface AICreditRequest {
-  id: string
-  organization_id: string
-  organization_name?: string
-  requested_by: string
-  requester_email?: string
-  requester_name?: string
-  package_code: string
-  package_name?: string
-  credits_amount: number
-  total_price_fcfa: number
-  payment_method: PaymentMethod
-  payment_reference?: string
-  payment_proof_url?: string
-  status: CreditRequestStatus
-  reviewed_by?: string
-  reviewed_at?: string
-  review_note?: string
-  created_at: string
-}
-
 // Admin types
 export type AdminRole = "admin" | "super_admin"
 
@@ -550,6 +528,8 @@ export interface WhatsAppMessage {
   phone_number: string
   template_name?: string
   template_language?: string
+  template_components?: Array<Record<string, unknown>> | null
+  whatsapp_templates?: { components?: Array<Record<string, unknown>> } | Array<{ components?: Array<Record<string, unknown>> }> | null
   status: WhatsAppMessageStatus
   error_message?: string
   sent_at?: string
@@ -617,9 +597,11 @@ export interface WhatsAppBroadcastResult {
 
 export interface WhatsAppMessageResult {
   success: boolean
-  message_id: string
+  message_id: string | null
   status: WhatsAppMessageStatus
-  phone_number: string
+  phone_number?: string
+  error?: string
+  error_code?: string
 }
 
 // === Conversations Inbox ===
@@ -634,6 +616,8 @@ export interface WhatsAppInboxConversation {
   last_message_at: string | null
   last_message_preview?: string | null
   last_message_direction?: string | null
+  customer_service_window_expires_at?: string | null
+  service_window_active?: boolean
   created_at: string
   updated_at: string
   contact_id?: string | null
@@ -665,6 +649,8 @@ export interface WhatsAppConversationMessage {
   // Template
   template_name?: string
   template_language?: string
+  template_components?: Array<Record<string, unknown>> | null
+  whatsapp_templates?: { components?: Array<Record<string, unknown>> } | Array<{ components?: Array<Record<string, unknown>> }> | null
   // Status & timestamps
   status?: WhatsAppMessageStatus
   error_message?: string
