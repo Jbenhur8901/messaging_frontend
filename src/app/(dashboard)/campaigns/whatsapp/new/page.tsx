@@ -706,12 +706,6 @@ export default function NewWhatsAppCampaignPage() {
           }
         }
 
-        if (recipients.length === 0) {
-          toast.error("Aucun numéro de téléphone trouvé pour les destinataires sélectionnés")
-          setIsSending(false)
-          return
-        }
-
         if (recipientMode === "tags") {
           if (selectedTagIds.length === 0) {
             toast.error("Veuillez sélectionner au moins un tag")
@@ -727,6 +721,12 @@ export default function NewWhatsAppCampaignPage() {
             }
           })
           recipients = Array.from(uniqueRecipients.values())
+        }
+
+        if (recipients.length === 0) {
+          toast.error("Aucun numéro de téléphone trouvé pour les destinataires sélectionnés")
+          setIsSending(false)
+          return
         }
 
         const headerMediaComp = buildHeaderMediaComponent()
