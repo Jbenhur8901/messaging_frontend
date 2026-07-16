@@ -1047,11 +1047,19 @@ export const whatsappService = {
   async createYabetooRechargeIntent(
     amount: number,
     walletType: "agent_wallet" | "studio_wallet",
-    description?: string
+    description?: string,
+    purpose?: string,
+    billingPeriod?: string,
   ): Promise<{ intentId: string; clientSecret: string; amount: number; currency: string; creditsToAward: number; status: string }> {
     const { data } = await apiJson.post(
       "/v1/app/whatsapp/credits/recharge/yabetoo/intent",
-      { amount, wallet_type: walletType, description: description ?? "Recharge wallet WhatsApp" }
+      {
+        amount,
+        wallet_type: walletType,
+        description: description ?? "Recharge wallet WhatsApp",
+        ...(purpose ? { purpose } : {}),
+        ...(billingPeriod ? { billing_period: billingPeriod } : {}),
+      }
     )
     const r = data as Record<string, unknown>
     return {
@@ -1122,13 +1130,17 @@ export const whatsappService = {
     amountXaf: number,
     successUrl: string,
     cancelUrl: string,
-    description?: string
+    description?: string,
+    purpose?: string,
+    billingPeriod?: string,
   ): Promise<{ success: boolean; checkoutSessionId: string; checkoutUrl: string; intentId: string; stripeAmount: number; stripeCurrency: string; amountXaf: number; status: string }> {
     const { data } = await apiJson.post("/v1/app/whatsapp/credits/recharge/stripe/checkout", {
       amount_xaf: amountXaf,
       success_url: successUrl,
       cancel_url: cancelUrl,
       description: description ?? "Recharge wallet WhatsApp",
+      ...(purpose ? { purpose } : {}),
+      ...(billingPeriod ? { billing_period: billingPeriod } : {}),
     })
     const r = data as Record<string, unknown>
     return {
@@ -1140,74 +1152,6 @@ export const whatsappService = {
       stripeCurrency: (r.stripe_currency ?? r.stripeCurrency ?? "eur") as string,
       amountXaf: (r.amount_xaf ?? r.amountXaf ?? amountXaf) as number,
       status: (r.status as string) ?? "requires_payment_method",
-    }
-  },
-
-  async createSubscriptionYabetooIntent(
-    billingPeriod: "monthly" | "annual"
-  ): Promise<{ intentId: string; clientSecret: string; amount: number; billingPeriod: string; status: string }> {
-    const { data } = await apiJson.post("/v1/app/subscriptions/yabetoo/intent", {
-      billing_period: billingPeriod,
-    })
-    const r = data as Record<string, unknown>
-    return {
-      intentId: (r.intent_id ?? r.intentId ?? "") as string,
-      clientSecret: (r.client_secret ?? r.clientSecret ?? "") as string,
-      amount: (r.amount_xaf ?? r.amount ?? 0) as number,
-      billingPeriod: (r.billing_period ?? billingPeriod) as string,
-      status: (r.status as string) ?? "pending",
-    }
-  },
-
-  async confirmSubscriptionYabetoo(payload: {
-    intent_id: string
-    first_name: string
-    last_name: string
-    phone: string
-    operator: "mtn" | "airtel"
-    receipt_email?: string
-  }): Promise<{ intentId: string; status: string; planActivated: boolean; failureMessage: string | null }> {
-    const { data } = await apiJson.post("/v1/app/subscriptions/yabetoo/confirm", payload)
-    const r = data as Record<string, unknown>
-    return {
-      intentId: (r.intent_id ?? "") as string,
-      status: (r.status as string) ?? "processing",
-      planActivated: Boolean(r.plan_activated),
-      failureMessage: (r.failure_message ?? null) as string | null,
-    }
-  },
-
-  async waitSubscriptionYabetoo(
-    intentId: string,
-    timeout = 60
-  ): Promise<{ status: string; planActivated: boolean; failureMessage: string | null }> {
-    const { data } = await api.get(`/v1/app/subscriptions/yabetoo/${intentId}/wait`, {
-      params: { timeout },
-      timeout: (timeout + 5) * 1000,
-    })
-    const r = data as Record<string, unknown>
-    return {
-      status: (r.status as string) ?? "processing",
-      planActivated: Boolean(r.plan_activated),
-      failureMessage: (r.failure_message ?? null) as string | null,
-    }
-  },
-
-  async createSubscriptionStripeCheckout(
-    billingPeriod: "monthly" | "annual",
-    successUrl: string,
-    cancelUrl: string
-  ): Promise<{ checkoutUrl: string; intentId: string; amountXaf: number }> {
-    const { data } = await apiJson.post("/v1/app/subscriptions/stripe/checkout", {
-      billing_period: billingPeriod,
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-    })
-    const r = data as Record<string, unknown>
-    return {
-      checkoutUrl: (r.checkout_url ?? r.checkoutUrl ?? r.url ?? "") as string,
-      intentId: (r.intent_id ?? "") as string,
-      amountXaf: (r.amount_xaf ?? 0) as number,
     }
   },
 

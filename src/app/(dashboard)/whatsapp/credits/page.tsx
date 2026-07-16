@@ -158,8 +158,8 @@ export default function WhatsAppCreditsPage() {
   const [subOperator, setSubOperator] = useState<MobileMoneyOperator>("mtn")
 
   const SUB_PLANS = {
-    monthly: { amount: 25_000, label: "Mensuel", priceLabel: "25 000 FCFA / mois" },
-    annual:  { amount: 240_000, label: "Annuel",  priceLabel: "240 000 FCFA / an", savings: "Économisez 20%" },
+    monthly: { amount: 119_400, label: "Mensuel", tagline: "par mois, sans engagement" },
+    annual:  { amount: 1_289_520, label: "Annuel",  tagline: "facturé en une fois", savings: "-10%" },
   } as const
 
   const closeSubDialog = () => {
@@ -182,11 +182,19 @@ export default function WhatsAppCreditsPage() {
     setSubPaying(true)
     setSubStep("processing")
     setSubIntentId(null)
+    const plan = SUB_PLANS[subBillingPeriod]
     try {
-      const intentRes = await whatsappService.createSubscriptionYabetooIntent(subBillingPeriod)
+      const intentRes = await whatsappService.createYabetooRechargeIntent(
+        plan.amount,
+        "agent_wallet",
+        `Abonnement Pro — ${plan.label}`,
+        "subscription",
+        subBillingPeriod,
+      )
       setSubIntentId(intentRes.intentId)
-      const confirmRes = await whatsappService.confirmSubscriptionYabetoo({
+      const confirmRes = await whatsappService.confirmYabetooPayment({
         intent_id: intentRes.intentId,
+        client_secret: intentRes.clientSecret,
         first_name: subFirstName,
         last_name: subLastName,
         phone: `${getPhonePrefix(subOperator)}${subPhoneSuffix}`,
@@ -199,8 +207,8 @@ export default function WhatsAppCreditsPage() {
       } else {
         setSubStep("done")
         try {
-          const waitRes = await whatsappService.waitSubscriptionYabetoo(intentRes.intentId)
-          if (waitRes.status === "succeeded" || waitRes.planActivated) {
+          const waitRes = await whatsappService.waitYabetooPayment(intentRes.intentId)
+          if (waitRes.status === "succeeded") {
             toast.success("Plan Pro activé !")
             closeSubDialog()
             router.refresh()
@@ -221,12 +229,16 @@ export default function WhatsAppCreditsPage() {
   }
 
   const handleSubStripe = async () => {
+    const plan = SUB_PLANS[subBillingPeriod]
     try {
       const origin = window.location.origin
-      const res = await whatsappService.createSubscriptionStripeCheckout(
+      const res = await whatsappService.createStripeCheckout(
+        plan.amount,
+        `${origin}/whatsapp/credits/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
+        `${origin}/whatsapp/credits/stripe/cancel`,
+        `Abonnement Pro — ${plan.label}`,
+        "subscription",
         subBillingPeriod,
-        `${origin}/whatsapp/credits/stripe/success?session_id={CHECKOUT_SESSION_ID}&purpose=subscription`,
-        `${origin}/whatsapp/credits/stripe/cancel`
       )
       if (res.checkoutUrl) {
         window.location.href = res.checkoutUrl
@@ -1206,7 +1218,7 @@ export default function WhatsAppCreditsPage() {
         <div className="space-y-6">
           <div style={stagger(0)}>
             <h1 className="text-xl font-semibold tracking-tight">Abonnement</h1>
-            <p className="text-sm text-muted-foreground mt-1">Gérez votre plan et accédez aux fonctionnalités avancées.</p>
+            <p className="text-sm text-muted-foreground mt-1">Un seul plan, toutes les fonctionnalités avancées.</p>
           </div>
 
           {/* Plan actuel */}
@@ -1215,36 +1227,27 @@ export default function WhatsAppCreditsPage() {
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Plan actuel</p>
-                  <p className="text-2xl font-semibold mt-1 capitalize">{isPro ? "Pro" : "Base"}</p>
+                  <p className="text-2xl font-semibold mt-1">{isPro ? "Pro" : "Base"}</p>
                 </div>
                 {isPro ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-[12px] font-semibold text-emerald-400">Actif</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-[12px] font-semibold text-emerald-600">Actif</span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-3 py-1 text-[12px] font-semibold text-muted-foreground">Gratuit</span>
                 )}
               </div>
-              <div className="border-t border-border/40 px-5 py-4 space-y-2">
-                {isPro ? (
-                  <p className="text-sm text-muted-foreground">Votre organisation bénéficie de toutes les fonctionnalités Pro : agents IA, automatisations, segments avancés.</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {["Agents IA (auto-reply intelligent)", "Automatisations de campagnes", "Segments de contacts avancés", "Accès prioritaire aux nouvelles fonctionnalités"].map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-sm text-foreground">
-                        <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">✓</span>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              {isPro && (
+                <div className="border-t border-border/40 px-5 py-4">
+                  <p className="text-sm text-muted-foreground">Votre organisation bénéficie de toutes les fonctionnalités Pro.</p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Tarifs + activation */}
+          {/* Offre Pro */}
           {!isPro && (
-            <div style={stagger(2)}>
-              {/* Billing period selector */}
-              <div className="flex gap-2 mb-4">
+            <div style={stagger(2)} className="space-y-4">
+              {/* Billing period toggle */}
+              <div className="flex gap-1.5">
                 {(["monthly", "annual"] as BillingPeriod[]).map((period) => {
                   const p = SUB_PLANS[period]
                   return (
@@ -1254,27 +1257,51 @@ export default function WhatsAppCreditsPage() {
                       onClick={() => setSubBillingPeriod(period)}
                       className={`relative flex-1 rounded-xl border px-4 py-4 text-left transition-all ${
                         subBillingPeriod === period
-                          ? "border-primary/40 bg-primary/5 ring-1 ring-primary/25"
-                          : "border-border/40 bg-card hover:border-border"
+                          ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                          : "border-border/40 bg-card hover:border-border/70"
                       }`}
                     >
                       {"savings" in p && (
-                        <span className="absolute -top-2.5 right-3 inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
+                        <span className="absolute -top-2.5 right-3 inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
                           {(p as typeof SUB_PLANS.annual).savings}
                         </span>
                       )}
-                      <p className="text-[12px] font-medium text-muted-foreground">{p.label}</p>
-                      <p className="text-[18px] font-bold text-foreground mt-0.5">{formatNumber(p.amount)} <span className="text-[11px] font-normal text-muted-foreground">FCFA</span></p>
+                      <p className="text-[11px] font-medium text-muted-foreground mb-1">{p.label}</p>
+                      <p className="text-[22px] font-bold text-foreground leading-none">{formatNumber(p.amount)} <span className="text-[13px] font-normal">XAF</span></p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{p.tagline}</p>
                     </button>
                   )
                 })}
               </div>
 
+              {/* Feature list */}
+              <div className="rounded-xl border border-border/40 bg-card px-5 py-4 space-y-3">
+                <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide">Inclus dans le plan Pro</p>
+                <ul className="space-y-2.5">
+                  {[
+                    { label: "Segments de contacts avancés", desc: "Ciblage dynamique par critères" },
+                    { label: "Automatisations de campagnes", desc: "Séquences de messages automatiques" },
+                    { label: "Agents IA (auto-reply)", desc: "Réponses intelligentes en conversations" },
+                    { label: "Génération de devis PDF", desc: "Création et envoi de devis par IA" },
+                  ].map(({ label, desc }) => (
+                    <li key={label} className="flex items-start gap-3">
+                      <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">✓</span>
+                      <div>
+                        <p className="text-[13px] font-medium text-foreground">{label}</p>
+                        <p className="text-[11px] text-muted-foreground">{desc}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
               <Button
-                className="w-full h-10 text-[13px] rounded-xl"
+                className="w-full h-10 text-[13px] rounded-xl font-semibold"
                 onClick={() => setSubDialogOpen(true)}
               >
-                Activer le plan Pro — {formatNumber(SUB_PLANS[subBillingPeriod].amount)} XAF
+                {subBillingPeriod === "annual"
+                  ? `Activer Pro — ${formatNumber(SUB_PLANS.annual.amount)} XAF / an`
+                  : `Activer Pro — ${formatNumber(SUB_PLANS.monthly.amount)} XAF / mois`}
               </Button>
             </div>
           )}
@@ -1306,11 +1333,11 @@ export default function WhatsAppCreditsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[13px] font-semibold text-foreground">Plan Pro — {SUB_PLANS[subBillingPeriod].label}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Agents IA, automatisations, segments avancés</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Segments · Automatisations · Agents IA · PDF</p>
                 </div>
-                <p className="text-[18px] font-bold text-primary">
-                  {formatNumber(SUB_PLANS[subBillingPeriod].amount)} <span className="text-[11px] font-normal">FCFA</span>
-                </p>
+                <div className="text-right">
+                  <p className="text-[18px] font-bold text-primary">{formatNumber(SUB_PLANS[subBillingPeriod].amount)} <span className="text-[12px] font-normal">XAF</span></p>
+                </div>
               </div>
             </div>
 

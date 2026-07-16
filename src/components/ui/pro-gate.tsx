@@ -35,7 +35,7 @@ export function ProGate({ children, feature }: ProGateProps) {
       </div>
       <div className="flex items-center gap-3">
         <Button asChild>
-          <Link href="/organization">Passer à Pro</Link>
+          <Link href="/whatsapp/credits?section=abonnement">Passer à Pro</Link>
         </Button>
         <Button variant="outline" asChild>
           <Link href="/dashboard">Retour au dashboard</Link>
