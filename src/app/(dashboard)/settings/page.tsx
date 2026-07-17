@@ -196,7 +196,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (activeTab === "exportation") {
       const tracked = loadTrackedJobs()
-      void refreshStatuses(tracked)
+      void refreshStatuses(tracked).catch(() => {})
     }
   }, [activeTab, loadTrackedJobs, refreshStatuses])
 
@@ -341,7 +341,7 @@ export default function SettingsPage() {
                 className="h-8 text-[13px] rounded-lg gap-1.5"
                 onClick={() => {
                   const tracked = loadTrackedJobs()
-                  void refreshStatuses(tracked)
+                  void refreshStatuses(tracked).catch(() => {})
                   toast.success("Liste actualisée")
                 }}
                 disabled={isRefreshing}

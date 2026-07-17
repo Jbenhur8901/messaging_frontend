@@ -234,7 +234,7 @@ export default function ContactsPage() {
   }, [searchParams])
 
   useEffect(() => {
-    loadAllContacts()
+    void loadAllContacts()
   }, [currentOrganization?.id])
 
   useEffect(() => {
@@ -259,7 +259,7 @@ export default function ContactsPage() {
       } catch (error) {
       }
     }
-    loadTags()
+    void loadTags()
   }, [])
 
   const handleDelete = async () => {

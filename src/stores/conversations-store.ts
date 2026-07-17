@@ -90,7 +90,7 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
       const [result, readResult] = await Promise.all([messagesPromise, readPromise])
 
       if (!readResult.success) {
-        void get().fetchConversations()
+        void get().fetchConversations().catch(() => {})
       }
       set({ selectedMessages: sortMessages(result.messages || []), isLoadingThread: false })
     } catch (error) {
@@ -111,7 +111,7 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
 
   setConversationStatus: (status: "open" | "closed" | "archived" | "all") => {
     set({ conversationStatus: status })
-    get().fetchConversations(status)
+    void get().fetchConversations(status)
   },
 
   refreshMessages: async () => {
@@ -132,7 +132,7 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
             ? { ...conversation, unreadCount: 0 }
             : conversation
         )
-        void conversationsService.markAsRead(selectedConversationId)
+        void conversationsService.markAsRead(selectedConversationId).catch(() => {})
       }
       set({ conversations })
 

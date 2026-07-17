@@ -122,7 +122,11 @@ export default function OnboardingPage() {
         }
       }
 
-      await fetchOrganizations()
+      try {
+        await fetchOrganizations()
+      } catch {
+        // If org fetch fails, let the page render — orgs may just be empty
+      }
       if (!cancelled) {
         setAuthChecked(true)
       }

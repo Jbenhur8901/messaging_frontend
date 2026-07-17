@@ -174,7 +174,7 @@ export default function CreditsPage() {
   }, [currentOrganization?.id])
 
   useEffect(() => {
-    if (!isLoading) loadRequests()
+    if (!isLoading) void loadRequests()
   }, [requestStatusFilter, currentOrganization?.id])
 
   const handleSubmitRequest = async () => {
@@ -200,7 +200,7 @@ export default function CreditsPage() {
       setRequestAmount("")
       setPaymentReference("")
       setPaymentProof(null)
-      loadRequests()
+      void loadRequests()
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message)

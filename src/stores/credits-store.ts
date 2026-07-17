@@ -42,7 +42,7 @@ export const useCreditsStore = create<CreditsState>((set) => ({
           whatsappService.getWhatsAppBalance().catch(() => null),
         ])
         const walletTotal = wallet
-          ? wallet.marketing.available + wallet.utility.available + wallet.authentication.available + wallet.free.available
+          ? (wallet.marketing?.available ?? 0) + (wallet.utility?.available ?? 0) + (wallet.authentication?.available ?? 0) + (wallet.free?.available ?? 0)
           : 0
         set({ balance, walletBalance: wallet, walletTotal, isLoading: false })
       } catch (error) {
@@ -50,7 +50,6 @@ export const useCreditsStore = create<CreditsState>((set) => ({
           error: error instanceof Error ? error.message : "Erreur de chargement",
           isLoading: false,
         })
-        throw error
       } finally {
         fetchBalancePromise = null
       }
