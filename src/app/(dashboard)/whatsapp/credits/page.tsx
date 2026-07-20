@@ -4,8 +4,11 @@ import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { whatsappService } from "@/services/whatsapp"
 import { handleApiError } from "@/services"
+import { organizationsService } from "@/services/organizations"
 import { useOrganizationStore } from "@/stores"
 import { usePlan } from "@/hooks"
+import { cn } from "@/lib/utils"
+import type { Organization } from "@/types"
 import type {
   WhatsAppCreditBalance,
   WhatsAppCreditPackage,
@@ -25,6 +28,8 @@ import {
   CreditCard,
   XCircle,
   Clock,
+  Check,
+  Sparkles,
 } from "lucide-react"
 
 const stagger = (i: number) => ({
@@ -44,6 +49,28 @@ const formatDate = (iso: string) => {
     minute: "2-digit",
   })
 }
+
+const formatPlanDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+
+const BASE_FEATURES = [
+  "Tableau de bord & statistiques",
+  "Contacts, tags & champs personnalisés",
+  "Campagnes WhatsApp (immédiat & planifié)",
+  "Modèles approuvés Meta",
+  "Boîte de réception (conversations)",
+] as const
+
+const PRO_FEATURES = [
+  { label: "Segments de contacts avancés", desc: "Ciblage dynamique par critères" },
+  { label: "Automatisations de campagnes", desc: "Séquences de messages automatiques" },
+  { label: "Agents IA (auto-reply)", desc: "Réponses intelligentes en conversations" },
+  { label: "Génération de devis PDF", desc: "Création et envoi de devis par IA" },
+] as const
 
 // ── Bouquets ──
 
@@ -108,7 +135,8 @@ export default function WhatsAppCreditsPage() {
   const searchParams = useSearchParams()
   const section = (searchParams.get("section") ?? "whatsapp") as "whatsapp" | "abonnement"
   const { organizations, currentOrganization } = useOrganizationStore()
-  const { isPro } = usePlan()
+  const { isPro, planExpiresAt, planStartedAt, billingPeriod } = usePlan()
+  const [orgDetails, setOrgDetails] = useState<Organization | null>(null)
   const [balance, setBalance] = useState<WhatsAppCreditBalance | null>(null)
   const [transactions, setTransactions] = useState<WhatsAppCreditTransaction[]>([])
   const [packagesByCategory, setPackagesByCategory] = useState<Record<CatKey, PkgItem[]>>(FALLBACK_PACKAGES)
@@ -303,6 +331,19 @@ export default function WhatsAppCreditsPage() {
   useEffect(() => { loadData() }, [loadData])
 
   useEffect(() => {
+    if (section !== "abonnement" || !currentOrganization?.id) return
+
+    let cancelled = false
+    void organizationsService.getOrganization(currentOrganization.id).then((org) => {
+      if (!cancelled) setOrgDetails(org)
+    }).catch(() => {
+      if (!cancelled) setOrgDetails(null)
+    })
+
+    return () => { cancelled = true }
+  }, [section, currentOrganization?.id])
+
+  useEffect(() => {
     if (currentOrganization && userRole && userRole !== "owner") {
       toast.error("La facturation est réservée au propriétaire de l'organisation")
       router.replace("/dashboard")
@@ -491,13 +532,13 @@ export default function WhatsAppCreditsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
       {/* Section selector */}
-      <div className="flex border-b border-border/40">
+      <div className="-mx-4 flex overflow-x-auto border-b border-border/40 px-4 sm:mx-0 sm:px-0">
         <button
           type="button"
           onClick={() => router.push("/whatsapp/credits?section=whatsapp")}
-          className={`px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors -mb-px ${
+          className={`shrink-0 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors -mb-px ${
             section === "whatsapp"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -508,7 +549,7 @@ export default function WhatsAppCreditsPage() {
         <button
           type="button"
           onClick={() => router.push("/whatsapp/credits?section=abonnement")}
-          className={`px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors -mb-px ${
+          className={`shrink-0 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors -mb-px ${
             section === "abonnement"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -1214,99 +1255,263 @@ export default function WhatsAppCreditsPage() {
 
       </>}
 
-      {section === "abonnement" && (
-        <div className="space-y-6">
-          <div style={stagger(0)}>
-            <h1 className="text-xl font-semibold tracking-tight">Abonnement</h1>
-            <p className="text-sm text-muted-foreground mt-1">Un seul plan, toutes les fonctionnalités avancées.</p>
-          </div>
+      {section === "abonnement" && (() => {
+        const expiresAt = orgDetails?.plan_expires_at ?? planExpiresAt
+        const startedAt = orgDetails?.plan_started_at ?? planStartedAt
+        const currentPlanLabel = isPro ? "Plan Pro" : "Plan Base"
+        const annualMonthlyEquivalent = Math.round(SUB_PLANS.annual.amount / 12)
+        const planCardMotion =
+          "group transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
 
-          {/* Plan actuel */}
-          <div style={stagger(1)}>
-            <div className="rounded-xl border border-border/40 overflow-hidden">
-              <div className="px-5 py-4 flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Plan actuel</p>
-                  <p className="text-2xl font-semibold mt-1">{isPro ? "Pro" : "Base"}</p>
-                </div>
-                {isPro ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-[12px] font-semibold text-emerald-600">Actif</span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-3 py-1 text-[12px] font-semibold text-muted-foreground">Gratuit</span>
-                )}
-              </div>
-              {isPro && (
-                <div className="border-t border-border/40 px-5 py-4">
-                  <p className="text-sm text-muted-foreground">Votre organisation bénéficie de toutes les fonctionnalités Pro.</p>
-                </div>
-              )}
+        return (
+          <div className="min-w-0 space-y-5">
+            <div style={stagger(0)}>
+              <h1 className="text-xl font-semibold tracking-tight">Abonnement</h1>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                Comparez les offres et gérez votre abonnement Flow.
+              </p>
             </div>
-          </div>
 
-          {/* Offre Pro */}
-          {!isPro && (
-            <div style={stagger(2)} className="space-y-4">
-              {/* Billing period toggle */}
-              <div className="flex gap-1.5">
-                {(["monthly", "annual"] as BillingPeriod[]).map((period) => {
-                  const p = SUB_PLANS[period]
-                  return (
-                    <button
-                      key={period}
-                      type="button"
-                      onClick={() => setSubBillingPeriod(period)}
-                      className={`relative flex-1 rounded-xl border px-4 py-4 text-left transition-all ${
-                        subBillingPeriod === period
-                          ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-                          : "border-border/40 bg-card hover:border-border/70"
-                      }`}
-                    >
-                      {"savings" in p && (
-                        <span className="absolute -top-2.5 right-3 inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-                          {(p as typeof SUB_PLANS.annual).savings}
-                        </span>
+            <div style={stagger(1)} className="mx-auto w-full min-w-0 max-w-3xl space-y-3">
+              {/* Statut actuel */}
+              <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                        isPro ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                       )}
-                      <p className="text-[11px] font-medium text-muted-foreground mb-1">{p.label}</p>
-                      <p className="text-[22px] font-bold text-foreground leading-none">{formatNumber(p.amount)} <span className="text-[13px] font-normal">XAF</span></p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{p.tagline}</p>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Feature list */}
-              <div className="rounded-xl border border-border/40 bg-card px-5 py-4 space-y-3">
-                <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide">Inclus dans le plan Pro</p>
-                <ul className="space-y-2.5">
-                  {[
-                    { label: "Segments de contacts avancés", desc: "Ciblage dynamique par critères" },
-                    { label: "Automatisations de campagnes", desc: "Séquences de messages automatiques" },
-                    { label: "Agents IA (auto-reply)", desc: "Réponses intelligentes en conversations" },
-                    { label: "Génération de devis PDF", desc: "Création et envoi de devis par IA" },
-                  ].map(({ label, desc }) => (
-                    <li key={label} className="flex items-start gap-3">
-                      <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">✓</span>
-                      <div>
-                        <p className="text-[13px] font-medium text-foreground">{label}</p>
-                        <p className="text-[11px] text-muted-foreground">{desc}</p>
+                    >
+                      {isPro ? <Sparkles className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        Abonnement en cours
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-base font-semibold tracking-tight">{currentPlanLabel}</p>
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                            isPro
+                              ? "bg-primary/10 text-primary"
+                              : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {isPro ? "Actif" : "En cours"}
+                        </span>
                       </div>
-                    </li>
-                  ))}
-                </ul>
+                      <p className="text-[12px] leading-relaxed text-muted-foreground">
+                        {isPro
+                          ? "Toutes les fonctionnalités avancées sont débloquées."
+                          : "Fonctionnalités essentielles, sans frais d'abonnement."}
+                      </p>
+                    </div>
+                  </div>
+                  {(startedAt || expiresAt) && (
+                    <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2 sm:justify-end">
+                      {startedAt && (
+                        <div className="rounded-lg bg-muted/40 px-3 py-2">
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Depuis le</p>
+                          <p className="mt-0.5 text-[12px] font-medium">{formatPlanDate(startedAt)}</p>
+                        </div>
+                      )}
+                      {expiresAt && (
+                        <div className="rounded-lg bg-muted/40 px-3 py-2">
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            {isPro ? "Renouvellement" : "Expire le"}
+                          </p>
+                          <p className="mt-0.5 text-[12px] font-medium">{formatPlanDate(expiresAt)}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <Button
-                className="w-full h-10 text-[13px] rounded-xl font-semibold"
-                onClick={() => setSubDialogOpen(true)}
-              >
-                {subBillingPeriod === "annual"
-                  ? `Activer Pro — ${formatNumber(SUB_PLANS.annual.amount)} XAF / an`
-                  : `Activer Pro — ${formatNumber(SUB_PLANS.monthly.amount)} XAF / mois`}
-              </Button>
+              {/* Comparaison des plans */}
+              <div className="grid min-w-0 items-stretch gap-3 sm:grid-cols-2">
+                {/* Plan Base */}
+                <div
+                  className={cn(
+                    planCardMotion,
+                    "relative flex h-full min-w-0 flex-col rounded-xl border p-4",
+                    !isPro
+                      ? "border-white/10 bg-card hover:border-white/20 hover:shadow-[0_16px_40px_-20px_rgba(0,0,0,0.55)]"
+                      : "border-border/40 bg-card/50 opacity-80 hover:border-border/60 hover:opacity-95 hover:shadow-[0_12px_32px_-18px_rgba(0,0,0,0.45)]"
+                  )}
+                >
+                  {!isPro && (
+                    <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent transition-all duration-300 group-hover:via-primary/70" />
+                  )}
+                  <div className="mb-4 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Base</p>
+                      <p className="mt-1.5 text-base font-bold leading-none tracking-tight sm:text-lg">Gratuit</p>
+                      <p className="mt-1.5 text-[12px] text-muted-foreground">
+                        Inclus dès votre première utilisation
+                      </p>
+                    </div>
+                    {!isPro && (
+                      <span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                        En cours
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mb-3 border-t border-border/40 pt-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Inclus
+                    </p>
+                  </div>
+                  <ul className="mb-4 flex-1 space-y-2">
+                    {BASE_FEATURES.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2.5 text-[12px] leading-snug text-foreground/90">
+                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted">
+                          <Check className="h-2.5 w-2.5 text-muted-foreground" strokeWidth={2.5} />
+                        </span>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p className={cn("mt-auto text-[11px]", !isPro ? "text-muted-foreground" : "text-muted-foreground/70")}>
+                    {!isPro ? "Plan actif sur votre organisation." : "Inclus dans votre abonnement Pro."}
+                  </p>
+                </div>
+
+                {/* Plan Pro */}
+                <div
+                  className={cn(
+                    planCardMotion,
+                    "relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border p-4",
+                    isPro
+                      ? "border-primary/20 bg-gradient-to-b from-primary/[0.06] via-card to-card hover:border-primary/35 hover:shadow-[0_16px_40px_-16px_rgba(255,204,0,0.14)]"
+                      : "border-primary/15 bg-gradient-to-b from-primary/[0.04] to-card hover:border-primary/30 hover:from-primary/[0.07] hover:shadow-[0_16px_40px_-16px_rgba(255,204,0,0.2)]"
+                  )}
+                >
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent transition-all duration-300 group-hover:via-primary" />
+
+                  <div className="mb-4 flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">Pro</p>
+                      {isPro ? (
+                        <>
+                          <p className="mt-1.5 text-base font-bold leading-none tracking-tight text-primary sm:text-lg">Actif</p>
+                          <p className="mt-1.5 text-[12px] text-muted-foreground">
+                            {billingPeriod === "annual"
+                              ? "Facturation annuelle"
+                              : billingPeriod === "monthly"
+                                ? "Facturation mensuelle"
+                                : "Abonnement Pro activé"}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="mt-1.5 break-words text-base font-bold leading-none tracking-tight tabular-nums sm:text-lg">
+                            {formatNumber(SUB_PLANS[subBillingPeriod].amount)}
+                            <span className="ml-1 text-[13px] font-medium text-muted-foreground">XAF</span>
+                          </p>
+                          <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+                            {subBillingPeriod === "annual"
+                              ? `~${formatNumber(annualMonthlyEquivalent)} XAF / mois`
+                              : SUB_PLANS.monthly.tagline}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    {isPro && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                        <Sparkles className="h-3 w-3" />
+                        En cours
+                      </span>
+                    )}
+                  </div>
+
+                  {!isPro && (
+                    <div className="mb-4">
+                      <div className="inline-flex w-full min-w-0 flex-col gap-1 rounded-lg bg-muted/50 p-1 sm:flex-row">
+                        {(["monthly", "annual"] as BillingPeriod[]).map((period) => {
+                          const selected = subBillingPeriod === period
+                          return (
+                            <button
+                              key={period}
+                              type="button"
+                              onClick={() => setSubBillingPeriod(period)}
+                              className={cn(
+                                "relative min-w-0 flex-1 rounded-md px-2.5 py-1.5 text-center text-[11px] font-medium transition-all duration-200 sm:px-3 sm:text-[12px]",
+                                selected
+                                  ? "bg-card text-foreground shadow-sm ring-1 ring-primary/15"
+                                  : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              <span className="block truncate">{SUB_PLANS[period].label}</span>
+                              {period === "annual" && (
+                                <span className="mt-0.5 inline-flex rounded-full bg-emerald-500/15 px-1.5 py-px text-[9px] font-bold text-emerald-500 sm:ml-1.5 sm:mt-0">
+                                  {SUB_PLANS.annual.savings}
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <p className="mt-1.5 text-[11px] text-muted-foreground">
+                        {SUB_PLANS[subBillingPeriod].tagline}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="mb-3 border-t border-border/40 pt-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      {isPro ? "Fonctionnalités incluses" : "Tout Base, plus"}
+                    </p>
+                  </div>
+                  <ul className="mb-4 flex-1 space-y-2">
+                    {PRO_FEATURES.map(({ label, desc }) => (
+                      <li key={label} className="flex items-start gap-2.5">
+                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                          <Check className="h-2.5 w-2.5 text-primary" strokeWidth={2.5} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-medium leading-snug">{label}</p>
+                          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{desc}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {isPro ? (
+                    <div className="mt-auto rounded-lg bg-primary/[0.06] px-3 py-2.5">
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">
+                        Toutes les fonctionnalités Pro sont actives.
+                        {expiresAt && (
+                          <span className="mt-1 block font-medium text-foreground">
+                            Renouvellement le {formatPlanDate(expiresAt)}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="mt-auto h-auto min-h-9 w-full whitespace-normal rounded-lg px-3 py-2 text-[11px] font-semibold leading-snug shadow-[0_10px_26px_-18px_rgba(224,209,18,0.75)] transition-all duration-200 hover:-translate-y-px hover:shadow-[0_14px_32px_-14px_rgba(224,209,18,0.85)] sm:text-[12px]"
+                      onClick={() => setSubDialogOpen(true)}
+                    >
+                      <span className="block">Passer au Pro</span>
+                      <span className="block tabular-nums">
+                        {formatNumber(SUB_PLANS[subBillingPeriod].amount)} XAF
+                        {subBillingPeriod === "annual" ? " / an" : " / mois"}
+                      </span>
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )
+      })()}
 
       {/* ── Subscription Payment Dialog ── */}
       {subDialogOpen && (

@@ -73,18 +73,18 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                   <button
                     type="button"
                     onClick={onToggleCollapse}
-                    className="mx-auto flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-white/10 transition-opacity hover:opacity-90"
+                    className="mx-auto flex h-8 w-10 items-center justify-center overflow-hidden rounded-lg bg-white/10 transition-opacity hover:opacity-90"
                   >
-                    <FlowLogo size={32} />
+                    <FlowLogo size={28} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Ouvrir le menu</TooltipContent>
               </Tooltip>
             ) : (
               <div className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/10">
-                    <FlowLogo size={32} />
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/10 px-0.5">
+                    <FlowLogo size={28} />
                   </div>
                   <p className="truncate text-sm font-semibold text-white">Flow</p>
                 </div>
@@ -178,7 +178,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                         className={cn(
                                           "relative flex min-h-9 min-w-0 flex-1 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] tracking-tight transition-all duration-200",
                                           isActive || hasActiveChild
-                                            ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112] shadow-[inset_3px_0_0_0_#E0D112]"
+                                            ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112]"
                                             : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                                         )}
                                       >
@@ -254,7 +254,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                                     className={cn(
                                       "relative flex h-10 w-full items-center justify-center rounded-xl transition-all duration-200",
                                       isActive
-                                        ? "bg-gradient-to-br from-[#E0D112]/22 to-[#E0D112]/8 text-[#E0D112] shadow-[inset_0_0_0_1px_rgba(224,209,18,0.25)]"
+                                        ? "bg-gradient-to-br from-[#E0D112]/22 to-[#E0D112]/8 text-[#E0D112]"
                                         : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                                     )}
                                   >
@@ -278,7 +278,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                               className={cn(
                                 "relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium tracking-tight transition-all duration-200",
                                 isActive
-                                  ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112] shadow-[inset_3px_0_0_0_#E0D112]"
+                                  ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112]"
                                   : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                               )}
                             >
@@ -309,7 +309,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                             className={cn(
                               "relative flex h-10 w-full items-center justify-center rounded-xl transition-all duration-200",
                               isActive
-                                ? "bg-gradient-to-br from-[#E0D112]/22 to-[#E0D112]/8 text-[#E0D112] shadow-[inset_0_0_0_1px_rgba(224,209,18,0.25)]"
+                                ? "bg-gradient-to-br from-[#E0D112]/22 to-[#E0D112]/8 text-[#E0D112]"
                                 : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                             )}
                           >
@@ -331,7 +331,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                       className={cn(
                         "relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium tracking-tight transition-all duration-200",
                         isActive
-                          ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112] shadow-[inset_3px_0_0_0_#E0D112]"
+                          ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112]"
                           : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                       )}
                     >

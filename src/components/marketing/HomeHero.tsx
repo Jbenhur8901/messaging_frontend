@@ -44,11 +44,11 @@ export function HomeHero() {
             />
           </div>
 
-          <h1 className="mt-7 max-w-xl text-[34px] font-extrabold leading-[1.08] tracking-tight text-black sm:text-[54px] sm:leading-[1.05]">
-            <span className="whitespace-nowrap">
+          <h1 className="mt-7 max-w-xl text-[28px] font-extrabold leading-[1.08] tracking-tight text-black sm:text-[54px] sm:leading-[1.05]">
+            <span>
               Une seule <span className="text-[#FFCC00]">plateforme</span>
             </span>
-            <span className="mt-1 block whitespace-nowrap">
+            <span className="mt-1 block">
               pour <span className="text-[#FFCC00]">lancer</span>,{" "}
               <span className="text-black">convertir</span>
             </span>

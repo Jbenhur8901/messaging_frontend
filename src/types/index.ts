@@ -31,6 +31,9 @@ export interface OrganizationSummary {
   role: "owner" | "admin" | "member" | "viewer"
   joined_at?: string
   plan?: "base" | "pro"
+  plan_expires_at?: string
+  plan_started_at?: string
+  billing_period?: "monthly" | "annual"
 }
 
 export interface Session {

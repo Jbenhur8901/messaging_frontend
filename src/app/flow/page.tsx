@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Manrope } from "next/font/google"
-import { Clock, FileArrowUp, Paperclip, ArrowsCounterClockwise, Target, MapPin, Tag, Lightning, MagnifyingGlass, Receipt, Brain, ShoppingCart, Coins, ArrowsClockwise, Rocket, Recycle } from "@phosphor-icons/react"
+import { Clock, FileArrowUp, Paperclip, ArrowsCounterClockwise, Target, MapPin, Tag, Lightning, MagnifyingGlass, Receipt, Brain, ShoppingCart, Coins, ArrowsClockwise, Rocket, Recycle, List, X } from "@phosphor-icons/react"
 import s from "./flow.module.css"
 
 const manrope = Manrope({
@@ -25,6 +25,7 @@ const BG_SHOTS = [
 
 export default function FlowPage() {
   const [isScrolled, setIsScrolled] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [simType, setSimType] = useState<"marketing" | "utility" | "auth">("marketing")
   const [simVolume, setSimVolume] = useState(1000)
 
@@ -121,9 +122,31 @@ export default function FlowPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false)
+    }
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    window.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener("keydown", onKeyDown)
+    }
+  }, [mobileMenuOpen])
+
   function scrollTo(id: string) {
+    setMobileMenuOpen(false)
     const el = document.getElementById(id)
     if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 80, behavior: "smooth" })
+  }
+
+  function handleNavClick(id: string) {
+    return (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault()
+      scrollTo(id)
+    }
   }
 
   const TW_S = 120   // ms before first char
@@ -140,10 +163,16 @@ export default function FlowPage() {
     ["pricing", "Tarifs"],
   ] as const
 
+  const heroStats = [
+    { value: "98%", label: "Taux d'ouverture" },
+    { value: "3 min", label: "Délai de lecture" },
+    { value: "45%", label: "Taux de réponse" },
+  ] as const
+
   return (
     <div className={`${s.page} ${manrope.variable}`}>
       {/* ─── NAV ─── */}
-      <nav className={`${s.nav}${isScrolled ? " " + s.scrolled : ""}`}>
+      <nav className={`${s.nav}${isScrolled ? " " + s.scrolled : ""}${mobileMenuOpen ? " " + s.navOpen : ""}`}>
         <div className={s.container}>
           <div className={s.navInner}>
             <a href="#hero" className={s.navLogo} onClick={(e) => { e.preventDefault(); scrollTo("hero") }}>
@@ -154,7 +183,7 @@ export default function FlowPage() {
             <ul className={s.navLinks}>
               {navItems.map(([id, label]) => (
                 <li key={id}>
-                  <a href={`#${id}`} onClick={(e) => { e.preventDefault(); scrollTo(id) }}>{label}</a>
+                  <a href={`#${id}`} onClick={handleNavClick(id)}>{label}</a>
                 </li>
               ))}
             </ul>
@@ -163,6 +192,50 @@ export default function FlowPage() {
                 Contactez-nous
               </a>
               <a href="/auth/login" className={`${s.btn} ${s.btnPrimary}`}>
+                Commencer maintenant
+              </a>
+            </div>
+            <button
+              type="button"
+              className={s.navMenuToggle}
+              aria-label={mobileMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="flow-mobile-menu"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+            >
+              {mobileMenuOpen ? <X size={22} weight="bold" /> : <List size={22} weight="bold" />}
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="flow-mobile-menu"
+          className={`${s.navMobileMenu}${mobileMenuOpen ? " " + s.navMobileMenuOpen : ""}`}
+          aria-hidden={!mobileMenuOpen}
+        >
+          <div className={s.container}>
+            <ul className={s.navMobileLinks}>
+              {navItems.map(([id, label]) => (
+                <li key={id}>
+                  <a href={`#${id}`} onClick={handleNavClick(id)}>{label}</a>
+                </li>
+              ))}
+            </ul>
+            <div className={s.navMobileCta}>
+              <a
+                href="https://wa.me/242056590857"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${s.btn} ${s.btnGhost}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Contactez-nous
+              </a>
+              <a
+                href="/auth/login"
+                className={`${s.btn} ${s.btnPrimary}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 Commencer maintenant
               </a>
             </div>
@@ -204,15 +277,23 @@ export default function FlowPage() {
               />
             </h1>
             <p className={s.heroSub}>
-              Importez, segmentez, ciblez et mesurez vos résultats.
+              Importez, segmentez, ciblez et mesurez vos résultats — depuis une seule interface.
             </p>
             <div className={s.heroActions}>
               <a href="/auth/login" className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`}>
                 Commencer maintenant
               </a>
-              <a href="#segmentation" className={`${s.btn} ${s.btnGhost} ${s.btnLg}`} onClick={(e) => { e.preventDefault(); scrollTo("segmentation") }}>
+              <a href="#pricing" className={`${s.btn} ${s.btnGhost} ${s.btnLg}`} onClick={(e) => { e.preventDefault(); scrollTo("pricing") }}>
                 Voir nos offres
               </a>
+            </div>
+            <div className={s.heroDataStrip}>
+              {heroStats.map((stat) => (
+                <div key={stat.label} className={s.dsItem}>
+                  <span className={s.dsVal}>{stat.value}</span>
+                  <span className={s.dsLabel}>{stat.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -222,6 +303,7 @@ export default function FlowPage() {
       <section id="comparison" className={s.comparison}>
         <div className={s.container}>
           <div className={s.sectionHeader}>
+            <p className={`${s.tLabel} ${s.sectionEyebrow} ${s.reveal}`}>Canal marketing</p>
             <h2 className={`${s.tHeadline} ${s.reveal}`}>Le canal qui performe.<br />De loin.</h2>
             <p className={`${s.tBody} ${s.reveal}`} data-delay="80ms">
               Les chiffres ne laissent aucun doute.
@@ -280,6 +362,7 @@ export default function FlowPage() {
       <section id="segmentation" className={s.segmentation}>
         <div className={s.container}>
           <div className={s.sectionHeader}>
+            <p className={`${s.tLabel} ${s.sectionEyebrow} ${s.reveal}`}>Ciblage</p>
             <h2 className={`${s.tHeadline} ${s.reveal}`}>Le bon message.<br />À la bonne personne.</h2>
             <p className={`${s.tBody} ${s.reveal}`} data-delay="80ms">
               Chaque segment reçoit ce qui le concerne.
@@ -343,6 +426,7 @@ export default function FlowPage() {
       <section id="campaigns" className={s.campaigns}>
         <div className={s.container}>
           <div className={s.sectionHeader}>
+            <p className={`${s.tLabel} ${s.sectionEyebrow} ${s.reveal}`}>Campagnes</p>
             <h2 className={`${s.tHeadline} ${s.reveal}`}>Lancez en quelques clics.<br />Mesurez tout.</h2>
             <p className={`${s.tBody} ${s.reveal}`} data-delay="80ms">
               Créez, planifiez, envoyez. En quelques clics.
@@ -399,6 +483,7 @@ export default function FlowPage() {
       <section id="reporting" className={s.reporting}>
         <div className={s.container}>
           <div className={s.sectionHeader}>
+            <p className={`${s.tLabel} ${s.sectionEyebrow} ${s.reveal}`}>Analytics</p>
             <h2 className={`${s.tHeadline} ${s.reveal}`}>Mesurez ce qui<br />génère du chiffre.</h2>
             <p className={`${s.tBody} ${s.reveal}`} data-delay="80ms">
               En temps réel. Pas de tableur, pas d&apos;export manuel.
@@ -467,6 +552,7 @@ export default function FlowPage() {
       <section id="agents" className={s.agents}>
         <div className={s.container}>
           <div className={s.sectionHeader}>
+            <p className={`${s.tLabel} ${s.sectionEyebrow} ${s.reveal}`}>Intelligence</p>
             <h2 className={`${s.tHeadline} ${s.agentHeadline} ${s.reveal}`}>Envoyez. Entraînez<br /><em>Yanola</em> à répondre.</h2>
             <p className={`${s.tBody} ${s.reveal}`} data-delay="80ms">
               Yanola est votre agent IA. Donnez-lui vos produits, vos tarifs, vos FAQ — il répond à vos clients 24h/24, en moins de 2 secondes.
@@ -535,6 +621,7 @@ export default function FlowPage() {
       <section id="usecases" className={s.usecases}>
         <div className={s.container}>
           <div className={s.sectionHeader}>
+            <p className={`${s.tLabel} ${s.sectionEyebrow} ${s.reveal}`}>Stratégies</p>
             <h2 className={`${s.tHeadline} ${s.reveal}`}>Trois stratégies.<br />Des résultats concrets.</h2>
           </div>
           <div className={s.ucGrid}>
@@ -576,6 +663,7 @@ export default function FlowPage() {
       <section id="pricing" className={s.pricing}>
         <div className={s.container}>
           <div className={s.sectionHeader}>
+            <p className={`${s.tLabel} ${s.sectionEyebrow} ${s.reveal}`}>Tarification</p>
             <h2 className={`${s.tHeadline} ${s.reveal}`}>Payez à l&apos;usage.<br />Débloquez à la croissance.</h2>
             <p className={`${s.tBody} ${s.reveal}`} data-delay="80ms">
               Crédits WhatsApp à la performance. Automatisations et IA avec l&apos;abonnement Pro.

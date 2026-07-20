@@ -221,8 +221,8 @@ export default function DashboardPage() {
 
       <div style={stagger(1)}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Link href="/whatsapp/credits" className="block" style={stagger(2)}>
-            <Card className="group h-full border-transparent hover:border-border/50 transition-all duration-300 cursor-pointer">
+          <Link href="/whatsapp/credits" className="block focus-visible:outline-none" style={stagger(2)}>
+            <Card className="group h-full border-0 transition-all duration-300 cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[12px] font-medium text-muted-foreground">Wallet WhatsApp</span>
@@ -243,7 +243,7 @@ export default function DashboardPage() {
             </Card>
           </Link>
 
-          <Card className="group border-transparent hover:border-border/50 transition-all duration-300" style={stagger(4)}>
+          <Card className="group border-0 transition-all duration-300" style={stagger(4)}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] font-medium text-muted-foreground">Messages</span>
@@ -256,7 +256,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="group border-transparent hover:border-border/50 transition-all duration-300" style={stagger(4)}>
+          <Card className="group border-0 transition-all duration-300" style={stagger(4)}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] font-medium text-muted-foreground">Livraison</span>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="group border-transparent hover:border-border/50 transition-all duration-300" style={stagger(5)}>
+          <Card className="group border-0 transition-all duration-300" style={stagger(5)}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] font-medium text-muted-foreground">Lecture</span>
@@ -288,7 +288,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5" style={stagger(6)}>
-        <Card className="lg:col-span-3 border-transparent hover:border-border/50 transition-all duration-300">
+        <Card className="lg:col-span-3 border-0 transition-all duration-300">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -358,7 +358,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2 border-transparent hover:border-border/50 transition-all duration-300">
+        <Card className="lg:col-span-2 border-0 transition-all duration-300">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-4">
               <span className="text-[13px] font-medium">Campagnes récentes</span>

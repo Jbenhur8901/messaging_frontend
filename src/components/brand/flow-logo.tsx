@@ -1,6 +1,8 @@
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 
+const LOGO_ASPECT = 1536 / 1024
+
 interface FlowLogoProps {
   size?: number
   className?: string
@@ -14,21 +16,25 @@ export function FlowLogo({
   imageClassName,
   priority = false,
 }: FlowLogoProps) {
+  const height = size
+  const width = Math.round(size * LOGO_ASPECT)
+
   return (
     <div
       className={cn(
-        "flex items-center justify-center overflow-hidden rounded-xl border border-black/10 bg-white p-1.5 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.35)]",
+        "relative flex shrink-0 items-center justify-center overflow-hidden",
         className,
       )}
-      style={{ width: size, height: size }}
+      style={{ width, height, maxWidth: "100%" }}
     >
       <Image
-        src="/logo-nodes.png"
-        alt="Nodes"
-        width={size}
-        height={size}
+        src="/logo_flow_blanc.png"
+        alt="Flow"
+        width={width}
+        height={height}
         priority={priority}
-        className={cn("h-full w-full object-contain", imageClassName)}
+        sizes={`${width}px`}
+        className={cn("h-full w-full max-w-full object-contain object-left", imageClassName)}
       />
     </div>
   )

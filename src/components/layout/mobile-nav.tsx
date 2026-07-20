@@ -70,8 +70,8 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
             className="flex items-center gap-2.5"
             onClick={onClose}
           >
-            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-white/10">
-              <FlowLogo size={32} />
+            <div className="flex h-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/10 px-0.5">
+              <FlowLogo size={28} />
             </div>
             <div>
               <SheetTitle className="text-sm font-semibold leading-tight text-white">
@@ -159,7 +159,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                                       className={cn(
                                         "relative flex min-h-9 min-w-0 flex-1 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] tracking-tight transition-all duration-200",
                                         isActive || hasActiveChild
-                                          ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112] shadow-[inset_3px_0_0_0_#E0D112]"
+                                          ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112]"
                                           : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                                       )}
                                     >
@@ -233,7 +233,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                             className={cn(
                               "relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium tracking-tight transition-all duration-200",
                               isActive
-                                ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112] shadow-[inset_3px_0_0_0_#E0D112]"
+                                ? "bg-gradient-to-r from-[#E0D112]/18 to-[#E0D112]/[0.07] font-semibold text-[#E0D112]"
                                 : "text-white/50 hover:bg-white/[0.06] hover:text-white"
                             )}
                           >
