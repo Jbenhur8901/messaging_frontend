@@ -1,52 +1,75 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import Image from "next/image"
+import { FlowLogo } from "@/components/brand/flow-logo"
 import { X, Download } from "lucide-react"
+import {
+  type BeforeInstallPromptEvent,
+  isPwaDismissedRecently,
+  isPwaStandalone,
+  PWA_DISMISS_KEY,
+  PWA_INSTALL_READY_EVENT,
+} from "@/lib/pwa-install"
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>
-}
-
-const DISMISS_KEY = "flow-pwa-dismissed"
-const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+const SHOW_DELAY_MS = 2500
 
 export function PwaInstallPrompt() {
   const [visible, setVisible] = useState(false)
   const [installing, setInstalling] = useState(false)
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null)
+  const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    // Don't show if already installed (standalone mode)
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as Navigator & { standalone?: boolean }).standalone === true
+  const scheduleShow = useCallback(() => {
+    if (showTimer.current) return
+    if (!window.__flowDeferredInstallPrompt) return
 
-    if (isStandalone) return
-
-    // Don't show if recently dismissed
-    const dismissed = localStorage.getItem(DISMISS_KEY)
-    if (dismissed && Date.now() - Number(dismissed) < DISMISS_DURATION_MS) return
-
-    const handler = (e: Event) => {
-      e.preventDefault()
-      deferredPrompt.current = e as BeforeInstallPromptEvent
-      // Short delay so it doesn't feel intrusive on first load
-      setTimeout(() => setVisible(true), 2500)
-    }
-
-    window.addEventListener("beforeinstallprompt", handler)
-    return () => window.removeEventListener("beforeinstallprompt", handler)
+    deferredPrompt.current = window.__flowDeferredInstallPrompt
+    showTimer.current = setTimeout(() => {
+      setVisible(true)
+      showTimer.current = null
+    }, SHOW_DELAY_MS)
   }, [])
 
+  useEffect(() => {
+    if (isPwaStandalone()) return
+    if (isPwaDismissedRecently()) return
+
+    if (window.__flowDeferredInstallPrompt) {
+      scheduleShow()
+    }
+
+    const onReady = () => scheduleShow()
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault()
+      window.__flowDeferredInstallPrompt = event as BeforeInstallPromptEvent
+      scheduleShow()
+    }
+
+    window.addEventListener(PWA_INSTALL_READY_EVENT, onReady)
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt)
+
+    return () => {
+      window.removeEventListener(PWA_INSTALL_READY_EVENT, onReady)
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt)
+      if (showTimer.current) {
+        clearTimeout(showTimer.current)
+        showTimer.current = null
+      }
+    }
+  }, [scheduleShow])
+
   const handleInstall = async () => {
-    if (!deferredPrompt.current) return
+    const prompt = deferredPrompt.current ?? window.__flowDeferredInstallPrompt
+    if (!prompt) return
+
     setInstalling(true)
-    await deferredPrompt.current.prompt()
-    const { outcome } = await deferredPrompt.current.userChoice
+    await prompt.prompt()
+    const { outcome } = await prompt.userChoice
     deferredPrompt.current = null
+    window.__flowDeferredInstallPrompt = undefined
+
     if (outcome === "accepted") {
       setVisible(false)
     } else {
@@ -55,7 +78,7 @@ export function PwaInstallPrompt() {
   }
 
   const handleDismiss = () => {
-    localStorage.setItem(DISMISS_KEY, String(Date.now()))
+    localStorage.setItem(PWA_DISMISS_KEY, String(Date.now()))
     setVisible(false)
   }
 
@@ -80,7 +103,6 @@ export function PwaInstallPrompt() {
                 "0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
             }}
           >
-            {/* Header */}
             <div
               style={{
                 display: "flex",
@@ -101,15 +123,10 @@ export function PwaInstallPrompt() {
                   justifyContent: "center",
                   flexShrink: 0,
                   overflow: "hidden",
+                  padding: "6px",
                 }}
               >
-                <Image
-                  src="/icon-192.png"
-                  alt="Flow"
-                  width={40}
-                  height={40}
-                  style={{ objectFit: "contain" }}
-                />
+                <FlowLogo size={28} priority className="max-w-full" />
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -172,12 +189,7 @@ export function PwaInstallPrompt() {
               </button>
             </div>
 
-            {/* Body */}
-            <div
-              style={{
-                padding: "10px 16px",
-              }}
-            >
+            <div style={{ padding: "10px 16px" }}>
               <p
                 style={{
                   margin: 0,
@@ -192,10 +204,8 @@ export function PwaInstallPrompt() {
               </p>
             </div>
 
-            {/* Divider */}
             <div style={{ height: "1px", background: "#27272A", margin: "0 16px" }} />
 
-            {/* Actions */}
             <div
               style={{
                 display: "flex",
@@ -296,12 +306,6 @@ export function PwaInstallPrompt() {
           <style>{`
             @keyframes flow-spin {
               to { transform: rotate(360deg); }
-            }
-            @media (prefers-reduced-motion: reduce) {
-              .flow-pwa-banner * {
-                animation: none !important;
-                transition: none !important;
-              }
             }
           `}</style>
         </motion.div>

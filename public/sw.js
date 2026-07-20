@@ -1,6 +1,6 @@
-const CACHE_NAME = "flow-v1";
+const CACHE_NAME = "flow-v3";
 
-const PRECACHE_URLS = ["/", "/offline"];
+const PRECACHE_URLS = ["/", "/offline", "/manifest.webmanifest", "/logo_flow_blanc.png"];
 
 const STATIC_EXTENSIONS = /\.(js|css|woff2?|png|svg|ico|webp|jpg|jpeg)$/;
 

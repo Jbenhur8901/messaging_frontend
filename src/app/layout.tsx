@@ -25,11 +25,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/logo_flow_blanc.png", sizes: "192x192", type: "image/png" },
+      { url: "/logo_flow_blanc.png", sizes: "512x512", type: "image/png" },
+      { url: "/logo_flow_blanc.png", sizes: "1536x1024", type: "image/png" },
     ],
-    apple: "/icon-192.png",
-    shortcut: "/icon-192.png",
+    apple: "/logo_flow_blanc.png",
+    shortcut: "/logo_flow_blanc.png",
   },
 }
 
