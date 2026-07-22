@@ -14,7 +14,10 @@ export default function AuthLayout({
 }) {
   const pathname = usePathname()
   const isPlainAuth =
-    pathname === "/auth/login" || pathname === "/auth/register"
+    pathname === "/auth/login" ||
+    pathname === "/auth/register" ||
+    pathname === "/auth/forgot-password" ||
+    pathname === "/auth/reset-password"
 
   if (isPlainAuth) {
     return (

@@ -88,9 +88,15 @@ export const authService = {
     return data
   },
 
-  async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+  async requestPasswordReset(
+    email: string,
+    redirectTo?: string,
+  ): Promise<{ success: boolean; message: string }> {
     const formData = new URLSearchParams()
     formData.append("email", email)
+    if (redirectTo) {
+      formData.append("redirect_to", redirectTo)
+    }
 
     const { data } = await api.post("/v1/auth/password-reset", formData)
     return data
