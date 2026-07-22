@@ -44,6 +44,7 @@ import {
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import { ManualOnboardingForm } from "@/components/whatsapp/manual-onboarding-form"
+import { CoexistenceSignupButton } from "@/components/whatsapp/coexistence-signup-button"
 
 const stagger = (i: number) => ({
   opacity: 0,
@@ -404,78 +405,93 @@ export default function WhatsAppConfigPage() {
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-3 pt-1">
-                  <ManualOnboardingForm
-                    onSubmitted={async () => {
-                      setIsDialogOpen(false)
-                      await loadAccounts()
-                    }}
-                  />
-                  <div className="hidden">
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px]">Phone Number ID *</Label>
-                    <Input className="h-9 text-[13px]" value={formPhoneNumberId} onChange={(e) => setFormPhoneNumberId(e.target.value)} placeholder="109999999999999" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[13px]">WABA ID *</Label>
-                    <Input className="h-9 text-[13px]" value={formWabaId} onChange={(e) => setFormWabaId(e.target.value)} placeholder="102290129999999" />
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-lg border border-border/40 p-3">
-                    <div>
-                      <p className="text-[13px] font-medium">Activer WhatsApp</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Active l&apos;envoi WhatsApp pour cette organisation.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={formEnabled}
-                      onCheckedChange={setFormEnabled}
-                      aria-label="Activer WhatsApp"
-                    />
-                  </div>
-
-                  {/* Test Result */}
-                  {testResult && (
-                    <div
-                      className={`rounded-lg p-3 text-[13px] ${
-                        testResult.success
-                          ? "bg-green-50 border border-green-200 text-green-800 dark:bg-green-950/30 dark:border-green-900 dark:text-green-300"
-                          : "bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-900 dark:text-red-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        {testResult.success ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
-                        <span className="font-medium">
-                          {testResult.success ? "Connexion réussie" : "Échec de la connexion"}
-                        </span>
+                  {isConfigured ? (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label className="text-[13px]">Phone Number ID</Label>
+                        <Input className="h-9 text-[13px]" value={formPhoneNumberId} onChange={(e) => setFormPhoneNumberId(e.target.value)} placeholder="109999999999999" />
                       </div>
-                      {testResult.phone_number && <p className="mt-1">Numéro vérifié : {testResult.phone_number}</p>}
-                      {!testResult.success && <p className="mt-1">{testResult.message}</p>}
-                    </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[13px]">WABA ID</Label>
+                        <Input className="h-9 text-[13px]" value={formWabaId} onChange={(e) => setFormWabaId(e.target.value)} placeholder="102290129999999" />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-border/40 p-3">
+                        <div>
+                          <p className="text-[13px] font-medium">Activer WhatsApp</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Active l&apos;envoi WhatsApp pour cette organisation.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={formEnabled}
+                          onCheckedChange={setFormEnabled}
+                          aria-label="Activer WhatsApp"
+                        />
+                      </div>
+                      {testResult && (
+                        <div
+                          className={`rounded-lg p-3 text-[13px] ${
+                            testResult.success
+                              ? "bg-green-50 border border-green-200 text-green-800 dark:bg-green-950/30 dark:border-green-900 dark:text-green-300"
+                              : "bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-900 dark:text-red-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {testResult.success ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                            <span className="font-medium">
+                              {testResult.success ? "Connexion réussie" : "Échec de la connexion"}
+                            </span>
+                          </div>
+                          {testResult.phone_number && <p className="mt-1">Numéro vérifié : {testResult.phone_number}</p>}
+                          {!testResult.success && <p className="mt-1">{testResult.message}</p>}
+                        </div>
+                      )}
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 text-[13px] rounded-lg"
+                          onClick={handleTest}
+                          disabled={isTesting}
+                        >
+                          {isTesting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                          Tester
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 h-9 text-[13px] rounded-lg"
+                          onClick={handleSave}
+                          disabled={isSaving}
+                        >
+                          {isSaving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                          Enregistrer
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <CoexistenceSignupButton
+                        onConnected={async () => {
+                          setIsDialogOpen(false)
+                          await Promise.all([loadConfig(), loadAccounts()])
+                        }}
+                      />
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t border-border/40" />
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="bg-background px-2 text-[11px] text-muted-foreground">ou saisir manuellement</span>
+                        </div>
+                      </div>
+                      <ManualOnboardingForm
+                        onSubmitted={async () => {
+                          setIsDialogOpen(false)
+                          await loadAccounts()
+                        }}
+                      />
+                    </>
                   )}
-
-                  <div className="flex gap-2 pt-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 text-[13px] rounded-lg"
-                      onClick={handleTest}
-                      disabled={isTesting || !isConfigured}
-                    >
-                      {isTesting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                      Tester la connexion
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 h-9 text-[13px] rounded-lg"
-                      onClick={handleSave}
-                      disabled={isSaving}
-                    >
-                      {isSaving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                      Enregistrer
-                    </Button>
-                  </div>
-                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -543,7 +559,7 @@ export default function WhatsAppConfigPage() {
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         onClick={async () => {
                           try {
-                            await whatsappService.setConfig(currentOrganization!.id, { enabled: false })
+                            await whatsappService.setConfig(currentOrganization!.id, { clear_waba: true })
                             setIsConfigured(false)
                             setConfigPhoneNumberId("")
                             setConfigWabaId("")

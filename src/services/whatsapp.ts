@@ -167,6 +167,7 @@ export const whatsappService = {
       phone_number_id?: string
       business_account_id?: string
       enabled?: boolean
+      clear_waba?: boolean
       ai_enabled?: boolean
       ai_agent_name?: string
       ai_instructions?: string
@@ -181,6 +182,7 @@ export const whatsappService = {
     if (config.phone_number_id) formData.append("phone_number_id", config.phone_number_id)
     if (config.business_account_id) formData.append("business_account_id", config.business_account_id)
     if (config.enabled !== undefined) formData.append("enabled", String(config.enabled))
+    if (config.clear_waba) formData.append("clear_waba", "true")
     if (config.ai_enabled !== undefined) formData.append("ai_enabled", String(config.ai_enabled))
     if (config.ai_agent_name !== undefined) formData.append("ai_agent_name", config.ai_agent_name)
     if (config.ai_instructions !== undefined) formData.append("ai_instructions", config.ai_instructions)
