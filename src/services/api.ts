@@ -3,7 +3,7 @@ import { authStorage } from "@/lib/auth-storage"
 import { clearAllCachedContacts } from "@/lib/contacts-cache"
 import { syncSupabaseSession } from "@/lib/supabase"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim()
 
 const APP_NAMESPACE_PREFIXES = [
   "/v1/contacts",
@@ -320,7 +320,24 @@ export const handleApiError = (error: unknown): APIError => {
       switch (status) {
         case 400:
           return { type: "validation", message: detailMessage || "Paramètres invalides", status, correlationId }
-        case 401:
+        case 401: {
+          if (requestPathname === "/v1/auth/signin") {
+            const lower = (detailMessage ?? "").toLowerCase()
+            if (
+              lower.includes("confirm") ||
+              lower.includes("verified") ||
+              lower.includes("verification") ||
+              lower.includes("not confirmed")
+            ) {
+              return {
+                type: "auth",
+                message:
+                  "Veuillez confirmer votre adresse email avant de vous connecter. Vérifiez votre boîte mail.",
+                status,
+                correlationId,
+              }
+            }
+          }
           if (detailMessage) {
             return { type: "auth", message: detailMessage, status, correlationId }
           }
@@ -328,6 +345,7 @@ export const handleApiError = (error: unknown): APIError => {
             return { type: "auth", message: "Email ou mot de passe incorrect", status, correlationId }
           }
           return { type: "auth", message: "Session expirée, veuillez vous reconnecter", status, correlationId }
+        }
         case 402:
           return { type: "credits", message: "Crédits insuffisants", status, correlationId }
         case 403:

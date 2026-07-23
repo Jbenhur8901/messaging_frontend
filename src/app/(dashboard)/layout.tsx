@@ -9,6 +9,7 @@ import { MFARecommendationDialog } from "@/components/mfa-recommendation-dialog"
 import { Loader2 } from "lucide-react"
 import { authStorage } from "@/lib/auth-storage"
 import { organizationsService } from "@/services/organizations"
+import { handleApiError } from "@/services/api"
 
 export default function DashboardLayout({
   children,
@@ -112,7 +113,12 @@ export default function DashboardLayout({
         return
       }
 
-      let activeOrganization = orgs.find((org) => org.id === activeOrgId) || orgs[0]
+      let activeOrganization =
+        (activeOrgId ? orgs.find((org) => org.id === activeOrgId) : null) ||
+        (currentUser?.organization_id
+          ? orgs.find((org) => org.id === currentUser.organization_id)
+          : null) ||
+        orgs[0]
 
       if (!activeOrganization) {
         setAuthChecked(true)
@@ -120,7 +126,14 @@ export default function DashboardLayout({
         return
       }
 
-      await organizationsService.switchOrganization(activeOrganization.id)
+      try {
+        await organizationsService.switchOrganization(activeOrganization.id)
+      } catch (error) {
+        const apiError = handleApiError(error)
+        if (apiError.status !== 404 && apiError.status !== 403) {
+          throw error
+        }
+      }
       setActiveOrgId(activeOrganization.id)
       setCurrentOrganization(activeOrganization)
 

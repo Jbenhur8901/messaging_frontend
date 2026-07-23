@@ -55,7 +55,21 @@ export function RegisterForm() {
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true)
     try {
-      await signup(data.email, data.password, data.firstName, data.lastName)
+      const result = await signup(
+        data.email,
+        data.password,
+        data.firstName,
+        data.lastName,
+      )
+
+      if (!result.isAuthenticated || !result.emailVerified) {
+        toast.success("Compte créé — vérifiez votre email pour continuer")
+        router.push(
+          `/auth/confirm-email?email=${encodeURIComponent(data.email)}`,
+        )
+        return
+      }
+
       toast.success("Compte créé avec succès")
       router.push("/onboarding")
     } catch (error) {

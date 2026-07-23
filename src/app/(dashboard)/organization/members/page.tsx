@@ -54,6 +54,12 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { formatDate } from "@/lib/utils"
+import {
+  canInviteMoreMembers,
+  PRO_MEMBER_LIMIT,
+  remainingMemberSlots,
+} from "@/lib/plan-limits"
+import { ProGate } from "@/components/ui/pro-gate"
 
 const stagger = (i: number) => ({
   opacity: 0,
@@ -136,6 +142,11 @@ export default function MembersPage() {
       return
     }
 
+    if (!canInviteMoreMembers(members)) {
+      toast.error(`Limite atteinte : ${PRO_MEMBER_LIMIT} membres maximum sur le plan Pro`)
+      return
+    }
+
     setIsInviting(true)
     try {
       const invitation = await inviteMember(inviteEmail.trim(), inviteRole)
@@ -212,6 +223,7 @@ export default function MembersPage() {
   }
 
   return (
+    <ProGate feature="Gestion des membres">
     <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -231,7 +243,10 @@ export default function MembersPage() {
         {canManageMembers && (
           <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
             <DialogTrigger asChild>
-              <Button className="h-8 text-[13px] rounded-lg gap-1.5">
+              <Button
+                className="h-8 text-[13px] rounded-lg gap-1.5"
+                disabled={!canInviteMoreMembers(members)}
+              >
                 <UserPlus className="h-3.5 w-3.5" />
                 Inviter un membre
               </Button>
@@ -241,6 +256,9 @@ export default function MembersPage() {
                 <DialogTitle className="text-[15px]">Inviter un membre</DialogTitle>
                 <DialogDescription className="text-[13px]">
                   Générez un lien d&apos;invitation à partager avec le futur membre.
+                  {remainingMemberSlots(members) > 0
+                    ? ` Il vous reste ${remainingMemberSlots(members)} place${remainingMemberSlots(members) > 1 ? "s" : ""} sur ${PRO_MEMBER_LIMIT}.`
+                    : ` Limite de ${PRO_MEMBER_LIMIT} membres atteinte.`}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-3">
@@ -276,7 +294,7 @@ export default function MembersPage() {
                 <Button variant="outline" onClick={() => setIsInviteOpen(false)} className="h-8 text-[13px] rounded-lg">
                   Annuler
                 </Button>
-                <Button onClick={handleInvite} disabled={isInviting} className="h-8 text-[13px] rounded-lg">
+                <Button onClick={handleInvite} disabled={isInviting || !canInviteMoreMembers(members)} className="h-8 text-[13px] rounded-lg">
                   {isInviting ? "Generation..." : "Generer le lien"}
                 </Button>
               </DialogFooter>
@@ -287,7 +305,9 @@ export default function MembersPage() {
 
       {/* Count */}
       <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-        {members.length} membre{members.length > 1 ? "s" : ""}
+        {members.filter((m) => m.role !== "owner").length}/{PRO_MEMBER_LIMIT} collaborateurs
+        {" · "}
+        {members.length} au total
       </p>
 
       {/* Members List */}
@@ -444,5 +464,6 @@ export default function MembersPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProGate>
   )
 }

@@ -11,6 +11,10 @@ import { ArrowLeft, Loader2 } from "lucide-react"
 
 import { useAuthStore } from "@/stores"
 import { handleApiError } from "@/services"
+import {
+  extractInvitationTokenFromPath,
+  getPersistentInvitationToken,
+} from "@/lib/invitation-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -52,8 +56,18 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true)
     try {
-      const result = await login(data.email, data.password)
-      toast.success("Connexion réussie")
+      const redirectPath = searchParams.get("redirect")
+      const invitationToken =
+        extractInvitationTokenFromPath(redirectPath) || getPersistentInvitationToken() || undefined
+
+      const result = await login(data.email, data.password, { invitationToken })
+
+      if (result.invitationAccepted) {
+        toast.success("Invitation acceptée — bienvenue dans l'organisation")
+      } else {
+        toast.success("Connexion réussie")
+      }
+
       router.push(result.requiresMFA ? "/auth/verify-2fa" : "/dashboard")
     } catch (error) {
       const apiError = handleApiError(error)

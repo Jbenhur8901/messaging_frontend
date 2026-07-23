@@ -15,7 +15,7 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes — no auth needed
-  const publicRoutes = ["/auth/", "/terms", "/invite/", "/flow"]
+  const publicRoutes = ["/auth/", "/terms", "/invite/", "/invitations/", "/flow"]
   const isPublicRoute = publicRoutes.some((r) => pathname.startsWith(r))
 
   // Static files in /public (e.g. /rr.jpg) should never require auth.

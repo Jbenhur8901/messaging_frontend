@@ -1,9 +1,16 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import axios from "axios"
-import type { OrganizationSummary, User } from "@/types"
+import type { OrganizationSummary, User, AuthResponse } from "@/types"
 import { authService } from "@/services/auth"
 import { authStorage } from "@/lib/auth-storage"
+import {
+  clearAllInvitationTokens,
+  markInvitationAccepted,
+  resolveInvitationToken,
+  savePersistentInvitationToken,
+  setPendingInvitationToken,
+} from "@/lib/invitation-auth"
 import { clearAllCachedContacts } from "@/lib/contacts-cache"
 import { useContactsStore } from "./contacts-store"
 import { useConversationsStore } from "./conversations-store"
@@ -15,6 +22,50 @@ const sanitizeUser = (user: User | null): User | null => {
   if (!user) return null
   const { api_key: _apiKey, ...rest } = user as User & { api_key?: unknown }
   return rest as User
+}
+
+async function syncInvitationAcceptance(
+  response: AuthResponse,
+  set: (partial: Partial<AuthState> | ((state: AuthState) => Partial<AuthState>)) => void,
+): Promise<boolean> {
+  if (!response.invitation_acceptance?.success) return false
+
+  markInvitationAccepted()
+  clearAllInvitationTokens()
+  await syncSessionOrganizations(response, set)
+  return true
+}
+
+async function syncSessionOrganizations(
+  response: AuthResponse,
+  set: (partial: Partial<AuthState> | ((state: AuthState) => Partial<AuthState>)) => void,
+): Promise<string | null> {
+  try {
+    await useOrganizationStore.getState().fetchOrganizations()
+  } catch {
+    // Keep going with whatever org data is already available.
+  }
+
+  const orgs = useOrganizationStore.getState().organizations
+  const preferredOrgId =
+    response.invitation_acceptance?.organization_id ||
+    response.user?.organization_id ||
+    useOrganizationStore.getState().currentOrganization?.id ||
+    null
+
+  const activeOrganization =
+    (preferredOrgId ? orgs.find((org) => org.id === preferredOrgId) : null) ||
+    orgs[0] ||
+    null
+
+  if (activeOrganization) {
+    useOrganizationStore.getState().setCurrentOrganization(activeOrganization)
+    set({ organizations: orgs, activeOrgId: activeOrganization.id })
+    return activeOrganization.id
+  }
+
+  set({ organizations: orgs, activeOrgId: null })
+  return null
 }
 
 interface AuthState {
@@ -37,14 +88,23 @@ interface AuthState {
   setShowMFARecommendation: (show: boolean) => void
   setRequiresMFAVerification: (requires: boolean, preAuthToken?: string) => void
   completeMFA: () => void
-  login: (email: string, password: string) => Promise<{ requiresMFA: boolean; factorId?: string }>
+  login: (
+    email: string,
+    password: string,
+    options?: { invitationToken?: string },
+  ) => Promise<{ requiresMFA: boolean; invitationAccepted?: boolean }>
   signup: (
     email: string,
     password: string,
     firstName: string,
     lastName: string,
-    organizationName?: string
-  ) => Promise<{ emailVerified: boolean; isAuthenticated: boolean }>
+    organizationName?: string,
+    options?: { invitationToken?: string },
+  ) => Promise<{
+    emailVerified: boolean
+    isAuthenticated: boolean
+    invitationAccepted?: boolean
+  }>
   logout: () => Promise<void>
   fetchProfile: () => Promise<void>
   clearError: () => void
@@ -112,18 +172,24 @@ export const useAuthStore = create<AuthState>()(
         }
       }),
 
-      login: async (email, password) => {
+      login: async (email, password, options) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await authService.signin(email, password)
-          let effectiveUser = sanitizeUser(response.user)
+          const invitationToken = resolveInvitationToken(options?.invitationToken)
+          const response = await authService.signin(email, password, {
+            invitationToken,
+          })
+          const effectiveUser = sanitizeUser(response.user)
 
           if (response.mfa_required) {
+            if (invitationToken) {
+              setPendingInvitationToken(invitationToken)
+              savePersistentInvitationToken(invitationToken)
+            }
             set({
               isLoading: false,
               requiresMFAVerification: true,
               mfaPreAuthToken: response.pre_auth_token || null,
-              // Store user temporarily but not authenticated yet
               user: sanitizeUser(effectiveUser),
               apiKey: null,
             })
@@ -133,29 +199,34 @@ export const useAuthStore = create<AuthState>()(
                 sessionStorage.setItem("mfa_pre_auth_token", response.pre_auth_token)
               }
             }
-            return { requiresMFA: true, factorId: undefined }
+            return { requiresMFA: true }
           }
 
-          // No MFA required, complete login
-          // Check if this is first login (user just registered)
           const showMFARecommendation = response.user.is_first_login && !response.user.mfa_enabled
+          const invitationAccepted = await syncInvitationAcceptance(response, set)
+          const activeOrgId = invitationAccepted
+            ? useOrganizationStore.getState().currentOrganization?.id || null
+            : await syncSessionOrganizations(response, set)
 
-          // Clear stale organization from previous session
           if (typeof window !== "undefined") {
             try { localStorage.removeItem("organization-storage") } catch {}
+          }
+
+          if (invitationAccepted) {
+            clearAllInvitationTokens()
           }
 
           set({
             user: sanitizeUser(effectiveUser),
             apiKey: null,
-            organizations: [],
-            activeOrgId: null,
+            organizations: useOrganizationStore.getState().organizations,
+            activeOrgId,
             isAuthenticated: true,
             isLoading: false,
             showMFARecommendation,
           })
 
-          return { requiresMFA: false }
+          return { requiresMFA: false, invitationAccepted }
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Erreur de connexion",
@@ -165,7 +236,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      signup: async (email, password, firstName, lastName, organizationName?) => {
+      signup: async (email, password, firstName, lastName, organizationName, options) => {
         set({ isLoading: true, error: null })
         try {
           const response = await authService.signup(
@@ -173,11 +244,24 @@ export const useAuthStore = create<AuthState>()(
             password,
             firstName,
             lastName,
-            organizationName || ""
+            organizationName || "",
+            { invitationToken: options?.invitationToken },
           )
 
           const safeUser = sanitizeUser({ ...response.user, is_first_login: true })
           const isAuthenticated = !!response.session
+          const invitationAccepted = isAuthenticated
+            ? await syncInvitationAcceptance(response, set)
+            : false
+          const activeOrgId = isAuthenticated
+            ? invitationAccepted
+              ? useOrganizationStore.getState().currentOrganization?.id || null
+              : await syncSessionOrganizations(response, set)
+            : null
+
+          if (!isAuthenticated && options?.invitationToken && typeof window !== "undefined") {
+            savePersistentInvitationToken(options.invitationToken)
+          }
 
           if (!isAuthenticated && typeof window !== "undefined") {
             authStorage.removeItem("access_token")
@@ -192,8 +276,8 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: isAuthenticated ? safeUser : null,
             apiKey: null,
-            organizations: [],
-            activeOrgId: null,
+            organizations: isAuthenticated ? useOrganizationStore.getState().organizations : [],
+            activeOrgId,
             isAuthenticated,
             isLoading: false,
             showMFARecommendation: isAuthenticated && !response.user.mfa_enabled,
@@ -202,6 +286,7 @@ export const useAuthStore = create<AuthState>()(
           return {
             emailVerified: !!response.user.email_verified,
             isAuthenticated,
+            invitationAccepted,
           }
         } catch (error) {
           set({
@@ -220,6 +305,7 @@ export const useAuthStore = create<AuthState>()(
           if (typeof window !== "undefined") {
             sessionStorage.removeItem("mfa_required")
             sessionStorage.removeItem("mfa_pre_auth_token")
+            clearAllInvitationTokens()
             try { localStorage.removeItem("organization-storage") } catch {}
           }
           clearAllCachedContacts()

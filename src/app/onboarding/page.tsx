@@ -8,6 +8,7 @@ import { z } from "zod"
 import { useAuthStore, useOrganizationStore } from "@/stores"
 import { organizationsService, handleApiError } from "@/services"
 import { authStorage } from "@/lib/auth-storage"
+import { getPersistentInvitationToken } from "@/lib/invitation-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -48,6 +49,8 @@ export default function OnboardingPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
+
+  const pendingInvitationToken = getPersistentInvitationToken()
 
   const {
     register,
@@ -144,10 +147,10 @@ export default function OnboardingPage() {
   }, [organizations, setSessionOrganizations])
 
   useEffect(() => {
-    if (organizations.length === 0) {
+    if (organizations.length === 0 && !pendingInvitationToken) {
       setShowCreateForm(true)
     }
-  }, [organizations.length])
+  }, [organizations.length, pendingInvitationToken])
 
   const handleSelectOrganization = (orgId: string) => {
     const org = organizations.find((o) => o.id === orgId)
@@ -242,9 +245,20 @@ export default function OnboardingPage() {
           })}
         </div>
       ) : (
-        <p className="text-center text-[13px] text-white/35 py-4">
-          Aucune organisation associ&eacute;e &agrave; votre compte.
-        </p>
+        <div className="space-y-3 py-4 text-center">
+          <p className="text-[13px] text-white/35">
+            Aucune organisation associ&eacute;e &agrave; votre compte.
+          </p>
+          {pendingInvitationToken && (
+            <Button
+              type="button"
+              className="h-10 rounded-xl bg-primary text-[13px] font-bold text-black hover:bg-primary/90"
+              onClick={() => router.push(`/invitations/${pendingInvitationToken}`)}
+            >
+              Finaliser mon invitation
+            </Button>
+          )}
+        </div>
       )}
 
       {!showCreateForm && (

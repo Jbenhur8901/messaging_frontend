@@ -10,6 +10,7 @@ import {
   Receipt,
   Robot,
   Sliders,
+  Storefront,
   Tag,
   Users,
   Funnel,
@@ -37,7 +38,10 @@ export interface NavigationSection {
 
 export const navigationSections: NavigationSection[] = [
   {
-    items: [{ name: "Tableau de bord", href: "/dashboard", icon: GridFour }],
+    items: [
+      { name: "Tableau de bord", href: "/dashboard", icon: GridFour },
+      { name: "Business", href: "/business", icon: Storefront },
+    ],
   },
   {
     title: "Communication",

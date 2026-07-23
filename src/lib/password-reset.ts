@@ -6,7 +6,7 @@ export function getPasswordResetRedirectUrl(): string {
   return `${window.location.origin}/auth/reset-password`
 }
 
-export async function establishRecoverySession(): Promise<boolean> {
+export async function establishAuthSessionFromUrl(): Promise<boolean> {
   if (typeof window === "undefined") return false
 
   const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""))
@@ -48,3 +48,6 @@ export async function establishRecoverySession(): Promise<boolean> {
 
   return !!authStorage.getItem("access_token")
 }
+
+/** @deprecated Use establishAuthSessionFromUrl */
+export const establishRecoverySession = establishAuthSessionFromUrl

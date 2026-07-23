@@ -51,6 +51,13 @@ export interface AuthResponse {
   mfa_required?: boolean
   mfa_enabled?: boolean
   pre_auth_token?: string
+  invitation_acceptance?: {
+    success: boolean
+    organization_id?: string
+    organization_name?: string
+    role?: "owner" | "admin" | "member" | "viewer"
+    message?: string
+  }
 }
 
 export interface MFAStatus {
