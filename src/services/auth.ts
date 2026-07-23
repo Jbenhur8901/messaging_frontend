@@ -4,6 +4,15 @@ import { clearAllCachedContacts } from "@/lib/contacts-cache"
 import { syncSupabaseSession } from "@/lib/supabase"
 import type { AuthResponse, User, APIKey, MFAStatus, MFASetupResponse } from "@/types"
 
+export interface AuthFlowOptions {
+  invitationToken?: string
+}
+
+export function getEmailConfirmRedirectUrl(): string {
+  if (typeof window === "undefined") return "/auth/callback"
+  return `${window.location.origin}/auth/callback`
+}
+
 const sanitizeUserForStorage = (user: User): User => {
   const { api_key: _apiKey, ...rest } = user as User & { api_key?: unknown }
   return rest as User
@@ -15,7 +24,8 @@ export const authService = {
     password: string,
     firstName: string,
     lastName: string,
-    organizationName?: string
+    organizationName?: string,
+    options?: AuthFlowOptions,
   ): Promise<AuthResponse> {
     const formData = new URLSearchParams()
     formData.append("email", email)
@@ -24,6 +34,12 @@ export const authService = {
     formData.append("last_name", lastName)
     if (organizationName) {
       formData.append("organization_name", organizationName)
+    }
+    if (options?.invitationToken) {
+      formData.append("invitation_token", options.invitationToken)
+    }
+    if (typeof window !== "undefined" && !options?.invitationToken) {
+      formData.append("redirect_to", getEmailConfirmRedirectUrl())
     }
 
     const { data } = await api.post<AuthResponse>("/v1/auth/signup", formData)
@@ -39,10 +55,17 @@ export const authService = {
     return data
   },
 
-  async signin(email: string, password: string): Promise<AuthResponse> {
+  async signin(
+    email: string,
+    password: string,
+    options?: AuthFlowOptions,
+  ): Promise<AuthResponse> {
     const formData = new URLSearchParams()
     formData.append("email", email)
     formData.append("password", password)
+    if (options?.invitationToken) {
+      formData.append("invitation_token", options.invitationToken)
+    }
 
     const { data } = await api.post<AuthResponse>("/v1/auth/signin", formData)
 
@@ -214,10 +237,17 @@ export const authService = {
     return data
   },
 
-  async verifyMFA(preAuthToken: string, code: string): Promise<AuthResponse> {
+  async verifyMFA(
+    preAuthToken: string,
+    code: string,
+    options?: AuthFlowOptions,
+  ): Promise<AuthResponse> {
     const formData = new URLSearchParams()
     formData.append("pre_auth_token", preAuthToken)
     formData.append("code", code)
+    if (options?.invitationToken) {
+      formData.append("invitation_token", options.invitationToken)
+    }
     const { data } = await api.post<AuthResponse>("/v1/auth/mfa/verify", formData)
 
     if (typeof window !== "undefined") {

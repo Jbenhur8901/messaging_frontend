@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/stores"
 import { authService, handleApiError } from "@/services"
 import { authStorage } from "@/lib/auth-storage"
+import {
+  clearAllInvitationTokens,
+  getPendingInvitationToken,
+  markInvitationAccepted,
+  resolveInvitationToken,
+} from "@/lib/invitation-auth"
+import { useOrganizationStore } from "@/stores/organization-store"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -135,9 +142,30 @@ export default function Verify2FAPage() {
 
     setIsVerifying(true)
     try {
-      const result = await authService.verifyMFA(mfaPreAuthToken, providedCode)
+      const invitationToken = resolveInvitationToken()
+      const result = await authService.verifyMFA(mfaPreAuthToken, providedCode, {
+        invitationToken,
+      })
       if (!result.session) {
         throw new Error("Session MFA manquante")
+      }
+
+      if (result.invitation_acceptance?.success) {
+        markInvitationAccepted()
+        clearAllInvitationTokens()
+        const orgId = result.invitation_acceptance.organization_id
+        if (orgId) {
+          try {
+            await useOrganizationStore.getState().fetchOrganizations()
+            const orgs = useOrganizationStore.getState().organizations
+            const acceptedOrg = orgs.find((org) => org.id === orgId) || null
+            if (acceptedOrg) {
+              useOrganizationStore.getState().setCurrentOrganization(acceptedOrg)
+            }
+          } catch {
+            // Organizations will sync on next dashboard load.
+          }
+        }
       }
 
       authStorage.setItem("user", JSON.stringify(result.user))
@@ -145,7 +173,11 @@ export default function Verify2FAPage() {
       completeMFA()
       setVerificationComplete(true)
       resetCooldownState()
-      toast.success("Authentification réussie")
+      toast.success(
+        result.invitation_acceptance?.success
+          ? `Vous avez rejoint ${result.invitation_acceptance.organization_name || "l'organisation"}`
+          : "Authentification réussie",
+      )
     } catch (error) {
       const apiError = handleApiError(error)
       toast.error(apiError.message || "Code invalide")

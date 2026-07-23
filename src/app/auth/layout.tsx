@@ -17,7 +17,9 @@ export default function AuthLayout({
     pathname === "/auth/login" ||
     pathname === "/auth/register" ||
     pathname === "/auth/forgot-password" ||
-    pathname === "/auth/reset-password"
+    pathname === "/auth/reset-password" ||
+    pathname === "/auth/confirm-email" ||
+    pathname === "/auth/callback"
 
   if (isPlainAuth) {
     return (

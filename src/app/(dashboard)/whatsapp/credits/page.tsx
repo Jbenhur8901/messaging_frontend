@@ -66,6 +66,7 @@ const BASE_FEATURES = [
 ] as const
 
 const PRO_FEATURES = [
+  { label: "Jusqu'à 5 membres d'équipe", desc: "Invitez des collaborateurs avec des rôles dédiés" },
   { label: "Segments de contacts avancés", desc: "Ciblage dynamique par critères" },
   { label: "Automatisations de campagnes", desc: "Séquences de messages automatiques" },
   { label: "Agents IA (auto-reply)", desc: "Réponses intelligentes en conversations" },

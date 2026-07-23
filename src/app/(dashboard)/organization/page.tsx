@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Building2, Plus, Save } from "lucide-react"
 import { toast } from "sonner"
 
+import { OrganizationMembersSection } from "@/components/organization/members-section"
+
 export default function OrganizationPage() {
   const router = useRouter()
   const {
@@ -91,8 +93,8 @@ export default function OrganizationPage() {
         </div>
       </div>
 
-      <div className="grid gap-5 max-w-2xl">
-        {/* Invitations et membres — temporairement masqué */}
+      <div className="grid max-w-2xl gap-5">
+        {userRole === "owner" && <OrganizationMembersSection />}
 
         {/* Informations */}
         <div className="space-y-4">
