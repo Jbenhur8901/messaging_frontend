@@ -103,12 +103,15 @@ export interface FieldSchema {
   item_fields?: FieldSchema[]
 }
 
+export type PdfTemplateType = "facturation" | "kyc"
+
 export interface PdfTemplate {
   id: string
   organization_id?: string
   agent_id?: string | null
   name: string
   description?: string | null
+  template_type: PdfTemplateType
   html_content?: string
   styles: PdfStyles
   fields_schema: FieldSchema[]
@@ -121,6 +124,7 @@ export interface PdfTemplateCreatePayload {
   name: string
   description?: string
   agent_id?: string
+  template_type?: PdfTemplateType
   html_content?: string
   styles?: Partial<PdfStyles>
   fields_schema?: FieldSchema[]

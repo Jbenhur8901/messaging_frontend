@@ -20,7 +20,7 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const isEditorRoute = Boolean(
     pathname?.match(/^\/scenarios\/[^/]+$/) ||
-    pathname?.match(/^\/agents\/[^/]+\/devis$/)
+    pathname?.match(/^\/agents\/[^/]+\/devis\/[^/]+$/)
   )
   const {
     user,
