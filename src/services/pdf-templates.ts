@@ -1,4 +1,5 @@
 import { api, apiJson } from "./api"
+import type { PdfBlock } from "@/types/pdf-blocks"
 
 // ─── Full visual config — everything the template reads ────────────────── //
 export interface PdfStyles {
@@ -115,6 +116,7 @@ export interface PdfTemplate {
   html_content?: string
   styles: PdfStyles
   fields_schema: FieldSchema[]
+  blocks?: PdfBlock[]
   is_default: boolean
   created_at: string
   updated_at?: string
@@ -128,6 +130,7 @@ export interface PdfTemplateCreatePayload {
   html_content?: string
   styles?: Partial<PdfStyles>
   fields_schema?: FieldSchema[]
+  blocks?: PdfBlock[]
   is_default?: boolean
 }
 
@@ -137,6 +140,7 @@ export interface PdfTemplateUpdatePayload {
   html_content?: string
   styles?: Partial<PdfStyles>
   fields_schema?: FieldSchema[]
+  blocks?: PdfBlock[]
   is_default?: boolean
 }
 

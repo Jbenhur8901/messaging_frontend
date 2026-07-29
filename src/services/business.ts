@@ -5,6 +5,10 @@ import { api, apiJson } from "@/services/api"
 import type {
   BusinessOperation,
   BusinessOperationType,
+  BusinessDocument,
+  BusinessDocumentEvent,
+  BusinessDocumentStats,
+  BusinessDocumentType,
   BusinessWallet,
   BusinessWalletTransaction,
   CardWallet,
@@ -440,6 +444,129 @@ export async function deleteBusinessOperation(_token: string, wsId: string, id: 
   }
 }
 
+// ─── Documents (generated PDF registry) ─────────────────────────────────────
+
+function mapDocument(raw: Record<string, unknown>): BusinessDocument {
+  return {
+    id: String(raw.id),
+    documentNumber: (raw.document_number as string) ?? null,
+    name: String(raw.name ?? raw.title ?? "—"),
+    documentType: String(raw.document_type ?? raw.type ?? "other") as BusinessDocumentType,
+    status: String(raw.status ?? "generated"),
+    fileName: (raw.file_name as string) ?? null,
+    filePath: (raw.file_path as string) ?? null,
+    mimeType: (raw.mime_type as string) ?? null,
+    fileSize: raw.file_size != null ? Number(raw.file_size) : null,
+    customerId: (raw.customer_id as string) ?? null,
+    customerName: (raw.customer_name as string) ?? (raw.contact_name as string) ?? null,
+    agentId: (raw.agent_id as string) ?? null,
+    agentName: (raw.agent_name as string) ?? null,
+    conversationId: (raw.conversation_id as string) ?? null,
+    templateId: (raw.template_id as string) ?? null,
+    templateName: (raw.template_name as string) ?? null,
+    tariffGridId: (raw.tariff_grid_id as string) ?? null,
+    amount: raw.amount != null ? Number(raw.amount) : null,
+    currency: (raw.currency as string) ?? null,
+    previewUrl: (raw.preview_url as string) ?? (raw.signed_url as string) ?? null,
+    downloadUrl: (raw.download_url as string) ?? null,
+    metadata: (raw.metadata as Record<string, unknown>) ?? null,
+    generatedAt: (raw.generated_at as string) ?? null,
+    sentAt: (raw.sent_at as string) ?? null,
+    viewedAt: (raw.viewed_at as string) ?? null,
+    expiresAt: (raw.expires_at as string) ?? null,
+    createdAt: String(raw.created_at ?? raw.generated_at ?? ""),
+    updatedAt: (raw.updated_at as string) ?? null,
+  }
+}
+
+function mapDocumentEvent(raw: Record<string, unknown>): BusinessDocumentEvent {
+  return {
+    id: String(raw.id),
+    documentId: String(raw.document_id ?? ""),
+    eventType: String(raw.event_type ?? raw.type ?? "unknown"),
+    actorType: (raw.actor_type as string) ?? null,
+    actorId: (raw.actor_id as string) ?? null,
+    metadata: (raw.metadata as Record<string, unknown>) ?? null,
+    createdAt: String(raw.created_at ?? ""),
+  }
+}
+
+const EMPTY_DOCUMENT_STATS: BusinessDocumentStats = {
+  total: 0,
+  createdThisMonth: 0,
+  sent: 0,
+  storageUsedBytes: 0,
+}
+
+export async function getBusinessDocumentStats(_token: string, wsId: string): Promise<BusinessDocumentStats> {
+  const data = await businessGetOr<Record<string, unknown> | null>(wsId, "/documents/stats", null)
+  if (!data) return EMPTY_DOCUMENT_STATS
+  const raw = (data as { data?: Record<string, unknown> }).data ?? data
+  return {
+    total: Number(raw.total ?? 0),
+    createdThisMonth: Number(raw.created_this_month ?? raw.createdThisMonth ?? 0),
+    sent: Number(raw.sent ?? 0),
+    storageUsedBytes: Number(raw.storage_used_bytes ?? raw.storageUsedBytes ?? 0),
+  }
+}
+
+export async function listBusinessDocuments(
+  _token: string,
+  wsId: string,
+  params?: {
+    limit?: number
+    page?: number
+    document_type?: BusinessDocumentType | "all"
+    status?: string
+    agent_id?: string
+    q?: string
+    has_amount?: "yes" | "no"
+    period?: "month" | "all"
+  },
+) {
+  const search = new URLSearchParams()
+  if (params?.limit) search.set("limit", String(params.limit))
+  if (params?.page) search.set("page", String(params.page))
+  if (params?.document_type && params.document_type !== "all") {
+    search.set("document_type", params.document_type)
+  }
+  if (params?.status) search.set("status", params.status)
+  if (params?.agent_id) search.set("agent_id", params.agent_id)
+  if (params?.q) search.set("q", params.q)
+  if (params?.has_amount) search.set("has_amount", params.has_amount)
+  if (params?.period) search.set("period", params.period)
+  const qs = search.toString()
+  const data = await businessGetOr<unknown>(wsId, `/documents${qs ? `?${qs}` : ""}`, [])
+  return unwrapList(data, mapDocument)
+}
+
+export async function getBusinessDocument(_token: string, wsId: string, id: string) {
+  const data = await businessGet<Record<string, unknown>>(wsId, `/documents/${id}`)
+  const raw = (data as { data?: Record<string, unknown> }).data ?? data
+  return mapDocument(raw)
+}
+
+export async function listBusinessDocumentEvents(_token: string, wsId: string, documentId: string) {
+  const data = await businessGetOr<unknown>(wsId, `/documents/${documentId}/events`, [])
+  return unwrapList(data, mapDocumentEvent)
+}
+
+export async function getBusinessDocumentDownloadUrl(_token: string, wsId: string, id: string) {
+  const data = await businessGet<Record<string, unknown>>(wsId, `/documents/${id}/download-url`)
+  const raw = (data as { data?: Record<string, unknown> }).data ?? data
+  return String(raw.url ?? raw.download_url ?? raw.signed_url ?? "")
+}
+
+export async function archiveBusinessDocument(_token: string, wsId: string, id: string) {
+  const data = await businessPatch<Record<string, unknown>>(wsId, `/documents/${id}`, { status: "archived" })
+  const raw = (data as { data?: Record<string, unknown> }).data ?? data
+  return mapDocument(raw)
+}
+
+export async function deleteBusinessDocument(_token: string, wsId: string, id: string) {
+  await businessDelete(wsId, `/documents/${id}`)
+}
+
 // ─── Orders (legacy) ────────────────────────────────────────────────────────
 
 export async function listOrders(
@@ -634,4 +761,8 @@ export const businessService = {
   getActiveWorkspaceId,
   listBusinessOperations,
   deleteBusinessOperation,
+  listBusinessDocuments,
+  getBusinessDocumentStats,
+  getBusinessDocument,
+  deleteBusinessDocument,
 }

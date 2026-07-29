@@ -20,8 +20,8 @@ const TYPE_OPTIONS: {
   {
     type: "facturation",
     Icon: FilePdf,
-    label: "Facturation",
-    description: "Devis, facture, bon de commande, proforma… mise en page personnalisable (couleurs, logo, tableau, totaux).",
+    label: "Document",
+    description: "Page blanche : construisez votre document bloc par bloc — devis, facture, lettre d'engagement, formulaire… ajoutez et remplissez tout vous-même, du début à la fin.",
   },
   {
     type: "kyc",

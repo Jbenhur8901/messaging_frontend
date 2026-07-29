@@ -40,15 +40,17 @@ Aperçu puis enregistrement
 La barre supérieure permet de :
 
 - revenir à la liste des modèles ;
-- consulter le nom du modèle actif ;
-- annuler ou rétablir une modification ;
-- naviguer entre les pages ;
-- ouvrir l’aperçu du document ;
-- enregistrer les changements.
+- consulter le fil d’ariane « Modèles › nom du modèle actif », modifiable en ligne ;
+- annuler ou rétablir une modification (icônes dédiées, raccourcis Ctrl/Cmd+Z et Maj+Ctrl/Cmd+Z) ;
+- naviguer entre les pages du document (compteur « page / total ») ;
+- basculer en mode aperçu, qui masque la bibliothèque, le panneau de propriétés et les repères de sélection ;
+- enregistrer les changements (bouton d’accent, à droite).
 
 ## Bibliothèque de blocs
 
-Les blocs peuvent être ajoutés au document par glisser-déposer.
+Le panneau de gauche est repliable (icône chevron) et regroupe les blocs en catégories : **Contenu** et **Mise en page**.
+
+Les blocs peuvent être ajoutés au document par glisser-déposer ou par un simple clic sur l’élément de la bibliothèque.
 
 Blocs prévus :
 
@@ -61,21 +63,21 @@ Blocs prévus :
 - séparateur ;
 - signature.
 
-Chaque bloc possède un identifiant stable, un type, une position, un ordre et une configuration.
+Chaque bloc possède un identifiant stable, un type, une position, un ordre et une configuration, ainsi qu’une icône et une poignée de déplacement (six points) affichées au survol dans la bibliothèque.
 
 ## Canevas du document
 
-Le canevas central représente une page PDF au format A4.
+Le canevas central représente une page PDF au format A4, centrée sur un fond neutre.
 
 Fonctions attendues :
 
 - déposer un bloc à un emplacement précis ;
-- sélectionner un bloc ;
-- déplacer et réordonner les blocs ;
-- afficher les limites du bloc sélectionné ;
-- supprimer ou dupliquer un bloc ;
+- sélectionner un bloc : un contour pointillé apparaît autour du bloc et une étiquette flottante s’affiche au-dessus (poignée de déplacement, icône du type de bloc, libellé, bouton de suppression) ;
+- déplacer et réordonner les blocs par glisser-déposer sur leur poignée ;
+- afficher les limites du bloc sélectionné ou survolé ;
+- supprimer un bloc directement depuis son étiquette flottante ;
 - gérer plusieurs pages ;
-- ajuster le zoom ;
+- ajuster le zoom via une barre d’outils flottante en bas du canevas (zoom arrière, pourcentage courant, zoom avant, réinitialisation, aperçu document, grille de repères) ;
 - prévisualiser le rendu final.
 
 ## Panneau de propriétés

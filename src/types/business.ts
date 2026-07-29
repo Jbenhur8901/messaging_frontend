@@ -27,6 +27,63 @@ export interface BusinessOperation {
   updatedAt?: string | null
 }
 
+export type BusinessDocumentType =
+  | "quote"
+  | "invoice"
+  | "receipt"
+  | "kyc"
+  | "certificate"
+  | "report"
+  | "other"
+
+export interface BusinessDocument {
+  id: string
+  documentNumber?: string | null
+  name: string
+  documentType: BusinessDocumentType
+  status: string
+  fileName?: string | null
+  filePath?: string | null
+  mimeType?: string | null
+  fileSize?: number | null
+  customerId?: string | null
+  customerName?: string | null
+  agentId?: string | null
+  agentName?: string | null
+  conversationId?: string | null
+  templateId?: string | null
+  templateName?: string | null
+  tariffGridId?: string | null
+  amount?: number | null
+  currency?: string | null
+  previewUrl?: string | null
+  downloadUrl?: string | null
+  metadata?: Record<string, unknown> | null
+  generatedAt?: string | null
+  sentAt?: string | null
+  viewedAt?: string | null
+  expiresAt?: string | null
+  createdAt: string
+  updatedAt?: string | null
+}
+
+export interface BusinessDocumentStats {
+  total: number
+  createdThisMonth: number
+  sent: number
+  storageUsedBytes: number
+}
+
+export interface BusinessDocumentEvent {
+  id: string
+  documentId: string
+  eventType: string
+  actorType?: string | null
+  actorId?: string | null
+  metadata?: Record<string, unknown> | null
+  createdAt: string
+}
+
 export interface CatalogCategory {
   id: string
   name: string

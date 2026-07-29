@@ -3,6 +3,7 @@
 import {
   CaretDown,
   CreditCard,
+  FileText,
   Invoice,
   Storefront,
   Tag,
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils"
 export type IconName =
   | "business"
   | "creditCard"
+  | "document"
   | "invoice"
   | "billing"
   | "trash"
@@ -27,6 +29,7 @@ export type IconName =
 const ICON_MAP: Record<IconName, ComponentType<IconProps>> = {
   business: Storefront,
   creditCard: CreditCard,
+  document: FileText,
   invoice: Invoice,
   billing: Wallet,
   trash: Trash,

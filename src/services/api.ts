@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios"
 import { authStorage } from "@/lib/auth-storage"
 import { clearAllCachedContacts } from "@/lib/contacts-cache"
-import { syncSupabaseSession } from "@/lib/supabase"
+import { syncSupabaseSession, clearSupabaseSession } from "@/lib/supabase"
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim()
 
@@ -17,6 +17,7 @@ const APP_NAMESPACE_PREFIXES = [
   "/v1/ai/credits/check",
   "/v1/ai/credits/transactions",
   "/v1/ai/pdf",
+  "/v1/tariff-grids",
   "/v1/segments",
   "/v1/automations",
 ] as const
@@ -122,9 +123,17 @@ function clearAuthAndRedirect() {
   authStorage.removeItem("user")
   authStorage.removeItem("auth-storage")
   clearAllCachedContacts()
+  void clearSupabaseSession()
   if (typeof window !== "undefined") {
     window.location.href = "/auth/login"
   }
+}
+
+function isRefreshTokenReuseError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false
+  const detail = error.response?.data as { detail?: unknown; message?: string } | undefined
+  const message = String(detail?.detail ?? detail?.message ?? error.message ?? "").toLowerCase()
+  return message.includes("invalid refresh token") || message.includes("already used")
 }
 
 async function handleTokenRefresh(
@@ -151,7 +160,16 @@ async function handleTokenRefresh(
 
   isRefreshing = true
 
+  const refreshTokenAtStart = authStorage.getItem("refresh_token")
+
   try {
+    const refreshToken = authStorage.getItem("refresh_token")
+
+    if (!refreshToken) {
+      clearAuthAndRedirect()
+      return Promise.reject()
+    }
+
     const formData = new URLSearchParams()
     formData.append("refresh_token", refreshToken)
 
@@ -166,18 +184,32 @@ async function handleTokenRefresh(
     )
 
     const newToken = data.session.access_token
-    await syncSupabaseSession(data.session)
     authStorage.setItem("access_token", newToken)
     authStorage.setItem("refresh_token", data.session.refresh_token)
+    await syncSupabaseSession(data.session)
 
     originalRequest.headers.Authorization = `Bearer ${newToken}`
     onRefreshed(newToken)
 
     return instance(originalRequest)
-  } catch {
+  } catch (error) {
+    const latestAccess = authStorage.getItem("access_token")
+    const latestRefresh = authStorage.getItem("refresh_token")
+
+    if (
+      isRefreshTokenReuseError(error) &&
+      latestRefresh &&
+      latestRefresh !== refreshTokenAtStart &&
+      latestAccess
+    ) {
+      originalRequest.headers.Authorization = `Bearer ${latestAccess}`
+      onRefreshed(latestAccess)
+      return instance(originalRequest)
+    }
+
     refreshSubscribers = []
     clearAuthAndRedirect()
-    return Promise.reject()
+    return Promise.reject(error)
   } finally {
     isRefreshing = false
   }

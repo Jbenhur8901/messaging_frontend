@@ -3,6 +3,7 @@
 import { ThemeProvider } from "next-themes"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { ExtensionErrorGuard } from "@/components/extension-error-guard"
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -19,6 +20,7 @@ export function Providers({ children, nonce }: ProvidersProps) {
       nonce={nonce}
     >
       <TooltipProvider>
+        <ExtensionErrorGuard />
         {children}
         <Toaster position="top-right" />
       </TooltipProvider>

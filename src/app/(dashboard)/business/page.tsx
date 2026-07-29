@@ -5,15 +5,17 @@ import { Icon, type IconName } from "@/lib/icons"
 import { tLabel, useAppLanguage } from "@/lib/app-language"
 import { DashboardPageHeader, DashboardShell } from "@/components/business/dashboard-shell"
 import { CatalogueTab } from "@/components/business/catalogue-tab"
+import { DocumentsTab } from "@/components/business/documents-tab"
 import { PaiementTab } from "@/components/business/paiement-tab"
 import { OperationsTab } from "@/components/business/operations-tab"
 import { PortefeuilleTab } from "@/components/business/portefeuille-tab"
 import { cn } from "@/lib/utils"
 
-type TabId = "catalogue" | "paiement" | "operations" | "portefeuille"
+type TabId = "catalogue" | "documents" | "paiement" | "operations" | "portefeuille"
 
 const TABS: { id: TabId; icon: IconName }[] = [
   { id: "catalogue", icon: "business" },
+  { id: "documents", icon: "document" },
   { id: "paiement", icon: "creditCard" },
   { id: "operations", icon: "invoice" },
   { id: "portefeuille", icon: "billing" },
@@ -28,6 +30,7 @@ declare global {
 function getTabLabel(tabId: TabId, language: "fr" | "en") {
   const labels: Record<TabId, { fr: string; en: string }> = {
     catalogue: { fr: "Catalogue", en: "Catalog" },
+    documents: { fr: "Documents", en: "Documents" },
     paiement: { fr: "Paiements", en: "Payments" },
     operations: { fr: "Opérations enregistrées", en: "Recorded operations" },
     portefeuille: { fr: "Portefeuille", en: "Wallet" },
@@ -62,8 +65,8 @@ export default function BusinessPage() {
         eyebrow={tLabel(language, { fr: "Commerce", en: "Commerce" })}
         title="Business"
         description={tLabel(language, {
-          fr: "Catalogue, paiements, opérations IA et portefeuille — tout au même endroit.",
-          en: "Catalog, payments, AI operations and wallet — all in one place.",
+          fr: "Catalogue, documents, paiements, opérations IA et portefeuille — tout au même endroit.",
+          en: "Catalog, documents, payments, AI operations and wallet — all in one place.",
         })}
       />
 
@@ -83,7 +86,7 @@ export default function BusinessPage() {
         </div>
 
         <div className="hidden rounded-[16px] bg-card p-1.5 shadow-lg border border-border sm:block">
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-2 gap-1 lg:grid-cols-5">
             {TABS.map((tab) => {
               const active = activeTab === tab.id
               return (
@@ -92,7 +95,7 @@ export default function BusinessPage() {
                   type="button"
                   onClick={() => switchTab(tab.id)}
                   className={cn(
-                    "relative flex items-center justify-center gap-2 rounded-[10px] px-3 py-2.5 text-[13px] font-medium transition-all duration-200",
+                    "relative flex items-center justify-center gap-2 rounded-[10px] px-2 py-2.5 text-[12px] font-medium transition-all duration-200 lg:px-3 lg:text-[13px]",
                     active
                       ? "bg-primary text-primary-foreground shadow-[0_8px_18px_-10px_rgba(255,204,0,0.35)]"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -111,6 +114,11 @@ export default function BusinessPage() {
         {loaded.has("catalogue") ? (
           <div className={activeTab !== "catalogue" ? "hidden" : ""}>
             <CatalogueTab />
+          </div>
+        ) : null}
+        {loaded.has("documents") ? (
+          <div className={activeTab !== "documents" ? "hidden" : ""}>
+            <DocumentsTab />
           </div>
         ) : null}
         {loaded.has("paiement") ? (

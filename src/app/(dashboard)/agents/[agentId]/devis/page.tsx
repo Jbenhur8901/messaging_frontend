@@ -159,7 +159,7 @@ export default function DevisListPage({ params }: { params: Promise<{ agentId: s
                   </div>
                   <Badge variant="secondary" className="shrink-0 gap-1">
                     {isKyc ? <User className="h-3 w-3" /> : <FilePdf className="h-3 w-3" />}
-                    {isKyc ? "KYC" : "Facturation"}
+                    {isKyc ? "KYC" : "Document"}
                   </Badge>
                 </div>
 

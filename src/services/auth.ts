@@ -1,7 +1,7 @@
 import { api, apiJson, buildOrgFormData, getStoredActiveOrgId, withOrgQuery } from "./api"
 import { authStorage } from "@/lib/auth-storage"
 import { clearAllCachedContacts } from "@/lib/contacts-cache"
-import { syncSupabaseSession } from "@/lib/supabase"
+import { syncSupabaseSession, clearSupabaseSession } from "@/lib/supabase"
 import type { AuthResponse, User, APIKey, MFAStatus, MFASetupResponse } from "@/types"
 
 export interface AuthFlowOptions {
@@ -102,6 +102,7 @@ export const authService = {
         sessionStorage.removeItem("mfa_required")
         sessionStorage.removeItem("mfa_pre_auth_token")
         clearAllCachedContacts()
+        void clearSupabaseSession()
       }
     }
   },

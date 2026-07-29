@@ -36,6 +36,7 @@ import {
   KYC_FIELDS_SCHEMA,
   KYC_SAMPLE_DATA,
 } from "@/services/pdf-templates-kyc"
+import { BlockTemplateEditor } from "./block-editor"
 
 // ─── Colour presets ────────────────────────────────────────────────────── //
 const COLOR_PRESETS = [
@@ -278,7 +279,22 @@ export interface TemplateEditorProps {
   onDeleted?: () => void
 }
 
-export function TemplateEditor({
+export function TemplateEditor(props: TemplateEditorProps) {
+  if (props.templateType === "facturation") {
+    return (
+      <BlockTemplateEditor
+        agentId={props.agentId}
+        mode={props.mode}
+        initialTemplate={props.initialTemplate}
+        onSaved={props.onSaved}
+        onDeleted={props.onDeleted}
+      />
+    )
+  }
+  return <LegacyTemplateEditor {...props} />
+}
+
+function LegacyTemplateEditor({
   agentId, mode, templateType, initialTemplate, onSaved, onDeleted,
 }: TemplateEditorProps) {
   const isKyc = templateType === "kyc"

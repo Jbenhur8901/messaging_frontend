@@ -19,8 +19,8 @@ export const AGENT_CATALOG: AgentItem[] = [
     label: "Jarvis",
     description: "Agent IA universel. Répond à toutes vos questions, automatise vos tâches et s'adapte à chaque contexte métier.",
     defaultInstructions: "Tu es Jarvis, un agent IA avancé. Tu aides l'utilisateur avec toutes ses demandes de manière précise et efficace.",
-    capabilities: ["Fiche client", "Recherche dans les fichiers", "Envoi de documents WhatsApp"],
-    totalTools: 3,
+    capabilities: ["Fiche client", "Recherche dans les fichiers", "Envoi de documents WhatsApp", "Calcul de devis CSV"],
+    totalTools: 4,
     emoji: "🤖",
     accentClass: "border-l-sky-500/70",
   },
@@ -99,6 +99,7 @@ export const TOOLS_CATALOG: ToolItem[] = [
   { code: "file_search",         label: "Recherche dans les fichiers",     description: "Recherche dans les fichiers reliés au workspace ou aux vector stores pour retrouver des informations pertinentes." },
   { code: "send_document",       label: "Envoi de documents WhatsApp",     description: "Envoie des documents (PDF, images, fichiers) directement dans la conversation WhatsApp du client." },
   { code: "generate_pdf_quote",  label: "Génération de PDF",              description: "Génère un document PDF personnalisé (devis, facture, fiche KYC…) à partir des informations collectées dans la conversation, et l'envoie automatiquement au client via WhatsApp." },
+  { code: "csv_tariff_quote",    label: "Calcul de devis CSV",            description: "Calcule un prix ou un devis à partir d'une grille tarifaire CSV configurée (mapping, colonnes de sortie et formule)." },
 ]
 
 // Optional tools enabled by default (required ones are always on)

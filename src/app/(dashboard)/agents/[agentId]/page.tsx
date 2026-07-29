@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { agentsService, handleApiError } from "@/services"
 import type { Agent } from "@/services/agents"
 import { aiToolsService } from "@/services/ai-tools"
+import { tariffGridsService } from "@/services/tariff-grids"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
@@ -52,6 +53,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ agentId: string 
   const [vectorStoreIds, setVectorStoreIds] = useState("")
   const [vectorStores, setVectorStores] = useState<Array<{ id: string; name: string }>>([])
   const [whatsappDocsCount, setWhatsappDocsCount] = useState<number>(0)
+  const [connectedTariffGrid, setConnectedTariffGrid] = useState<{ id: string; name: string } | null>(null)
 
   const presentation = useMemo(
     () => AGENT_CATALOG.find((a) => a.id === agent?.slug || a.label === agent?.name) || fallbackPresentation,
@@ -78,10 +80,11 @@ function AgentDetailPageContent({ params }: { params: Promise<{ agentId: string 
         setVectorStoreIds(resolvedAgent.ai_vector_store_ids.join(","))
         setEnabledTools(new Set(resolvedAgent.ai_tools.length ? resolvedAgent.ai_tools : DEFAULT_ENABLED_TOOLS))
 
-        const [toolsResult, vsResult, docsResult] = await Promise.allSettled([
+        const [toolsResult, vsResult, docsResult, gridsResult] = await Promise.allSettled([
           agentsService.getTools(resolvedAgent.id),
           aiToolsService.listVectorStores(),
           agentsService.listDocuments(resolvedAgent.id),
+          tariffGridsService.listGrids(agentId),
         ])
 
         if (!active) return
@@ -97,6 +100,12 @@ function AgentDetailPageContent({ params }: { params: Promise<{ agentId: string 
           setVectorStores(stores)
         }
         if (docsResult.status === "fulfilled") setWhatsappDocsCount(docsResult.value.documents?.length ?? 0)
+        if (gridsResult.status === "fulfilled") {
+          const connected = gridsResult.value.grids.find(
+            (g) => g.agent_id === resolvedAgent.id || g.agent_id === agentId
+          )
+          setConnectedTariffGrid(connected ? { id: connected.id, name: connected.name } : null)
+        }
       } catch (error) {
         toast.error(handleApiError(error).message)
         router.replace("/agents")
@@ -401,6 +410,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ agentId: string 
                   const isFileSearch = tool.code === "file_search"
                   const isWhatsappDoc = tool.code === "send_document"
                   const isPdfQuote = tool.code === "generate_pdf_quote"
+                  const isCsvTariff = tool.code === "csv_tariff_quote"
                   const connectedVsId = vectorStoreIds.split(",").filter(Boolean)[0]
                   const connectedVs = vectorStores.find((vs) => vs.id === connectedVsId)
                   const toolConfigHref = isFileSearch
@@ -409,7 +419,9 @@ function AgentDetailPageContent({ params }: { params: Promise<{ agentId: string 
                       ? `/agents/${agentId}/documents`
                       : isPdfQuote
                         ? `/agents/${agentId}/devis`
-                        : null
+                        : isCsvTariff
+                          ? `/agents/${agentId}/grilles-tarifaires`
+                          : null
 
                   const handleToggle = () => {
                     if (isRequired) return
@@ -420,6 +432,10 @@ function AgentDetailPageContent({ params }: { params: Promise<{ agentId: string 
                       }
                       if (isWhatsappDoc && whatsappDocsCount === 0) {
                         router.push(`/agents/${agentId}/documents`)
+                        return
+                      }
+                      if (isCsvTariff && !connectedTariffGrid) {
+                        router.push(`/agents/${agentId}/grilles-tarifaires`)
                         return
                       }
                     }
@@ -469,6 +485,17 @@ function AgentDetailPageContent({ params }: { params: Promise<{ agentId: string 
                               className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
                             >
                               Gérer les modèles
+                              <Pencil className="h-3 w-3" weight="regular" />
+                            </Link>
+                          </div>
+                        )}
+                        {isCsvTariff && isEnabled && connectedTariffGrid && (
+                          <div className="mt-2 flex items-center gap-1.5">
+                            <Link
+                              href={`/agents/${agentId}/grilles-tarifaires`}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              {connectedTariffGrid.name}
                               <Pencil className="h-3 w-3" weight="regular" />
                             </Link>
                           </div>
