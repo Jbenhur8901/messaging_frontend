@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import {
   ArrowLeft, Plus, FilePdf, User, Star, CheckCircle,
-  PencilSimple, Trash, Spinner, ArrowRight,
+  PencilSimple, Trash, ArrowRight,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -30,22 +30,16 @@ export default function DevisListPage({ params }: { params: Promise<{ agentId: s
 
   const [isLoading, setIsLoading] = useState(true)
   const [templates, setTemplates] = useState<PdfTemplate[]>([])
-  const [orgDefault, setOrgDefault] = useState<PdfTemplate | null>(null)
   const [showTypeDialog, setShowTypeDialog] = useState(false)
-  const [connectTarget, setConnectTarget] = useState<PdfTemplate | null>(null)
-  const [connectingId, setConnectingId] = useState<string | null>(null)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<PdfTemplate | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [{ templates: tpls }, defaultResp] = await Promise.all([
-        pdfTemplatesService.listTemplates(agentId),
-        pdfTemplatesService.getDefaultTemplate().catch(() => null),
-      ])
+      const { templates: tpls } = await pdfTemplatesService.listTemplates(agentId)
       setTemplates(tpls)
-      setOrgDefault(defaultResp?.data?.id ? defaultResp.data : null)
     } catch (err) {
       toast.error(handleApiError(err).message || "Erreur de chargement")
     } finally {
@@ -55,19 +49,19 @@ export default function DevisListPage({ params }: { params: Promise<{ agentId: s
 
   useEffect(() => { load() }, [load])
 
-  const handleConnect = async () => {
-    if (!connectTarget) return
-    setConnectingId(connectTarget.id)
+  // Plusieurs modèles peuvent être connectés à l'IA simultanément — l'agent
+  // détermine quel document générer selon la demande du client. Basculer un
+  // modèle ne déconnecte donc plus les autres.
+  const handleToggleConnect = async (t: PdfTemplate) => {
+    setTogglingId(t.id)
     try {
-      const updated = await pdfTemplatesService.updateTemplate(connectTarget.id, { is_default: true })
-      setTemplates((prev) => prev.map((t) => ({ ...t, is_default: t.id === updated.id })))
-      setOrgDefault(updated)
-      toast.success("Modèle connecté à l'IA")
+      const updated = await pdfTemplatesService.updateTemplate(t.id, { is_default: !t.is_default })
+      setTemplates((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+      toast.success(updated.is_default ? "Modèle connecté à l'IA" : "Modèle déconnecté de l'IA")
     } catch (err) {
       toast.error(handleApiError(err).message || "Erreur de connexion")
     } finally {
-      setConnectingId(null)
-      setConnectTarget(null)
+      setTogglingId(null)
     }
   }
 
@@ -85,6 +79,8 @@ export default function DevisListPage({ params }: { params: Promise<{ agentId: s
       setDeleteTarget(null)
     }
   }
+
+  const connectedCount = templates.filter((t) => t.is_default).length
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -106,6 +102,9 @@ export default function DevisListPage({ params }: { params: Promise<{ agentId: s
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {templates.length} modèle{templates.length !== 1 ? "s" : ""} — devis, factures, fiches KYC…
+            {connectedCount > 0 && (
+              <> · {connectedCount} connecté{connectedCount !== 1 ? "s" : ""} à l&apos;IA</>
+            )}
           </p>
         </div>
         <Button onClick={() => setShowTypeDialog(true)}>
@@ -175,8 +174,8 @@ export default function DevisListPage({ params }: { params: Promise<{ agentId: s
                 <div className="mt-auto flex items-center gap-2 border-t border-border/40 pt-3">
                   <Switch
                     checked={isConnected}
-                    disabled={isConnected || connectingId === t.id}
-                    onCheckedChange={() => setConnectTarget(t)}
+                    disabled={togglingId === t.id}
+                    onCheckedChange={() => handleToggleConnect(t)}
                     aria-label="Connecter à l'IA"
                   />
                   <span className="text-[11px] text-muted-foreground">Connecté à l&apos;IA</span>
@@ -209,27 +208,6 @@ export default function DevisListPage({ params }: { params: Promise<{ agentId: s
       )}
 
       <TemplateTypeDialog agentId={agentId} open={showTypeDialog} onOpenChange={setShowTypeDialog} />
-
-      {/* Connect confirmation — warns about org-wide disconnect */}
-      <AlertDialog open={!!connectTarget} onOpenChange={(o) => !o && setConnectTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Connecter « {connectTarget?.name} » à l&apos;IA ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {orgDefault && orgDefault.id !== connectTarget?.id
-                ? `Le modèle actuellement connecté (« ${orgDefault.name} »), possiblement utilisé par un autre agent, sera déconnecté. Un seul modèle peut être connecté à la fois pour toute l'organisation.`
-                : "Ce modèle deviendra celui utilisé par l'IA pour générer des PDF depuis n'importe quel agent de l'organisation."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={!!connectingId}>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConnect} disabled={!!connectingId}>
-              {connectingId ? <Spinner className="mr-1.5 h-3.5 w-3.5 animate-spin" weight="bold" /> : null}
-              Connecter
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
