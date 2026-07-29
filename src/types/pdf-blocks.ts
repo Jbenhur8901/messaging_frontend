@@ -11,7 +11,20 @@ export type PdfBlockType =
   | "separator"
   | "signature"
 
-export type BlockAlign = "left" | "center" | "right"
+export type BlockAlign = "left" | "center" | "right" | "justify"
+
+// Polices compatibles WeasyPrint (système / web-safe)
+export const FONT_OPTIONS = [
+  { value: "Arial, Helvetica, sans-serif", label: "Arial", sample: "Arial" },
+  { value: "Verdana, Geneva, sans-serif", label: "Verdana", sample: "Verdana" },
+  { value: "Tahoma, Geneva, sans-serif", label: "Tahoma", sample: "Tahoma" },
+  { value: "'Trebuchet MS', Helvetica, sans-serif", label: "Trebuchet MS", sample: "Trebuchet MS" },
+  { value: "Georgia, 'Times New Roman', serif", label: "Georgia", sample: "Georgia" },
+  { value: "'Times New Roman', Times, serif", label: "Times New Roman", sample: "Times New Roman" },
+  { value: "'Courier New', Courier, monospace", label: "Courier New", sample: "Courier New" },
+] as const
+
+export const DEFAULT_FONT_FAMILY = FONT_OPTIONS[0].value
 
 // Layout width — lets two (or three) blocks sit side by side on the same row
 // instead of always stacking full-width. Absent/undefined behaves as "full".
@@ -21,8 +34,13 @@ export interface PdfBlock {
   id: string
   type: PdfBlockType
   order: number
+  page?: number
   width?: BlockWidth
   config: Record<string, unknown>
+}
+
+export function blockPage(block: PdfBlock): number {
+  return block.page ?? 1
 }
 
 export interface BlockLibraryItem {
@@ -65,13 +83,13 @@ const createId = createBlockId
 function defaultConfigFor(type: PdfBlockType): Record<string, unknown> {
   switch (type) {
     case "title":
-      return { text: "Titre du document", align: "left", color: "#111111", size: "large", show_doc_info: false }
+      return { text: "Titre du document", align: "left", color: "#111111", size: "large", show_doc_info: false, font_family: DEFAULT_FONT_FAMILY }
     case "text":
-      return { text: "Nous vous remercions pour votre confiance.", align: "left", color: "#333333", size: "medium" }
+      return { text: "Nous vous remercions pour votre confiance.", align: "left", color: "#333333", size: "medium", font_family: DEFAULT_FONT_FAMILY }
     case "field":
       return { label: "Nom (s)", value: "", style: "line", accent_color: "#111111" }
     case "list":
-      return { items: ["Premier point"], style: "bullet", color: "#333333" }
+      return { items: ["Premier point"], style: "bullet", color: "#333333", align: "left", font_family: DEFAULT_FONT_FAMILY }
     case "section_header":
       return { text: "Section", align: "left", bg_color: "#f3f4f6", text_color: "#111111" }
     case "customer_information":
@@ -103,8 +121,8 @@ function defaultConfigFor(type: PdfBlockType): Record<string, unknown> {
   }
 }
 
-export function createBlock(type: PdfBlockType, order: number): PdfBlock {
-  return { id: createId(), type, order, width: "full", config: defaultConfigFor(type) }
+export function createBlock(type: PdfBlockType, order: number, page = 1): PdfBlock {
+  return { id: createId(), type, order, page, width: "full", config: defaultConfigFor(type) }
 }
 
 export function defaultBlocks(): PdfBlock[] {
@@ -118,6 +136,15 @@ export function defaultBlocks(): PdfBlock[] {
   })
 }
 
-export function reorder(blocks: PdfBlock[]): PdfBlock[] {
-  return blocks.map((block, index) => ({ ...block, order: index + 1 }))
+export function reorder(blocks: PdfBlock[], page?: number): PdfBlock[] {
+  let order = 1
+  return blocks.map((block) => {
+    if (page !== undefined && blockPage(block) !== page) return block
+    return { ...block, order: order++ }
+  })
+}
+
+export function maxBlockPage(blocks: PdfBlock[]): number {
+  if (blocks.length === 0) return 1
+  return Math.max(1, ...blocks.map(blockPage))
 }

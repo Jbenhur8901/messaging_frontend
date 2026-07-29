@@ -47,9 +47,13 @@ import { handleApiError } from "@/services/api"
 import { pdfTemplatesService, DEFAULT_PDF_STYLES, type PdfStyles, type PdfTemplate } from "@/services/pdf-templates"
 import {
   BLOCK_LIBRARY,
+  DEFAULT_FONT_FAMILY,
+  FONT_OPTIONS,
   PRICE_TABLE_COLUMNS,
+  blockPage,
   createBlock,
   createBlockId,
+  maxBlockPage,
   reorder,
   type BlockAlign,
   type BlockWidth,
@@ -146,19 +150,32 @@ const formatAmount = (value: number) =>
 
 const LOCAL_KEY = "flow-pdf-template-blocks-v1"
 
-function loadLocalBlocks(templateId?: string): PdfBlock[] | null {
+interface StoredBlocksPayload {
+  blocks: PdfBlock[]
+  pageCount: number
+}
+
+function loadLocalBlocks(templateId?: string): StoredBlocksPayload | null {
   if (typeof window === "undefined" || !templateId) return null
   try {
     const raw = window.localStorage.getItem(`${LOCAL_KEY}:${templateId}`)
-    return raw ? (JSON.parse(raw) as PdfBlock[]) : null
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as StoredBlocksPayload | PdfBlock[]
+    if (Array.isArray(parsed)) {
+      return { blocks: parsed, pageCount: maxBlockPage(parsed) }
+    }
+    return {
+      blocks: parsed.blocks ?? [],
+      pageCount: parsed.pageCount ?? maxBlockPage(parsed.blocks ?? []),
+    }
   } catch {
     return null
   }
 }
 
-function saveLocalBlocks(templateId: string, blocks: PdfBlock[]) {
+function saveLocalBlocks(templateId: string, blocks: PdfBlock[], pageCount: number) {
   if (typeof window === "undefined") return
-  window.localStorage.setItem(`${LOCAL_KEY}:${templateId}`, JSON.stringify(blocks))
+  window.localStorage.setItem(`${LOCAL_KEY}:${templateId}`, JSON.stringify({ blocks, pageCount }))
 }
 
 const LOCAL_DATA_KEY = "flow-pdf-template-data-v1"
@@ -197,6 +214,7 @@ function migrateStylesToBlocks(styles: PdfStyles): PdfBlock[] {
     color: styles.primary_color || "#111111",
     size: "large",
     show_doc_info: true,
+    font_family: styles.font_family || DEFAULT_FONT_FAMILY,
   })
   push("customer_information", {
     show_company: true,
@@ -225,7 +243,13 @@ function migrateStylesToBlocks(styles: PdfStyles): PdfBlock[] {
   })
 
   if (styles.show_notes && styles.footer_text) {
-    push("text", { text: styles.footer_text, align: "left", color: styles.text_color || "#333333", size: "medium" })
+    push("text", {
+      text: styles.footer_text,
+      align: "left",
+      color: styles.text_color || "#333333",
+      size: "medium",
+      font_family: styles.font_family || DEFAULT_FONT_FAMILY,
+    })
   }
 
   push("signature", {
@@ -252,28 +276,33 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
   const [isEditingName, setIsEditingName] = useState(false)
   const [initialData] = useState(() => {
     if (initialTemplate?.blocks?.length) {
-      return { blocks: initialTemplate.blocks, migrated: false }
+      return {
+        blocks: initialTemplate.blocks,
+        pageCount: maxBlockPage(initialTemplate.blocks),
+        migrated: false,
+      }
     }
     const local = loadLocalBlocks(initialTemplate?.id)
-    if (local?.length) {
-      return { blocks: local, migrated: false }
+    if (local?.blocks.length) {
+      return { blocks: local.blocks, pageCount: local.pageCount, migrated: false }
     }
     if (initialTemplate) {
-      return { blocks: migrateStylesToBlocks(initialTemplate.styles), migrated: true }
+      return { blocks: migrateStylesToBlocks(initialTemplate.styles), pageCount: 1, migrated: true }
     }
-    // Page blanche : l'utilisateur construit son document bloc par bloc, sans pré-remplissage.
-    return { blocks: [], migrated: false }
+    return { blocks: [], pageCount: 1, migrated: false }
   })
   const [blocks, setBlocksState] = useState<PdfBlock[]>(initialData.blocks)
+  const [pageCount, setPageCountState] = useState(initialData.pageCount)
+  const [currentPage, setCurrentPage] = useState(1)
   const [documentData, setDocumentDataState] = useState<DocumentData>(
     () => loadLocalDocumentData(initialTemplate?.id) ?? DEFAULT_DOCUMENT_DATA
   )
 
-  type Snapshot = { blocks: PdfBlock[]; documentData: DocumentData }
+  type Snapshot = { blocks: PdfBlock[]; documentData: DocumentData; pageCount: number }
   const [history, setHistory] = useState<Snapshot[]>([])
   const [future, setFuture] = useState<Snapshot[]>([])
-  const stateRef = useRef<Snapshot>({ blocks, documentData })
-  stateRef.current = { blocks, documentData }
+  const stateRef = useRef<Snapshot>({ blocks, documentData, pageCount })
+  stateRef.current = { blocks, documentData, pageCount }
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -284,13 +313,32 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDeletePageConfirm, setShowDeletePageConfirm] = useState(false)
 
   const selected = blocks.find((b) => b.id === selectedId) ?? null
+  const currentPageBlocks = blocks
+    .filter((b) => blockPage(b) === currentPage)
+    .sort((a, b) => a.order - b.order)
+
+  const pushSnapshot = () => ({
+    blocks: stateRef.current.blocks,
+    documentData: stateRef.current.documentData,
+    pageCount: stateRef.current.pageCount,
+  })
 
   const setBlocks = (updater: PdfBlock[] | ((prev: PdfBlock[]) => PdfBlock[])) => {
     setBlocksState((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater
-      setHistory((h) => [...h.slice(-19), { blocks: prev, documentData: stateRef.current.documentData }])
+      setHistory((h) => [...h.slice(-19), pushSnapshot()])
+      setFuture([])
+      return next
+    })
+  }
+
+  const setPageCount = (updater: number | ((prev: number) => number)) => {
+    setPageCountState((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater
+      setHistory((h) => [...h.slice(-19), pushSnapshot()])
       setFuture([])
       return next
     })
@@ -299,7 +347,7 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
   const setDocumentData = (updater: DocumentData | ((prev: DocumentData) => DocumentData)) => {
     setDocumentDataState((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater
-      setHistory((h) => [...h.slice(-19), { blocks: stateRef.current.blocks, documentData: prev }])
+      setHistory((h) => [...h.slice(-19), pushSnapshot()])
       setFuture([])
       return next
     })
@@ -321,6 +369,8 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
       setFuture((f) => [stateRef.current, ...f])
       setBlocksState(previous.blocks)
       setDocumentDataState(previous.documentData)
+      setPageCountState(previous.pageCount)
+      setCurrentPage((p) => Math.min(p, previous.pageCount))
       return h.slice(0, -1)
     })
   }
@@ -332,18 +382,53 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
       setHistory((h) => [...h, stateRef.current])
       setBlocksState(next.blocks)
       setDocumentDataState(next.documentData)
+      setPageCountState(next.pageCount)
+      setCurrentPage((p) => Math.min(p, next.pageCount))
       return rest
     })
   }
 
+  const handleAddPage = () => {
+    setPageCount((c) => {
+      const next = c + 1
+      setCurrentPage(next)
+      return next
+    })
+    setSelectedId(null)
+  }
+
+  const handleDeletePage = () => {
+    if (pageCount <= 1) return
+    const pageToDelete = currentPage
+
+    setHistory((h) => [...h.slice(-19), pushSnapshot()])
+    setFuture([])
+
+    setBlocksState((prev) =>
+      prev
+        .filter((b) => blockPage(b) !== pageToDelete)
+        .map((b) => (blockPage(b) > pageToDelete ? { ...b, page: blockPage(b) - 1 } : b))
+    )
+    setPageCountState((c) => c - 1)
+    setCurrentPage((p) => (p > pageToDelete ? p - 1 : Math.max(1, p - 1)))
+    setSelectedId(null)
+    setShowDeletePageConfirm(false)
+    toast.success(`Page ${pageToDelete} supprimée`)
+  }
+
   const handleAddBlock = (type: PdfBlockType) => {
-    const block = createBlock(type, blocks.length + 1)
-    setBlocks((prev) => reorder([...prev, block]))
+    const order = currentPageBlocks.length + 1
+    const block = createBlock(type, order, currentPage)
+    setBlocks((prev) => reorder([...prev, block], currentPage))
     setSelectedId(block.id)
   }
 
   const handleDeleteBlock = (id: string) => {
-    setBlocks((prev) => reorder(prev.filter((b) => b.id !== id)))
+    setBlocks((prev) => {
+      const block = prev.find((b) => b.id === id)
+      if (!block) return prev
+      return reorder(prev.filter((b) => b.id !== id), blockPage(block))
+    })
     setSelectedId((current) => (current === id ? null : current))
   }
 
@@ -352,9 +437,11 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
     setBlocks((prev) => {
       const index = prev.findIndex((b) => b.id === id)
       if (index === -1) return prev
-      const copy: PdfBlock = { ...prev[index], id: newId, config: { ...prev[index].config } }
+      const source = prev[index]
+      const page = blockPage(source)
+      const copy: PdfBlock = { ...source, id: newId, config: { ...source.config } }
       const next = [...prev.slice(0, index + 1), copy, ...prev.slice(index + 1)]
-      return reorder(next)
+      return reorder(next, page)
     })
     setSelectedId(newId)
   }
@@ -376,13 +463,18 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
       return
     }
     setBlocks((prev) => {
-      const from = prev.findIndex((b) => b.id === draggedId)
-      const to = prev.findIndex((b) => b.id === targetId)
+      const target = prev.find((b) => b.id === targetId)
+      if (!target) return prev
+      const page = blockPage(target)
+      const pageBlocks = prev.filter((b) => blockPage(b) === page).sort((a, b) => a.order - b.order)
+      const otherBlocks = prev.filter((b) => blockPage(b) !== page)
+      const from = pageBlocks.findIndex((b) => b.id === draggedId)
+      const to = pageBlocks.findIndex((b) => b.id === targetId)
       if (from === -1 || to === -1) return prev
-      const next = [...prev]
-      const [moved] = next.splice(from, 1)
-      next.splice(to, 0, moved)
-      return reorder(next)
+      const reordered = [...pageBlocks]
+      const [moved] = reordered.splice(from, 1)
+      reordered.splice(to, 0, moved)
+      return reorder([...otherBlocks, ...reordered], page)
     })
     setDraggedId(null)
     setDragOverId(null)
@@ -390,7 +482,7 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
 
   useEffect(() => {
     if (initialData.migrated && initialTemplate?.id) {
-      saveLocalBlocks(initialTemplate.id, initialData.blocks)
+      saveLocalBlocks(initialTemplate.id, initialData.blocks, initialData.pageCount)
       toast.info("Modèle existant migré vers l'éditeur par blocs à partir de sa configuration actuelle.")
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -422,13 +514,13 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
           blocks,
           is_default: false,
         })
-        saveLocalBlocks(created.id, blocks)
+        saveLocalBlocks(created.id, blocks, pageCount)
         saveLocalDocumentData(created.id, documentData)
         toast.success("Modèle créé")
         onSaved({ ...created, blocks })
       } else if (initialTemplate) {
         const updated = await pdfTemplatesService.updateTemplate(initialTemplate.id, { name, blocks })
-        saveLocalBlocks(initialTemplate.id, blocks)
+        saveLocalBlocks(initialTemplate.id, blocks, pageCount)
         saveLocalDocumentData(initialTemplate.id, documentData)
         toast.success("Modèle enregistré")
         onSaved({ ...updated, blocks })
@@ -509,10 +601,45 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
           >
             <ArrowUUpRight className="h-4 w-4" weight="bold" />
           </button>
-          <div className="mx-2 flex items-center gap-1.5 rounded-lg border border-border/50 px-2 py-1 text-[11px] text-muted-foreground">
-            <CaretLeft className="h-3.5 w-3.5 opacity-30" weight="bold" />
-            <span>1 / 1</span>
-            <CaretRight className="h-3.5 w-3.5 opacity-30" weight="bold" />
+          <div className="mx-2 flex items-center gap-1 rounded-lg border border-border/50 px-1 py-1 text-[11px] text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30"
+              aria-label="Page précédente"
+            >
+              <CaretLeft className="h-3.5 w-3.5" weight="bold" />
+            </button>
+            <span className="min-w-[3rem] text-center tabular-nums">{currentPage} / {pageCount}</span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.min(pageCount, p + 1))}
+              disabled={currentPage >= pageCount}
+              className="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30"
+              aria-label="Page suivante"
+            >
+              <CaretRight className="h-3.5 w-3.5" weight="bold" />
+            </button>
+            <button
+              type="button"
+              onClick={handleAddPage}
+              className="ml-0.5 flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium transition-colors hover:bg-muted hover:text-foreground"
+              title="Nouvelle page"
+            >
+              <Plus className="h-3 w-3" weight="bold" />
+              Page
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeletePageConfirm(true)}
+              disabled={pageCount <= 1}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-30"
+              title="Supprimer cette page"
+              aria-label="Supprimer cette page"
+            >
+              <Trash className="h-3 w-3" weight="bold" />
+            </button>
           </div>
         </div>
 
@@ -586,54 +713,69 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
 
         {/* Canvas */}
         <div className="relative flex flex-1 flex-col overflow-auto bg-[#2b2b2b]" onClick={() => setSelectedId(null)}>
-          <div className="flex flex-1 justify-center px-8 py-10">
-            <div
-              className="relative shrink-0 bg-white shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
-              style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {!previewMode && (
-                <div
-                  className="pointer-events-none absolute border border-dashed border-black/10"
-                  style={{ inset: PAGE_MARGIN }}
-                />
-              )}
-              <div className="flex flex-wrap items-start" style={{ padding: PAGE_MARGIN, gap: BLOCK_GAP }}>
-                {blocks.map((block) => (
-                  <BlockWrapper
-                    key={block.id}
-                    block={block}
-                    selected={selectedId === block.id}
-                    previewMode={previewMode}
-                    isDragOver={dragOverId === block.id}
-                    onSelect={() => setSelectedId(block.id)}
-                    onDelete={() => handleDeleteBlock(block.id)}
-                    onDuplicate={() => handleDuplicateBlock(block.id)}
-                    onDragStart={() => setDraggedId(block.id)}
-                    onDragOver={(e) => { e.preventDefault(); setDragOverId(block.id) }}
-                    onDrop={(e) => { e.preventDefault(); handleReorderDrop(block.id) }}
-                    onDragEnd={() => { setDraggedId(null); setDragOverId(null) }}
+          <div className="flex flex-1 flex-col items-center gap-10 px-8 py-10">
+            {(previewMode
+              ? Array.from({ length: pageCount }, (_, i) => i + 1)
+              : [currentPage]
+            ).map((pageNum) => {
+              const pageBlocks = blocks
+                .filter((b) => blockPage(b) === pageNum)
+                .sort((a, b) => a.order - b.order)
+              return (
+                <div key={pageNum} className="flex flex-col items-center gap-2">
+                  {previewMode && pageCount > 1 && (
+                    <span className="text-[11px] font-medium text-white/50">Page {pageNum}</span>
+                  )}
+                  <div
+                    className="relative shrink-0 bg-white shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
+                    style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT }}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <BlockRenderer
-                      block={block}
-                      editable={selectedId === block.id && !previewMode}
-                      onUpdateConfig={(patch) => handleUpdateConfig(block.id, patch)}
-                      documentData={documentData}
-                      onUpdateDocInfo={updateDocInfo}
-                      onUpdateClient={updateClient}
-                      onUpdateItems={updateItems}
-                      onUpdateSignature={updateSignature}
-                    />
-                  </BlockWrapper>
-                ))}
-                {blocks.length === 0 && (
-                  <div className="flex flex-col items-center justify-center gap-2 py-24 text-center text-black/30">
-                    <FilePdf className="h-10 w-10" weight="thin" />
-                    <p className="text-sm">Ajoutez des blocs depuis la bibliothèque</p>
+                    {!previewMode && (
+                      <div
+                        className="pointer-events-none absolute border border-dashed border-black/10"
+                        style={{ inset: PAGE_MARGIN }}
+                      />
+                    )}
+                    <div className="flex flex-wrap items-start" style={{ padding: PAGE_MARGIN, gap: BLOCK_GAP }}>
+                      {pageBlocks.map((block) => (
+                        <BlockWrapper
+                          key={block.id}
+                          block={block}
+                          selected={selectedId === block.id}
+                          previewMode={previewMode}
+                          isDragOver={dragOverId === block.id}
+                          onSelect={() => setSelectedId(block.id)}
+                          onDelete={() => handleDeleteBlock(block.id)}
+                          onDuplicate={() => handleDuplicateBlock(block.id)}
+                          onDragStart={() => setDraggedId(block.id)}
+                          onDragOver={(e) => { e.preventDefault(); setDragOverId(block.id) }}
+                          onDrop={(e) => { e.preventDefault(); handleReorderDrop(block.id) }}
+                          onDragEnd={() => { setDraggedId(null); setDragOverId(null) }}
+                        >
+                          <BlockRenderer
+                            block={block}
+                            editable={selectedId === block.id && !previewMode}
+                            onUpdateConfig={(patch) => handleUpdateConfig(block.id, patch)}
+                            documentData={documentData}
+                            onUpdateDocInfo={updateDocInfo}
+                            onUpdateClient={updateClient}
+                            onUpdateItems={updateItems}
+                            onUpdateSignature={updateSignature}
+                          />
+                        </BlockWrapper>
+                      ))}
+                      {pageBlocks.length === 0 && !previewMode && (
+                        <div className="flex w-full flex-col items-center justify-center gap-2 py-24 text-center text-black/30">
+                          <FilePdf className="h-10 w-10" weight="thin" />
+                          <p className="text-sm">Page {pageNum} — ajoutez des blocs depuis la bibliothèque</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -656,6 +798,29 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
           </aside>
         )}
       </div>
+
+      {/* ── Delete page confirmation ── */}
+      <AlertDialog open={showDeletePageConfirm} onOpenChange={setShowDeletePageConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer la page {currentPage} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {currentPageBlocks.length > 0
+                ? `Cette page et ses ${currentPageBlocks.length} bloc${currentPageBlocks.length > 1 ? "s" : ""} seront définitivement supprimés. Les pages suivantes seront renumérotées.`
+                : "Cette page vide sera supprimée. Les pages suivantes seront renumérotées."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeletePage() }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer la page
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Delete confirmation ── */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -792,6 +957,10 @@ const TITLE_SIZE_CLASSES: Record<string, string> = { small: "text-xl", medium: "
 const LEGACY_IMAGE_SIZE_PERCENT: Record<string, number> = { small: 15, medium: 30, large: 55 }
 
 // ─── Inline-editable text (contentEditable, committed on blur to avoid caret jumps) ── //
+function readEditableText(el: HTMLElement): string {
+  return el.innerText.replace(/\r\n/g, "\n")
+}
+
 function EditableText({
   as: Tag, value, onCommit, editable, singleLine, className, style,
 }: {
@@ -807,7 +976,7 @@ function EditableText({
 
   if (!editable) {
     return (
-      <Tag className={className} style={style}>
+      <Tag className={`whitespace-pre-line ${className ?? ""}`} style={style}>
         {value}
       </Tag>
     )
@@ -816,7 +985,7 @@ function EditableText({
   return (
     <Tag
       ref={ref as React.RefObject<HTMLHeadingElement & HTMLParagraphElement & HTMLSpanElement>}
-      className={`${className ?? ""} cursor-text rounded outline-none ring-primary/40 focus:ring-2`}
+      className={`${className ?? ""} ${singleLine ? "" : "whitespace-pre-line"} cursor-text rounded outline-none ring-primary/40 focus:ring-2`}
       style={style}
       contentEditable
       suppressContentEditableWarning
@@ -827,7 +996,7 @@ function EditableText({
           ;(e.currentTarget as HTMLElement).blur()
         }
       }}
-      onBlur={(e) => onCommit(e.currentTarget.textContent ?? "")}
+      onBlur={(e) => onCommit(readEditableText(e.currentTarget))}
     >
       {value}
     </Tag>
@@ -875,7 +1044,7 @@ function BlockRenderer({
 }) {
   switch (block.type) {
     case "title": {
-      const cfg = block.config as { text: string; align: BlockAlign; color?: string; size?: string; show_doc_info?: boolean }
+      const cfg = block.config as { text: string; align: BlockAlign; color?: string; size?: string; show_doc_info?: boolean; font_family?: string }
       return (
         <div className="flex items-start justify-between gap-4">
           <EditableText
@@ -885,7 +1054,11 @@ function BlockRenderer({
             value={cfg.text}
             onCommit={(text) => onUpdateConfig({ text })}
             className={`flex-1 font-bold tracking-tight ${TITLE_SIZE_CLASSES[cfg.size ?? "large"]}`}
-            style={{ color: cfg.color || "#111111", textAlign: cfg.align }}
+            style={{
+              color: cfg.color || "#111111",
+              textAlign: cfg.align,
+              fontFamily: cfg.font_family || DEFAULT_FONT_FAMILY,
+            }}
           />
           {cfg.show_doc_info && (
             <div className="whitespace-nowrap text-right text-[11px] leading-relaxed text-black/50">
@@ -923,15 +1096,19 @@ function BlockRenderer({
       )
     }
     case "text": {
-      const cfg = block.config as { text: string; align: BlockAlign; color?: string; size?: string }
+      const cfg = block.config as { text: string; align: BlockAlign; color?: string; size?: string; font_family?: string }
       return (
         <EditableText
           as="p"
           editable={editable}
           value={cfg.text}
           onCommit={(text) => onUpdateConfig({ text })}
-          className={`whitespace-pre-line leading-relaxed ${TEXT_SIZE_CLASSES[cfg.size ?? "medium"]}`}
-          style={{ textAlign: cfg.align, color: cfg.color || "#333333" }}
+          className={`leading-relaxed ${TEXT_SIZE_CLASSES[cfg.size ?? "medium"]}`}
+          style={{
+            textAlign: cfg.align,
+            color: cfg.color || "#333333",
+            fontFamily: cfg.font_family || DEFAULT_FONT_FAMILY,
+          }}
         />
       )
     }
@@ -964,13 +1141,20 @@ function BlockRenderer({
       )
     }
     case "list": {
-      const cfg = block.config as { items: string[]; style: "bullet" | "number" | "dash"; color?: string }
+      const cfg = block.config as { items: string[]; style: "bullet" | "number" | "dash"; color?: string; align?: BlockAlign; font_family?: string }
       const updateItem = (idx: number, text: string) =>
         onUpdateConfig({ items: cfg.items.map((it, i) => (i === idx ? text : it)) })
       const removeItem = (idx: number) =>
         onUpdateConfig({ items: cfg.items.filter((_, i) => i !== idx) })
       return (
-        <div className="space-y-1 text-[12px]" style={{ color: cfg.color || "#333333" }}>
+        <div
+          className="space-y-1 text-[12px]"
+          style={{
+            color: cfg.color || "#333333",
+            textAlign: cfg.align || "left",
+            fontFamily: cfg.font_family || DEFAULT_FONT_FAMILY,
+          }}
+        >
           {cfg.items.map((item, i) => (
             <div key={i} className="flex items-start gap-2">
               <span className="mt-0.5 shrink-0 text-black/50">
@@ -1308,29 +1492,56 @@ function PropField({ label, children }: { label: string; children: React.ReactNo
   )
 }
 
-function AlignButtons({ value, onChange }: { value: BlockAlign; onChange: (v: BlockAlign) => void }) {
-  const options: { value: BlockAlign; icon: string }[] = [
-    { value: "left", icon: "⯇" },
-    { value: "center", icon: "⯃" },
-    { value: "right", icon: "⯈" },
-  ]
+function AlignButtons({
+  value, onChange, includeJustify = false,
+}: {
+  value: BlockAlign
+  onChange: (v: BlockAlign) => void
+  includeJustify?: boolean
+}) {
+  const options: BlockAlign[] = includeJustify
+    ? ["left", "center", "right", "justify"]
+    : ["left", "center", "right"]
+  const labels: Record<BlockAlign, string> = {
+    left: "Gauche",
+    center: "Centre",
+    right: "Droite",
+    justify: "Justifier",
+  }
   return (
-    <div className="flex gap-1.5">
+    <div className={`grid gap-1.5 ${includeJustify ? "grid-cols-2" : "grid-cols-3"}`}>
       {options.map((opt) => (
         <button
-          key={opt.value}
+          key={opt}
           type="button"
-          onClick={() => onChange(opt.value)}
-          className={`flex h-8 flex-1 items-center justify-center rounded-lg border text-[11px] font-medium transition-colors ${
-            value === opt.value
+          onClick={() => onChange(opt)}
+          className={`flex h-8 items-center justify-center rounded-lg border px-1 text-[11px] font-medium transition-colors ${
+            value === opt
               ? "border-primary/40 bg-primary/10 text-primary"
               : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
           }`}
         >
-          {opt.value === "left" ? "Gauche" : opt.value === "center" ? "Centre" : "Droite"}
+          {labels[opt]}
         </button>
       ))}
     </div>
+  )
+}
+
+function FontFamilySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none"
+      style={{ fontFamily: FONT_OPTIONS.find((f) => f.value === value)?.sample ?? value }}
+    >
+      {FONT_OPTIONS.map((f) => (
+        <option key={f.value} value={f.value} style={{ fontFamily: f.sample }}>
+          {f.label}
+        </option>
+      ))}
+    </select>
   )
 }
 
@@ -1564,7 +1775,17 @@ function BlockProperties({
             />
           </PropField>
           <PropField label="Alignement">
-            <AlignButtons value={(block.config.align as BlockAlign) ?? "left"} onChange={(v) => onChange({ align: v })} />
+            <AlignButtons
+              includeJustify
+              value={(block.config.align as BlockAlign) ?? "left"}
+              onChange={(v) => onChange({ align: v })}
+            />
+          </PropField>
+          <PropField label="Police">
+            <FontFamilySelect
+              value={(block.config.font_family as string) ?? DEFAULT_FONT_FAMILY}
+              onChange={(v) => onChange({ font_family: v })}
+            />
           </PropField>
           <PropField label="Taille">
             <SizeButtons value={(block.config.size as string) ?? "large"} onChange={(v) => onChange({ size: v })} />
@@ -1591,7 +1812,17 @@ function BlockProperties({
             />
           </PropField>
           <PropField label="Alignement">
-            <AlignButtons value={(block.config.align as BlockAlign) ?? "left"} onChange={(v) => onChange({ align: v })} />
+            <AlignButtons
+              includeJustify
+              value={(block.config.align as BlockAlign) ?? "left"}
+              onChange={(v) => onChange({ align: v })}
+            />
+          </PropField>
+          <PropField label="Police">
+            <FontFamilySelect
+              value={(block.config.font_family as string) ?? DEFAULT_FONT_FAMILY}
+              onChange={(v) => onChange({ font_family: v })}
+            />
           </PropField>
           <PropField label="Taille">
             <SizeButtons value={(block.config.size as string) ?? "medium"} onChange={(v) => onChange({ size: v })} />
@@ -1693,6 +1924,19 @@ function BlockProperties({
                 </button>
               ))}
             </div>
+          </PropField>
+          <PropField label="Alignement">
+            <AlignButtons
+              includeJustify
+              value={(block.config.align as BlockAlign) ?? "left"}
+              onChange={(v) => onChange({ align: v })}
+            />
+          </PropField>
+          <PropField label="Police">
+            <FontFamilySelect
+              value={(block.config.font_family as string) ?? DEFAULT_FONT_FAMILY}
+              onChange={(v) => onChange({ font_family: v })}
+            />
           </PropField>
           <ColorPickerField label="Couleur du texte" value={(block.config.color as string) ?? "#333333"} onChange={(v) => onChange({ color: v })} />
         </>
