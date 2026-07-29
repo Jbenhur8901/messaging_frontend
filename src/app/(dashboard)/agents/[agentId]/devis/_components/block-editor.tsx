@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   ArrowUUpLeft,
   ArrowUUpRight,
-  ArrowsOut,
   CaretLeft,
   CaretRight,
   CloudArrowUp,
@@ -16,11 +15,8 @@ import {
   FilePdf,
   FlagBanner,
   FloppyDisk,
-  GridFour,
   Image as ImageIcon,
   ListBullets,
-  MagnifyingGlassMinus,
-  MagnifyingGlassPlus,
   Minus as MinusIcon,
   Plus,
   Sigma,
@@ -45,6 +41,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { HexColorPicker } from "react-colorful"
 import { handleApiError } from "@/services/api"
 import { pdfTemplatesService, DEFAULT_PDF_STYLES, type PdfStyles, type PdfTemplate } from "@/services/pdf-templates"
 import {
@@ -54,11 +52,30 @@ import {
   createBlockId,
   reorder,
   type BlockAlign,
+  type BlockWidth,
   type PdfBlock,
   type PdfBlockType,
 } from "@/types/pdf-blocks"
 
+// Row gap between blocks (px) — used both by the flex-wrap canvas and by the
+// width percentages below so half/third blocks line up flush against it.
+const BLOCK_GAP = 16
+const BLOCK_WIDTH_STYLE: Record<BlockWidth, string> = {
+  full: "100%",
+  half: `calc(50% - ${BLOCK_GAP / 2}px)`,
+  third: `calc(33.333% - ${(BLOCK_GAP * 2) / 3}px)`,
+}
+
+// A4 @ 96dpi (210mm × 297mm), 10mm margins — matches the @page rule used
+// server-side by MASTER_TEMPLATE so the canvas stays WYSIWYG with the real PDF.
 const PAGE_WIDTH = 794
+const PAGE_HEIGHT = 1123
+const PAGE_MARGIN = 38
+
+const COLOR_PRESETS = [
+  "#233064", "#1a73e8", "#0d9488", "#7c3aed",
+  "#dc2626", "#b45309", "#374151", "#000000",
+]
 
 // ─── Document data: the *real* quote information (client, lignes, signature) ── //
 // Distinct from block config (which controls styling/layout). This is what the
@@ -261,7 +278,6 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [previewMode, setPreviewMode] = useState(false)
-  const [zoom, setZoom] = useState(100)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
 
@@ -347,6 +363,10 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
     setBlocks((prev) =>
       prev.map((b) => (b.id === id ? { ...b, config: { ...b.config, ...patch } } : b))
     )
+  }
+
+  const handleUpdateWidth = (id: string, width: BlockWidth) => {
+    setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, width } : b)))
   }
 
   const handleReorderDrop = (targetId: string) => {
@@ -568,11 +588,17 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
         <div className="relative flex flex-1 flex-col overflow-auto bg-[#2b2b2b]" onClick={() => setSelectedId(null)}>
           <div className="flex flex-1 justify-center px-8 py-10">
             <div
-              className="h-fit shrink-0 bg-white shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
-              style={{ width: PAGE_WIDTH, transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
+              className="relative shrink-0 bg-white shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
+              style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-14 py-16">
+              {!previewMode && (
+                <div
+                  className="pointer-events-none absolute border border-dashed border-black/10"
+                  style={{ inset: PAGE_MARGIN }}
+                />
+              )}
+              <div className="flex flex-wrap items-start" style={{ padding: PAGE_MARGIN, gap: BLOCK_GAP }}>
                 {blocks.map((block) => (
                   <BlockWrapper
                     key={block.id}
@@ -609,50 +635,6 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
               </div>
             </div>
           </div>
-
-          {/* Floating zoom toolbar */}
-          <div className="pointer-events-none sticky inset-x-0 bottom-6 flex justify-center">
-            <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-border/40 bg-[#1a1a1a] px-2 py-1.5 shadow-lg">
-              <button
-                type="button"
-                onClick={() => setZoom((z) => Math.max(50, z - 10))}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
-              >
-                <MagnifyingGlassMinus className="h-3.5 w-3.5" weight="bold" />
-              </button>
-              <span className="w-10 text-center text-[11px] text-muted-foreground">{zoom}%</span>
-              <button
-                type="button"
-                onClick={() => setZoom((z) => Math.min(150, z + 10))}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
-              >
-                <MagnifyingGlassPlus className="h-3.5 w-3.5" weight="bold" />
-              </button>
-              <div className="mx-1 h-4 w-px bg-border/50" />
-              <button
-                type="button"
-                onClick={() => setZoom(100)}
-                title="Réinitialiser le zoom"
-                className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
-              >
-                <ArrowsOut className="h-3.5 w-3.5" weight="bold" />
-              </button>
-              <button
-                type="button"
-                title="Document"
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"
-              >
-                <FilePdf className="h-3.5 w-3.5" weight="fill" />
-              </button>
-              <button
-                type="button"
-                title="Grille"
-                className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
-              >
-                <GridFour className="h-3.5 w-3.5" weight="regular" />
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Properties panel */}
@@ -662,6 +644,7 @@ export function BlockTemplateEditor({ agentId, mode, initialTemplate, onSaved, o
               <BlockProperties
                 block={selected}
                 onChange={(patch) => handleUpdateConfig(selected.id, patch)}
+                onChangeWidth={(w) => handleUpdateWidth(selected.id, w)}
                 onDelete={() => handleDeleteBlock(selected.id)}
                 onDuplicate={() => handleDuplicateBlock(selected.id)}
               />
@@ -751,8 +734,10 @@ function BlockWrapper({
   onDragEnd: () => void
   children: React.ReactNode
 }) {
+  const widthStyle = { width: BLOCK_WIDTH_STYLE[block.width ?? "full"] }
+
   if (previewMode) {
-    return <div className="py-2">{children}</div>
+    return <div className="py-2" style={widthStyle}>{children}</div>
   }
 
   const Icon = BLOCK_ICONS[block.type]
@@ -764,6 +749,7 @@ function BlockWrapper({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       onClick={(e) => { e.stopPropagation(); onSelect() }}
+      style={widthStyle}
       className={`group relative cursor-pointer rounded-sm py-2 outline outline-1 outline-offset-4 transition-colors ${
         selected
           ? "outline-2 outline-dashed outline-primary"
@@ -802,7 +788,8 @@ function BlockWrapper({
 
 const TEXT_SIZE_CLASSES: Record<string, string> = { small: "text-[10px]", medium: "text-[12px]", large: "text-[14px]" }
 const TITLE_SIZE_CLASSES: Record<string, string> = { small: "text-xl", medium: "text-2xl", large: "text-3xl" }
-const IMAGE_SIZE_CLASSES: Record<string, string> = { small: "max-h-12", medium: "max-h-24", large: "max-h-40" }
+// Legacy fallback for images saved before the width slider (config.size presets).
+const LEGACY_IMAGE_SIZE_PERCENT: Record<string, number> = { small: 15, medium: 30, large: 55 }
 
 // ─── Inline-editable text (contentEditable, committed on blur to avoid caret jumps) ── //
 function EditableText({
@@ -890,15 +877,15 @@ function BlockRenderer({
     case "title": {
       const cfg = block.config as { text: string; align: BlockAlign; color?: string; size?: string; show_doc_info?: boolean }
       return (
-        <div className="flex items-start justify-between gap-4" style={{ textAlign: cfg.align }}>
+        <div className="flex items-start justify-between gap-4">
           <EditableText
             as="h1"
             editable={editable}
             singleLine
             value={cfg.text}
             onCommit={(text) => onUpdateConfig({ text })}
-            className={`font-bold tracking-tight ${TITLE_SIZE_CLASSES[cfg.size ?? "large"]}`}
-            style={{ color: cfg.color || "#111111" }}
+            className={`flex-1 font-bold tracking-tight ${TITLE_SIZE_CLASSES[cfg.size ?? "large"]}`}
+            style={{ color: cfg.color || "#111111", textAlign: cfg.align }}
           />
           {cfg.show_doc_info && (
             <div className="whitespace-nowrap text-right text-[11px] leading-relaxed text-black/50">
@@ -1241,13 +1228,14 @@ function BlockRenderer({
       )
     }
     case "image": {
-      const cfg = block.config as { url: string; align: BlockAlign; size?: string }
+      const cfg = block.config as { url: string; align: BlockAlign; size?: string; width_percent?: number }
       const justify = cfg.align === "center" ? "justify-center" : cfg.align === "right" ? "justify-end" : "justify-start"
+      const widthPercent = cfg.width_percent ?? LEGACY_IMAGE_SIZE_PERCENT[cfg.size ?? "medium"] ?? 30
       return (
         <div className={`flex ${justify}`}>
           {cfg.url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={cfg.url} alt="" className={`${IMAGE_SIZE_CLASSES[cfg.size ?? "medium"]} object-contain`} />
+            <img src={cfg.url} alt="" className="object-contain" style={{ width: `${widthPercent}%` }} />
           ) : (
             <div className="flex h-16 w-32 items-center justify-center rounded border border-dashed border-black/20 text-[10px] text-black/40">
               Image
@@ -1346,19 +1334,66 @@ function AlignButtons({ value, onChange }: { value: BlockAlign; onChange: (v: Bl
   )
 }
 
+function WidthButtons({ value, onChange }: { value: BlockWidth; onChange: (v: BlockWidth) => void }) {
+  const options: { value: BlockWidth; label: string }[] = [
+    { value: "full", label: "Pleine" },
+    { value: "half", label: "Moitié" },
+    { value: "third", label: "Tiers" },
+  ]
+  return (
+    <div className="flex gap-1.5">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={`flex h-8 flex-1 items-center justify-center rounded-lg border text-[11px] font-medium transition-colors ${
+            value === opt.value
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function ColorPickerField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
   return (
     <PropField label={label}>
       <div className="flex items-center gap-2">
-        <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-border">
-          <input
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="absolute inset-0 h-full w-full cursor-pointer border-0 p-0 opacity-0"
-          />
-          <div className="absolute inset-0" style={{ background: value }} />
-        </div>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label="Choisir une couleur"
+              className="h-8 w-8 shrink-0 rounded-lg border border-border transition-transform hover:scale-105"
+              style={{ background: value }}
+            />
+          </PopoverTrigger>
+          <PopoverContent className="w-auto space-y-3 p-3" align="start">
+            <HexColorPicker color={value} onChange={onChange} />
+            <div className="flex flex-wrap gap-1.5">
+              {COLOR_PRESETS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => onChange(c)}
+                  title={c}
+                  className="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
+                  style={{
+                    background: c,
+                    borderColor: value.toLowerCase() === c ? "#fff" : "transparent",
+                    boxShadow: value.toLowerCase() === c ? "0 0 0 1px #fff, 0 0 0 2px " + c : "none",
+                  }}
+                />
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -1391,6 +1426,23 @@ function SizeButtons({ value, onChange }: { value: string; onChange: (v: string)
           {opt.label}
         </button>
       ))}
+    </div>
+  )
+}
+
+function WidthSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        type="range"
+        min={10}
+        max={100}
+        step={5}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-border accent-primary"
+      />
+      <span className="w-10 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{value}%</span>
     </div>
   )
 }
@@ -1474,10 +1526,11 @@ function ToggleField({ label, checked, onChange }: { label: string; checked: boo
 }
 
 function BlockProperties({
-  block, onChange, onDelete, onDuplicate,
+  block, onChange, onChangeWidth, onDelete, onDuplicate,
 }: {
   block: PdfBlock
   onChange: (patch: Record<string, unknown>) => void
+  onChangeWidth: (width: BlockWidth) => void
   onDelete: () => void
   onDuplicate: () => void
 }) {
@@ -1496,6 +1549,10 @@ function BlockProperties({
           </button>
         </div>
       </div>
+
+      <PropField label="Largeur">
+        <WidthButtons value={block.width ?? "full"} onChange={onChangeWidth} />
+      </PropField>
 
       {block.type === "title" && (
         <>
@@ -1769,7 +1826,14 @@ function BlockProperties({
             <AlignButtons value={(block.config.align as BlockAlign) ?? "left"} onChange={(v) => onChange({ align: v })} />
           </PropField>
           <PropField label="Taille">
-            <SizeButtons value={(block.config.size as string) ?? "medium"} onChange={(v) => onChange({ size: v })} />
+            <WidthSlider
+              value={
+                (block.config.width_percent as number) ??
+                LEGACY_IMAGE_SIZE_PERCENT[(block.config.size as string) ?? "medium"] ??
+                30
+              }
+              onChange={(v) => onChange({ width_percent: v })}
+            />
           </PropField>
         </>
       )}

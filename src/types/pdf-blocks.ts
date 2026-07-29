@@ -13,10 +13,15 @@ export type PdfBlockType =
 
 export type BlockAlign = "left" | "center" | "right"
 
+// Layout width — lets two (or three) blocks sit side by side on the same row
+// instead of always stacking full-width. Absent/undefined behaves as "full".
+export type BlockWidth = "full" | "half" | "third"
+
 export interface PdfBlock {
   id: string
   type: PdfBlockType
   order: number
+  width?: BlockWidth
   config: Record<string, unknown>
 }
 
@@ -88,7 +93,7 @@ function defaultConfigFor(type: PdfBlockType): Record<string, unknown> {
     case "total":
       return { show_subtotal: true, show_tax: true, tax_rate: 20, accent_color: "#111111" }
     case "image":
-      return { url: "", align: "left", size: "medium" }
+      return { url: "", align: "left", width_percent: 30 }
     case "separator":
       return { style: "solid", color: "#d1d5db", thickness: 1 }
     case "signature":
@@ -99,7 +104,7 @@ function defaultConfigFor(type: PdfBlockType): Record<string, unknown> {
 }
 
 export function createBlock(type: PdfBlockType, order: number): PdfBlock {
-  return { id: createId(), type, order, config: defaultConfigFor(type) }
+  return { id: createId(), type, order, width: "full", config: defaultConfigFor(type) }
 }
 
 export function defaultBlocks(): PdfBlock[] {
@@ -109,7 +114,7 @@ export function defaultBlocks(): PdfBlock[] {
     if (type === "text") {
       config.text = "Conditions de paiement : paiement à 30 jours à réception de la facture."
     }
-    return { id: createId(), type, order: index + 1, config }
+    return { id: createId(), type, order: index + 1, width: "full", config }
   })
 }
 
